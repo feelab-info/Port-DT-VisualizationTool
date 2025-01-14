@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es2016", // JavaScript version to compile to
+    "module": "commonjs", // Use CommonJS modules (compatible with Node.js)
+    "rootDir": "./", // Root directory for TypeScript files
+    "outDir": "./dist", // Output directory for compiled JavaScript files
+    "esModuleInterop": true, // Allow CommonJS default import compatibility
+    "forceConsistentCasingInFileNames": true, // Enforce consistent casing in imports
+    "strict": true, // Enable all strict type-checking options
+    "skipLibCheck": true, // Skip type-checking of declaration files
+    "resolveJsonModule": true // Allow importing JSON files
+  },
+  "include": ["./"], // Include all files in the current directory
+  "exclude": ["node_modules", "dist"] // Exclude these directories from compilation
+}
