@@ -1,4 +1,4 @@
-# Port Digital Twin
+# Visualization Tool for a Port Digital Twin
 
 ## Overview
 This Visualization Tool is an application designed to study the benefits of DC technology using a digital twin system. By leveraging real-time data and advanced analytics, it provides an immersive interface for monitoring and decision-making. 
