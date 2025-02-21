@@ -2,15 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
+import MapVisualization from '@/components/Map';
 
 const socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001');
 
 export default function DataReceiver() {
-  const [data, setData] = useState<unknown>(null);
+  interface MapData {
+    longitude: number;
+    latitude: number;
+    value?: number;
+  }
+
+  const [data, setData] = useState<MapData[]>([]);
 
   useEffect(() => {
-    // Listen for database updates
-    socket.on('db_update', (update) => {
+    socket.on('db_update', (update: MapData[]) => {
       setData(update);
     });
 
@@ -20,9 +26,8 @@ export default function DataReceiver() {
   }, []);
 
   return (
-    <div>
-      <h2>Real-time Data:</h2>
-      <pre>{JSON.stringify(data, null, 2)}</pre>
+    <div className="h-screen w-full">
+      <MapVisualization data={data} />
     </div>
   );
 }
