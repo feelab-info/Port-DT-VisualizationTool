@@ -22,8 +22,9 @@ export default function MapVisualization() {
             pitch: 61.8,  // tilt
             bearing: -53.1
           }}
+          
           style={{width: "100%", height: "100%"}}
-          mapStyle={`https://api.maptiler.com/maps/d05f0049-6511-4eae-8b16-e8d4593c7b55/style.json?key=${process.env.NEXT_PUBLIC_MAPTILER_KEY}`}
+          mapStyle={"https://tiles.openfreemap.org/styles/liberty"}
         />
       );    
 }
