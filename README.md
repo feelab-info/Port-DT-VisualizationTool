@@ -38,4 +38,9 @@ This Visualization Tool is an application designed to study the benefits of DC t
 
 2. Open `http://localhost:3000` in your browser to access the application.
 
+### To start both Backend and Frontend
+Run:
+```bash
+   npm run dev
+```
 
