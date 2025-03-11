@@ -11,6 +11,7 @@
     "concurrently": "^8.2.2"
   },
   "dependencies": {
+    "@deck.gl/aggregation-layers": "^9.1.4",
     "react-map-gl": "^8.0.1"
   }
 }
