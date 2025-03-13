@@ -19,6 +19,7 @@
     "deck.gl": "^9.1.4",
     "mapbox-gl": "^3.9.2",
     "maplibre-gl": "^5.1.1",
+    "math.gl": "^4.1.0",
     "next": "15.1.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

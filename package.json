@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@deck.gl/aggregation-layers": "^9.1.4",
+    "math.gl": "^4.1.0",
     "react-map-gl": "^8.0.1"
   }
 }
