@@ -158,12 +158,6 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
     return deviceData ? deviceData.data : [];
   };
 
-  useEffect(() => {
-    // Optional: auto-expand the sidebar on load
-    if (position === 'left' && mapRef) {
-      toggleSidebar();
-    }
-  }, [mapRef]); // Run when the map is loaded
 
   // Handle device selection
   const handleDeviceSelect = (deviceId: string) => {

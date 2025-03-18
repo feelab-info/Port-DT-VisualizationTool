@@ -9,8 +9,7 @@ import { ColumnLayer, ScatterplotLayer, TextLayer, ArcLayer} from '@deck.gl/laye
 import {ScenegraphLayer} from '@deck.gl/mesh-layers';
 import SlidingSidebar from './SlidingSidebar';
 import { energyDataService, EnergyData } from '../services/EnergyDataService';
-import { Quaternion } from 'math.gl';
-
+import { MapCoordinatesHelper } from './mapCoordinatesHelper';
 
 
 
@@ -26,15 +25,13 @@ const PORT_CENTER = { longitude: -16.91026503370738, latitude: 32.64184038298506
 const PORT_DESTINATIONS = [
   { id: 'east', name: 'East Terminal', longitude: -16.907203153852876, latitude: 32.64186799317473 },
   { id: 'west', name: 'West Terminal', longitude: -16.915464898116372, latitude: 32.64102681507696 },
-  { id: 'north', name: 'North Dock', longitude: -16.910265, latitude: 32.644 },
-  { id: 'south', name: 'South Dock', longitude: -16.910265, latitude: 32.6395 },
 ];
 
 // Port locations for visualization (existing points)
 const PORT_LOCATIONS = [
-  { id: 'main-dock', name: 'Main Dock', longitude: -16.90979, latitude: 32.64271, elevation: 0 },
-  { id: 'terminal-1', name: 'Terminal 1', longitude: -16.91079, latitude: 32.64371, elevation: 0 },
-  { id: 'terminal-2', name: 'Terminal 2', longitude: -16.90879, latitude: 32.64171, elevation: 0 },
+  { id: 'main-dock', name: 'Main Dock', longitude: -16.910284, latitude: 32.641901, elevation: 0 },
+  { id: 'terminal-1', name: 'Terminal 1', longitude: -16.915753, latitude: 32.641252, elevation: 0 },
+  { id: 'terminal-2', name: 'Terminal 2', longitude: -16.914975, latitude: 32.643076, elevation: 0 },
 ];
 
 const boatModel = '/models/boat.gltf';
@@ -44,10 +41,48 @@ const BOAT_PATHS = [
   // Path 1: Approach from the south to the main dock
   {
     points: [
-      { longitude: -16.91026, latitude: 32.635, elevation: 0 },  // Starting point (far south)
-      { longitude: -16.91026, latitude: 32.638, elevation: 0 },  // Approach point
-      { longitude: -16.90979, latitude: 32.64171, elevation: 0 }, // Near Terminal 2
-      { longitude: -16.90979, latitude: 32.64271, elevation: 0 }  // Main Dock
+      {
+        "longitude": -16.89303705238541,
+        "latitude": 32.63576890503664,
+        "elevation": 0,
+        "rotation": -50
+      },
+      {
+        "longitude": -16.899985147045356,
+        "latitude": 32.641815752005144,
+        "elevation": 0,
+        "rotation": -45
+      },
+      {
+        "longitude": -16.903849,
+        "latitude": 32.643262,
+        "elevation": 0,
+        "rotation": -15
+      },
+      {
+        "longitude": -16.907762536573728,
+        "latitude": 32.64350616232473,
+        "elevation": 0,
+        "rotation": 0
+      },
+      {
+        "longitude": -16.908909540323606,
+        "latitude": 32.643424335820015,
+        "elevation": 0,
+        "rotation": 0
+      },
+      {
+        "longitude": -16.909214643434268,
+        "latitude": 32.64292086781681,
+        "elevation": 0,
+        "rotation": 90
+      },
+      {
+        "longitude": -16.90923641097217,
+        "latitude": 32.64237832255226,
+        "elevation": 0,
+        "rotation": 180
+      }
     ],
     dockingTime: 20000, // Time to stay docked in ms
     direction: 0 // 0 for coming to port, 1 for leaving port
@@ -55,10 +90,48 @@ const BOAT_PATHS = [
   // Path 2: Leave from main dock to the east
   {
     points: [
-      { longitude: -16.90979, latitude: 32.64271, elevation: 0 },  // Main Dock
-      { longitude: -16.907203, latitude: 32.64186, elevation: 0 }, // Near East Terminal
-      { longitude: -16.905, latitude: 32.642, elevation: 0 },      // Leaving point
-      { longitude: -16.9, latitude: 32.642, elevation: 0 }         // Far east point
+      {
+        "longitude": -16.90918377102855,
+        "latitude": 32.642367213579845,
+        "elevation": 0,
+        "rotation": 180
+      },
+      {
+        "longitude": -16.907815219620403,
+        "latitude": 32.642373286254596,
+        "elevation": 0,
+        "rotation": 180
+      },
+      {
+        "longitude": -16.90615329831715,
+        "latitude": 32.64231596193808,
+        "elevation": 0,
+        "rotation": 175
+      },
+      {
+        "longitude": -16.90465613014777,
+        "latitude": 32.641628369377685,
+        "elevation": 0,
+        "rotation": 155
+      },
+      {
+        "longitude": -16.902306288585947,
+        "latitude": 32.639182621735614,
+        "elevation": 0,
+        "rotation": 135
+      },
+      {
+        "longitude": -16.898304801521675,
+        "latitude": 32.63455586662788,
+        "elevation": 0,
+        "rotation": 130
+      },
+      {
+        "longitude": -16.890433117665907,
+        "latitude": 32.62670062490649,
+        "elevation": 0,
+        "rotation": 130
+      }
     ],
     dockingTime: 0, // No docking when leaving
     direction: 1 // 1 for leaving port
@@ -83,6 +156,8 @@ export default function MapVisualization() {
   const [pathProgress, setPathProgress] = useState(0);
   const [isDocked, setIsDocked] = useState(false);
   const [dockingStartTime, setDockingStartTime] = useState(0);
+  const [boatPaths, setBoatPaths] = useState<typeof BOAT_PATHS>(BOAT_PATHS);
+  const currentRotationRef = useRef(0);
   
   const [viewState, setViewState] = useState({
     latitude: 32.64271,
@@ -122,19 +197,32 @@ export default function MapVisualization() {
   useEffect(() => {
     let animationFrameId: number;
     let startTime: number | null = null;
-    let lastTime = 0;
     
     // Animation speed - adjust as needed
-    const ANIMATION_DURATION = 30000; // 30 seconds for full path
+    const ANIMATION_DURATION = 100000; // 30 seconds for full path
+
+    const smoothRotation = (currentRotation: number, targetRotation: number, smoothFactor = 0.1) => {
+      // Find the shortest angle between the current and target rotations
+      let angleDiff = targetRotation - currentRotation;
+      
+      // Normalize the angle difference to be between -180 and 180 degrees
+      if (angleDiff > 180) angleDiff -= 360;
+      if (angleDiff < -180) angleDiff += 360;
+      
+      // Apply smoothing
+      return currentRotation + angleDiff * smoothFactor;
+    };
     
     const animateBoat = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
       const elapsed = timestamp - startTime;
       
+
+      
       // If boat is docked, check if docking time is over
       if (isDocked) {
         const dockingElapsed = timestamp - dockingStartTime;
-        const currentPath = BOAT_PATHS[currentPathIndex];
+        const currentPath = boatPaths[currentPathIndex];
         
         if (dockingElapsed >= currentPath.dockingTime) {
           // Docking time is over, move to next path
@@ -179,17 +267,26 @@ export default function MapVisualization() {
           elevation: 0
         });
         
-        // Calculate boat heading (rotation)
-        const dx = endPoint.longitude - startPoint.longitude;
-        const dy = endPoint.latitude - startPoint.latitude;
-        let angle = Math.atan2(dy, dx) * (180 / Math.PI) - 90; // Convert radians to degrees, adjust for model orientation
+        let angle;
+        if (startPoint.rotation !== undefined && endPoint.rotation !== undefined) {
+          // Interpolate between rotations
+          angle = startPoint.rotation + (endPoint.rotation - startPoint.rotation) * segmentFraction;
+        } else {
+          // Fall back to calculated rotation
+          const dx = endPoint.longitude - startPoint.longitude;
+          const dy = endPoint.latitude - startPoint.latitude;
+          angle = Math.atan2(dy, dx) * (180 / Math.PI) - 90; // Convert radians to degrees, adjust for model orientation
+          
+          // For boats leaving the port, add 180 degrees if direction is set
+          if (currentPath.direction === 1) {
+            angle += 180;
+          }
+        }        
         
-        // For boats leaving the port, add 180 degrees to face the correct direction
-        if (currentPath.direction === 1) {
-          angle += 180;
-        }
-        
-        setBoatRotation(angle);
+        const smoothedRotation = smoothRotation(currentRotationRef.current, angle);
+        currentRotationRef.current = smoothedRotation;
+        setBoatRotation(smoothedRotation);
+
         
         // Continue animation loop
         animationFrameId = requestAnimationFrame(animateBoat);
@@ -223,7 +320,7 @@ export default function MapVisualization() {
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [currentPathIndex, isDocked, dockingStartTime]);
+  }, [currentPathIndex, isDocked, dockingStartTime, boatPaths]);
 
   // Function to get the latest data
   const getLatestData = () => {
@@ -234,8 +331,47 @@ export default function MapVisualization() {
   // Create deck.gl layers
   const getLayers = () => {
     const latestData = getLatestData();
+
+    const boatLayer = new ScenegraphLayer({
+      id: 'boat-model',
+      data: [
+        {
+          position: [boatPosition.longitude, boatPosition.latitude, boatPosition.elevation]
+        }
+      ],
+      scenegraph: boatModel,
+      sizeScale: 0.25, // Adjust as needed
+      _lighting: 'pbr',
+      getPosition: d => d.position,
+      // This is key - set the orientation as [x, y, z] Euler angles in degrees
+      getOrientation: d => [0, boatRotation, 90], // Try different combinations
+      pickable: true,
+      visible: boatVisible
+    });
     
-    if (!latestData) return [];
+    
+    
+    
+    // Visualize boat path for debugging (optional)
+    const boatPathLayer = new ScatterplotLayer({
+      id: 'boat-path-markers',
+      data: boatPaths.flatMap(path => path.points),
+      pickable: false,
+      opacity: 0.5,
+      stroked: true,
+      filled: true,
+      radiusScale: 3,
+      radiusMinPixels: 2,
+      radiusMaxPixels: 4,
+      getPosition: d => [d.longitude, d.latitude, d.elevation],
+      getRadius: 3,
+      getFillColor: [255, 140, 0, 120],
+      getLineColor: [255, 140, 0]
+    });
+    
+    if (!latestData) return [boatLayer,
+      //boatPathLayer
+    ];
     
     // Column layer to show power consumption
     const columns = new ColumnLayer({
@@ -454,49 +590,7 @@ export default function MapVisualization() {
       getColor: [255, 215, 0]
     });
     
-    // Boat 3D model layer
-    const boatLayer = new ScenegraphLayer({
-      id: 'boat-model',
-      data: [
-        {
-          position: [boatPosition.longitude, boatPosition.latitude, boatPosition.elevation],
-          // Create a proper quaternion from euler angles
-          orientation: new Quaternion().rotateZ(boatRotation * (Math.PI / 180)).toArray(),
-          scale: 3
-        }
-      ],
-      scenegraph: boatModel,
-      sizeScale: 10,
-      _lighting: 'pbr',
-      getPosition: d => d.position,
-      getOrientation: d => d.orientation,
-      getTranslation: [0, 0, 0],
-      getScale: d => d.scale,
-      pickable: true,
-      visible: boatVisible,
-      // Add this for debugging
-      onError: (error) => {
-        console.log('ScenegraphLayer error:', error);
-      }
-    });
     
-    
-    // Visualize boat path for debugging (optional)
-    const boatPathLayer = new ScatterplotLayer({
-      id: 'boat-path-markers',
-      data: BOAT_PATHS.flatMap(path => path.points),
-      pickable: false,
-      opacity: 0.5,
-      stroked: true,
-      filled: true,
-      radiusScale: 3,
-      radiusMinPixels: 2,
-      radiusMaxPixels: 4,
-      getPosition: d => [d.longitude, d.latitude, d.elevation],
-      getRadius: 3,
-      getFillColor: [255, 140, 0, 120],
-      getLineColor: [255, 140, 0]
-    });
     
     return [
       columns, 
@@ -507,7 +601,7 @@ export default function MapVisualization() {
       centerMarker, 
       centerLabel, 
       boatLayer,
-      boatPathLayer // Uncomment for debugging
+      //boatPathLayer // Uncomment for debugging
     ];
   };
 
@@ -545,21 +639,19 @@ export default function MapVisualization() {
         {/* Right sidebar content */}
       </SlidingSidebar>
       
-      {/* Info Panel */}
-      <div className="absolute top-4 right-4 bg-white bg-opacity-80 p-3 rounded shadow z-10 max-w-xs">
-        <h3 className="font-bold text-lg mb-2">Port Energy Visualization</h3>
-        <p className="text-sm mb-2">
-          Power distribution visualization showing energy flowing from the central distribution point throughout the port.
-          {isDocked ? 
-            " A ship is currently docked at the port." : 
-            " A ship is traveling to/from the port."}
-        </p>
-        <div className="text-xs text-gray-600 mt-2">
-          {getLatestData() ? 
-            `Last update: ${new Date(getLatestData()?.timestamp || '').toLocaleTimeString()}` : 
-            'Waiting for data...'}
-        </div>
-      </div>
+
+      {/* Boat Path Editor 
+      <MapCoordinatesHelper 
+      mapRef={mapRef}
+      paths={boatPaths}
+      onPathsUpdated={(updatedPaths) => {
+        setBoatPaths(updatedPaths);
+        // Log the paths for easy copying to your source code
+        console.log(JSON.stringify(updatedPaths, null, 2));
+      }}
+    />
+    */}
+    
     </div>
   );    
 }
