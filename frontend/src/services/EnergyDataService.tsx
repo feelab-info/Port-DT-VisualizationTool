@@ -20,6 +20,8 @@ export interface EnergyData {
   L1_frequency: number;
   producer: string;
   device: string;
+  deviceName?: string;  // Add these optional fields
+  ownerName?: string;   // to match the enriched data
 }
 
 class EnergyDataService extends EventEmitter {
@@ -46,8 +48,14 @@ class EnergyDataService extends EventEmitter {
     });
     
     this.socket.on('db_update', (newData: EnergyData[]) => {
-      this.data = [...this.data, ...newData].slice(-33); // Keep last 33 records
-      this.emit('data-update', this.data);
+      // Filter out duplicates before adding to our data array
+      const existingIds = new Set(this.data.map(item => item._id));
+      const uniqueNewData = newData.filter(item => !existingIds.has(item._id));
+      
+      if (uniqueNewData.length > 0) {
+        this.data = [...this.data, ...uniqueNewData].slice(-33); // Keep last 33 records
+        this.emit('data-update', this.data);
+      }
     });
   }
   

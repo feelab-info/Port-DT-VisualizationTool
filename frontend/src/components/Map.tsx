@@ -159,13 +159,45 @@ export default function MapVisualization() {
   const [boatPaths, setBoatPaths] = useState<typeof BOAT_PATHS>(BOAT_PATHS);
   const currentRotationRef = useRef(0);
   
+  // Add state to track if initial zoom animation has completed
+  const [initialZoomCompleted, setInitialZoomCompleted] = useState(false);
+  
   const [viewState, setViewState] = useState({
-    latitude: 32.64271,
-    longitude: -16.90979,
-    zoom: 16.4,
-    pitch: 61.8,  // tilt
-    bearing: -53.1
+    latitude: 32.74, // Start with a wider view of Madeira island
+    longitude: -16.95,
+    zoom: 10, // Start zoomed out
+    pitch: 0,  // Start with no tilt
+    bearing: 0
   });
+
+  // Initial zoom-in animation effect
+  useEffect(() => {
+    // Only run this effect once when component mounts
+    if (!initialZoomCompleted && mapRef.current) {
+      // Short delay to ensure map is fully loaded
+      const timer = setTimeout(() => {
+        const map = mapRef.current?.getMap();
+        if (map) {
+          // Animate to the port view
+          map.flyTo({
+            center: [-16.90979, 32.64271],
+            zoom: 16.4,
+            pitch: 61.8,
+            bearing: -53.1,
+            duration: 6000, // Animation duration in milliseconds
+            essential: true // This animation is considered essential for the user experience
+          });
+          
+          // Set the flag to true after animation completes
+          setTimeout(() => {
+            setInitialZoomCompleted(true);
+          }, 6000);
+        }
+      }, 900);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [initialZoomCompleted, mapRef.current]);
 
   useEffect(() => {
     const handleDataUpdate = (data: EnergyData[]) => {
@@ -613,7 +645,12 @@ export default function MapVisualization() {
         style={{width: "100%", height: "100%"}}
         mapStyle="https://tiles.openfreemap.org/styles/liberty"
         attributionControl={false}
-        onMove={evt => setViewState(evt.viewState)}
+        onMove={evt => {
+          // Only update view state manually after initial animation is complete
+          if (initialZoomCompleted) {
+            setViewState(evt.viewState);
+          }
+        }}
       >
         {/* Add deck.gl overlay to the map */}
         <DeckGLOverlay 

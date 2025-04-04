@@ -148,7 +148,11 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
   };
 
   // Format device ID to make it more readable
-  const formatDeviceId = (deviceId: string) => {
+  // Update the formatDeviceId function to handle device names
+  const formatDeviceId = (deviceId: string, deviceName?: string) => {
+    if (deviceName) {
+      return deviceName;
+    }
     return deviceId.substring(0, 8) + '...';
   };
 
@@ -179,6 +183,7 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
             if (group.data.length === 0) return null;
             
             const latestData = group.data[group.data.length - 1];
+            // Debug the data structure            
             return (
               <button
                 key={group.deviceId}
@@ -187,8 +192,12 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
               >
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="font-medium">Device: {formatDeviceId(group.deviceId)}</p>
-                    <p className="text-sm text-gray-500">Producer: {latestData.producer.substring(0, 8)}...</p>
+                    <p className="font-medium">
+                      Device: {latestData.deviceName || formatDeviceId(group.deviceId)}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Producer: {latestData.ownerName || (latestData.producer ? latestData.producer.substring(0, 8) + '...' : 'Unknown')}
+                    </p>
                   </div>
                   <div className="text-right">
                     <p className="font-bold">{latestData.measure_cons.toFixed(2)} W</p>
@@ -224,7 +233,9 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
           >
             ← Back
           </button>
-          <h3 className="text-lg font-semibold">Device: {formatDeviceId(selectedDevice)}</h3>
+          <h3 className="text-lg font-semibold">
+            Device: {latestData.deviceName || formatDeviceId(selectedDevice)}
+          </h3>
         </div>
         
         {/* Latest reading summary */}
