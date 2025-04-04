@@ -4,6 +4,9 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { MongoClient, Db, ObjectId } from 'mongodb'; // Add ObjectId import
+import axios from 'axios';
+import { io as ioClient } from 'socket.io-client';
+
 
 dotenv.config();
 
@@ -167,4 +170,101 @@ const PORT = process.env.PORT || 5001;
 httpServer.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   await watchMongoChanges(io);
+});
+
+
+// Add this route to your Express app (after your existing routes)
+app.post('/api/simulation', async (req, res) => {
+  try {
+    const flaskApiUrl = process.env.FLASK_API_URL || 'http://localhost:5002/run-simulation';
+    const response = await axios.post(flaskApiUrl, req.body);
+    res.json(response.data);
+  } catch (error) {
+    console.error('Simulation error:', error);
+    res.status(500).json({ 
+      error: 'Failed to run simulation',
+      details: (error as any).response?.data || (error as Error).message 
+    });
+  }
+});
+
+// Add this route to get simulation results
+app.get('/api/simulation/:scenarioId', async (req, res) => {
+  try {
+    const { scenarioId } = req.params;
+    const flaskApiUrl = process.env.FLASK_API_URL || `http://localhost:5002/get-results/${scenarioId}`;
+    const response = await axios.get(flaskApiUrl);
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching simulation results:', error);
+    res.status(((error as any).response?.status) || 500).json({
+      error: 'Failed to fetch simulation results',
+      details: (error as any).response?.data || (error as Error).message
+    });
+  }
+});
+
+
+// Connect to the Flask Socket.IO server
+const flaskSocketUrl = process.env.FLASK_API_URL || 'http://localhost:5002';
+const flaskSocket = ioClient(flaskSocketUrl);
+
+// Listen for simulation updates from Flask
+flaskSocket.on('simulation_update', (data) => {
+  // Relay the simulation update to all connected clients
+  io.emit('simulation_update', data);
+  console.log('Relayed simulation update to clients');
+});
+
+// Add this route to start the simulation service
+app.post('/api/simulation/start-service', async (req, res) => {
+  try {
+    const flaskApiUrl = process.env.FLASK_API_URL || 'http://localhost:5002/start-simulation-service';
+    const response = await axios.post(flaskApiUrl, {}, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error starting simulation service:', error);
+    res.status(500).json({ 
+      error: 'Failed to start simulation service',
+      details: (error as any).response?.data || (error as Error).message 
+    });
+  }
+});
+
+// Add this route to stop the simulation service
+app.post('/api/simulation/stop-service', async (req, res) => {
+  try {
+    const flaskApiUrl = process.env.FLASK_API_URL || 'http://localhost:5002/stop-simulation-service';
+    const response = await axios.post(flaskApiUrl, {}, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error stopping simulation service:', error);
+    res.status(500).json({ 
+      error: 'Failed to stop simulation service',
+      details: (error as any).response?.data || (error as Error).message 
+    });
+  }
+});
+
+// Add this route to get the latest simulation results
+app.get('/api/simulation/latest-results', async (req, res) => {
+  try {
+    const flaskApiUrl = process.env.FLASK_API_URL || 'http://localhost:5002';
+    const response = await axios.get(flaskApiUrl);
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching latest simulation results:', error);
+    res.status((error as any).response?.status || 500).json({ 
+      error: 'Failed to fetch latest simulation results',
+      details: (error as any).response?.data || (error as Error).message 
+    });
+  }
 });
