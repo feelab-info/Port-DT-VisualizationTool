@@ -44,8 +44,76 @@ app.get('/health', (req, res) => {
 });
 
 // Socket.IO connection handling
+// Add this to your existing socket.io setup
 io.on('connection', (socket) => {
   console.log('Client connected');
+  
+  // In the fetch_initial_data handler, modify the enrichment code:
+  socket.on('fetch_initial_data', async (params) => {
+    try {
+      const { startDate } = params;
+      const clientMongo = await connectToMongo();
+      const eGaugeCollection = clientMongo.collection('eGauge');
+      const producersCollection = client.db('enerspectrumMetadata').collection('producers');
+      
+      // Parse the start date
+      const queryStartDate = new Date(startDate);
+      
+      // Query for documents from today
+      const todayDocs = await eGaugeCollection
+        .find({ timestamp: { $gte: queryStartDate } })
+        .sort({ timestamp: -1 })  // Sort by timestamp descending
+        .limit(100)  // Limit to 100 most recent documents
+        .toArray();
+      
+      if (todayDocs.length > 0) {
+        // Load device mappings if needed
+        let deviceMappings: Record<string, { name: string; owner: string }> = {};
+        
+        try {
+          const producer = await producersCollection.findOne({ _id: new ObjectId("672357cdcb0b0c7c0f7eb6b4") });
+          
+          if (producer && producer.devices && Array.isArray(producer.devices)) {
+            producer.devices.forEach((device: any) => {
+              deviceMappings[device.deviceId] = {
+                name: device.name || 'Unnamed Device',
+                owner: producer.username || producer.name || 'Unknown Owner'
+              };
+            });
+          }
+        } catch (error) {
+          console.error('Error loading device mappings for initial data:', error);
+        }
+        
+        // Enrich documents with device names
+        const enrichedDocs = todayDocs
+        .map(doc => {
+          // Skip documents with invalid structure
+          if (!doc.L1 || !doc.L2 || !doc.L3 || doc.L1_frequency === undefined || doc.measure_cons === undefined) {
+            console.log(`Skipping document with invalid structure: ${doc._id}`);
+            return null;
+          }
+          
+          const deviceInfo = deviceMappings[doc.device] || { name: 'Unknown', owner: 'Unknown' };
+          return {
+            ...doc,
+            deviceName: deviceInfo.name,
+            ownerName: deviceInfo.owner
+          };
+        })
+        .filter(doc => doc !== null); // Remove null entries
+        
+        // Send the initial data to the client
+        socket.emit('initial_data', enrichedDocs);
+        console.log(`Sent ${enrichedDocs.length} initial documents to client (filtered out ${todayDocs.length - enrichedDocs.length} invalid documents)`);      } else {
+        console.log('No documents found for today');
+        socket.emit('initial_data', []);
+      }
+    } catch (error) {
+      console.error('Error fetching initial data:', error);
+      socket.emit('initial_data', []);
+    }
+  });
   
   socket.on('disconnect', () => {
     console.log('Client disconnected');
@@ -115,24 +183,33 @@ async function watchMongoChanges(io: Server) {
         }
         
         if (uniqueDocs.length > 0) {
-          // Enrich documents with device names
-          const enrichedDocs = uniqueDocs.map(doc => {
-            // Use device field as deviceId for lookup
-            const deviceInfo = deviceMappings[doc.device] || { name: 'Unknown', owner: 'Unknown' };
-            return {
-              ...doc,
-              deviceName: deviceInfo.name,
-              ownerName: deviceInfo.owner
-            };
-          });
+          // Enrich documents with device names and validate data structure
+          const enrichedDocs = uniqueDocs
+            .map(doc => {
+              // Skip documents with invalid structure
+              if (!doc.L1 || !doc.L2 || !doc.L3 || doc.L1_frequency === undefined || doc.measure_cons === undefined) {
+                console.log(`Skipping document with invalid structure: ${doc._id}`);
+                return null;
+              }
+              
+              const deviceInfo = deviceMappings[doc.device] || { name: 'Unknown', owner: 'Unknown' };
+              return {
+                ...doc,
+                deviceName: deviceInfo.name,
+                ownerName: deviceInfo.owner
+              };
+            })
+            .filter(doc => doc !== null); // Remove null entries
           
-          io.emit('db_update', enrichedDocs);
-          
-          // Only log the count, not all the details
-          if (enrichedDocs.length < 50) {
-            console.log(`Sent update to clients: ${enrichedDocs.length} documents`);
-          } else {
-            console.log(`Sent large update to clients: ${enrichedDocs.length} documents (limited logging)`);
+          if (enrichedDocs.length > 0) {
+            io.emit('db_update', enrichedDocs);
+            
+            // Only log the count, not all the details
+            if (enrichedDocs.length < 50) {
+              console.log(`Sent update to clients: ${enrichedDocs.length} documents (filtered out ${uniqueDocs.length - enrichedDocs.length} invalid documents)`);
+            } else {
+              console.log(`Sent large update to clients: ${enrichedDocs.length} documents (filtered out ${uniqueDocs.length - enrichedDocs.length} invalid documents)`);
+            }
           }
         }
       }

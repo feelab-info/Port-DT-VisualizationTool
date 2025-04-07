@@ -659,14 +659,7 @@ export default function MapVisualization() {
         />
       </Map>
 
-      {/* Sliding Sidebar */}
-      <SlidingSidebar 
-        position="left" 
-        mapRef={mapRef.current}
-        title="Port Energy Readings"
-      >
-        {/* Sidebar content is handled by the SlidingSidebar component */}
-      </SlidingSidebar>
+      
       
       <SlidingSidebar 
         position="right" 

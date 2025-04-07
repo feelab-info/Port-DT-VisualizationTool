@@ -17,6 +17,7 @@
     "@types/three": "^0.172.0",
     "d3": "^7.9.0",
     "deck.gl": "^9.1.4",
+    "lucide-react": "^0.487.0",
     "mapbox-gl": "^3.9.2",
     "maplibre-gl": "^5.1.1",
     "math.gl": "^4.1.0",
