@@ -14,6 +14,7 @@ dotenv.config();
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/your_database';
 const client = new MongoClient(mongoUri);
 
+
 async function connectToMongo(): Promise<Db> {
   try {
     await client.connect();
@@ -43,10 +44,86 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK' });
 });
 
+let deviceMappings: Record<string, { name: string; owner: string }> = {};
+
 // Socket.IO connection handling
-// Add this to your existing socket.io setup
 io.on('connection', (socket) => {
   console.log('Client connected');
+
+  // Add a flag to track if the client is in historical view mode
+  let isInHistoricalView = false;
+  
+  // Handle historical data requests
+  socket.on('fetch_historical_data', async (params: { deviceId: string, date: string }, callback) => {
+    try {
+      // Set the historical view flag
+      isInHistoricalView = true;
+      
+      // Validate parameters
+      if (!params.date) {
+        callback({ success: false, error: 'Missing date parameter' });
+        return;
+      }
+      
+      // Parse the date
+      const requestedDate = new Date(params.date);
+      requestedDate.setHours(0, 0, 0, 0);
+      
+      const nextDay = new Date(requestedDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      
+      // Connect to MongoDB
+      const db = await connectToMongo();
+      const eGaugeCollection = db.collection('eGauge');
+      
+      // Build query based on parameters
+      const query: any = {
+        timestamp: {
+          $gte: requestedDate,
+          $lt: nextDay
+        }
+      };
+      
+      // Add device filter if provided
+      if (params.deviceId) {
+        query.device = params.deviceId;
+      }
+      
+      // Query for the specific device and date
+      const historicalData = await eGaugeCollection.find(query).toArray();
+      
+      // Enrich the data with device names
+      const enrichedData = historicalData.map(doc => {
+        const deviceInfo = deviceMappings[doc.device] || { name: 'Unknown', owner: 'Unknown' };
+        return {
+          ...doc,
+          deviceName: deviceInfo.name,
+          ownerName: deviceInfo.owner
+        };
+      });
+      
+      // Acknowledge the request
+      callback({ success: true });
+      
+      // Send the data
+      socket.emit('historical_data_response', enrichedData);
+      
+      console.log(`Sent ${enrichedData.length} historical records for ${params.deviceId ? `device ${params.deviceId}` : 'all devices'} on ${params.date}`);
+    } catch (error) {
+      console.error('Error fetching historical data:', error);
+      callback({ success: false, error: 'Server error fetching historical data' });
+    }
+  });
+  
+  // Add a handler for switching back to live data mode
+  socket.on('switch_to_live_data', () => {
+    isInHistoricalView = false;
+    console.log('Client switched to live data mode');
+  });
+  
+  // Store the historical view state in socket data for access in watchMongoChanges
+  socket.data.isInHistoricalView = () => isInHistoricalView;
+  socket.data.setHistoricalView = (value: boolean) => { isInHistoricalView = value; };
   
   // In the fetch_initial_data handler, modify the enrichment code:
   socket.on('fetch_initial_data', async (params) => {
@@ -68,7 +145,6 @@ io.on('connection', (socket) => {
       
       if (todayDocs.length > 0) {
         // Load device mappings if needed
-        let deviceMappings: Record<string, { name: string; owner: string }> = {};
         
         try {
           const producer = await producersCollection.findOne({ _id: new ObjectId("672357cdcb0b0c7c0f7eb6b4") });
@@ -124,10 +200,7 @@ async function watchMongoChanges(io: Server) {
   const clientMongo = await connectToMongo();
   const eGaugeCollection = clientMongo.collection('eGauge');
   const producersCollection = client.db('enerspectrumMetadata').collection('producers');
-  
-  // Cache device mappings to avoid repeated lookups
-  let deviceMappings: Record<string, { name: string; owner: string }> = {};
-  
+    
   // Initial load of device mappings - specifically targeting the producer with ID "672357cdcb0b0c7c0f7eb6b4"
   try {
     // Find the specific producer by ID - convert string to ObjectId
@@ -202,7 +275,20 @@ async function watchMongoChanges(io: Server) {
             .filter(doc => doc !== null); // Remove null entries
           
           if (enrichedDocs.length > 0) {
-            io.emit('db_update', enrichedDocs);
+            // Send updates to all clients
+            // For clients in historical view, send as 'background_update'
+            // For clients not in historical view, send as 'db_update'
+            io.sockets.sockets.forEach((socket) => {
+              const isHistorical = socket.data.isInHistoricalView && socket.data.isInHistoricalView();
+              
+              if (isHistorical) {
+                // Send as background update that won't replace historical view
+                socket.emit('background_update', enrichedDocs);
+              } else {
+                // Send as regular update
+                socket.emit('db_update', enrichedDocs);
+              }
+            });
             
             // Only log the count, not all the details
             if (enrichedDocs.length < 50) {
@@ -345,3 +431,5 @@ app.get('/api/simulation/latest-results', async (req, res) => {
     });
   }
 });
+
+

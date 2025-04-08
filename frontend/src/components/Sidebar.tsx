@@ -10,7 +10,7 @@ export default function Sidebar() {
     { name: 'Dashboard', href: '/', icon: Home },
     { name: 'Port Map', href: '/map', icon: Map },
     { name: 'Simulation', href: '/simulation', icon: Activity },
-    { name: 'Real-time Data', href: '/real-time', icon: Database },
+    { name: 'Historical Port Data', href: '/real-time', icon: Database },
     { name: 'Ship Energy Prediction', href: '/prediction', icon: BarChart2 },
   ];
 
@@ -18,7 +18,7 @@ export default function Sidebar() {
     <div className="h-full w-64 bg-gray-800 text-white p-4 flex flex-col">
       <div className="mb-8 flex items-center gap-3">
         <Anchor className="h-8 w-8" />
-        <h1 className="text-xl font-bold">Port Digital Twin</h1>
+        <h1 className="text-xl font-bold text-white">Port Digital Twin</h1>
       </div>
       
       <nav className="flex-1">

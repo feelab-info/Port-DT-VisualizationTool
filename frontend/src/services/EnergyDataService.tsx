@@ -29,11 +29,47 @@ class EnergyDataService extends EventEmitter {
   private data: EnergyData[] = [];
   private connected: boolean = false;
   private isInitialDataLoaded: boolean = false;
+  private backgroundData: EnergyData[] = [];
+  private isHistoricalMode = false;
+
   
   constructor() {
     super();
     this.connect();
   }
+
+  public enterHistoricalMode(): void {
+    this.isHistoricalMode = true;
+  }
+
+  /**
+ * Switch back to live data mode
+ * This allows live updates to be received again
+ */
+  public exitHistoricalMode(): void {
+    this.isHistoricalMode = false;
+    
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('switch_to_live_data');
+      
+      // Merge any background updates that came in while in historical mode
+      if (this.backgroundData.length > 0) {
+        this.data = [...this.data, ...this.backgroundData];
+        this.backgroundData = [];
+        
+        // Notify listeners of the merged data
+        this.emit('data-update', this.data);
+      }
+    }
+  }
+
+  /**
+ * Get background data that arrived while in historical mode
+ */
+  public getBackgroundData(): EnergyData[] {
+    return this.backgroundData;
+  }
+  
 
   // Add this validation function after the interface definitions
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -77,7 +113,29 @@ class EnergyDataService extends EventEmitter {
       this.emit('error', errorMessage);
     });
     
-    // Modify the db_update handler
+    // Add a listener for background updates
+    this.socket.on('background_update', (newData: EnergyData[]) => {
+      // Filter out invalid data points first
+      const validData = newData.filter(item => this.isValidEnergyData(item));
+      
+      if (validData.length < newData.length) {
+        console.log(`Filtered out ${newData.length - validData.length} invalid data points from background update`);
+      }
+      
+      // Filter out duplicates before adding to our background data array
+      const existingIds = new Set([
+        ...this.data.map(item => item._id),
+        ...this.backgroundData.map(item => item._id)
+      ]);
+      const uniqueNewData = validData.filter(item => !existingIds.has(item._id));
+      
+      if (uniqueNewData.length > 0) {
+        this.backgroundData = [...this.backgroundData, ...uniqueNewData];
+        this.emit('background-update', this.backgroundData);
+      }
+    });
+    
+    // Update the db_update handler to handle historical mode
     this.socket.on('db_update', (newData: EnergyData[]) => {
       // Filter out invalid data points first
       const validData = newData.filter(item => this.isValidEnergyData(item));
@@ -86,13 +144,28 @@ class EnergyDataService extends EventEmitter {
         console.log(`Filtered out ${newData.length - validData.length} invalid data points from update`);
       }
       
-      // Filter out duplicates before adding to our data array
-      const existingIds = new Set(this.data.map(item => item._id));
-      const uniqueNewData = validData.filter(item => !existingIds.has(item._id));
-      
-      if (uniqueNewData.length > 0) {
-        this.data = [...this.data, ...uniqueNewData].slice(-100); // Keep last 100 records
-        this.emit('data-update', this.data);
+      if (this.isHistoricalMode) {
+        // In historical mode, add to background data instead
+        const existingIds = new Set([
+          ...this.data.map(item => item._id),
+          ...this.backgroundData.map(item => item._id)
+        ]);
+        const uniqueNewData = validData.filter(item => !existingIds.has(item._id));
+        
+        if (uniqueNewData.length > 0) {
+          this.backgroundData = [...this.backgroundData, ...uniqueNewData];
+          this.emit('background-update', this.backgroundData);
+        }
+      } else {
+        // Normal mode - update main data
+        // Filter out duplicates before adding to our data array
+        const existingIds = new Set(this.data.map(item => item._id));
+        const uniqueNewData = validData.filter(item => !existingIds.has(item._id));
+        
+        if (uniqueNewData.length > 0) {
+          this.data = [...this.data, ...uniqueNewData].slice(-100); // Keep last 100 records
+          this.emit('data-update', this.data);
+        }
       }
     });
     
@@ -110,6 +183,51 @@ class EnergyDataService extends EventEmitter {
         this.isInitialDataLoaded = true;
         this.emit('data-update', this.data);
       }
+    });
+  }
+
+  /**
+ * Fetch historical data for a specific device and date
+ * @param deviceId The device ID to fetch data for
+ * @param date The date in ISO format (YYYY-MM-DD)
+ * @returns Promise with the historical data
+ */
+  public async fetchHistoricalData(deviceId: string, date: string): Promise<EnergyData[]> {
+    if (!this.socket || !this.socket.connected) {
+      throw new Error('Socket not connected');
+    }
+    
+    // Enter historical mode
+    this.enterHistoricalMode();
+    
+    // Clear any existing background data
+    this.backgroundData = [];
+    
+    return new Promise((resolve, reject) => {
+      // Create a one-time listener for the response
+      const responseHandler = (data: EnergyData[]) => {
+        this.socket?.off('historical_data_response', responseHandler);
+        resolve(data);
+      };
+      
+      // Listen for the response
+      this.socket?.on('historical_data_response', responseHandler);
+      
+      // Set a timeout in case the server doesn't respond
+      const timeout = setTimeout(() => {
+        this.socket?.off('historical_data_response', responseHandler);
+        reject(new Error('Timeout waiting for historical data'));
+      }, 100000); // 100 second timeout
+      
+      // Request the historical data
+      this.socket?.emit('fetch_historical_data', { deviceId, date }, (acknowledgement: { success: boolean, error?: string }) => {
+        clearTimeout(timeout);
+        
+        if (!acknowledgement.success) {
+          this.socket?.off('historical_data_response', responseHandler);
+          reject(new Error(acknowledgement.error || 'Failed to fetch historical data'));
+        }
+      });
     });
   }
   
@@ -144,6 +262,7 @@ class EnergyDataService extends EventEmitter {
     this.fetchInitialData();
   }
 }
+
 
 // Singleton instance
 export const energyDataService = new EnergyDataService();

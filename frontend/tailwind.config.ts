@@ -11,6 +11,7 @@ export default {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        "port-blue": "#3b82f6", // Adding the blue color from sidebar
       },
     },
   },

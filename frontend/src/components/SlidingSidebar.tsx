@@ -295,7 +295,7 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
         
         {/* History section */}
         <div>
-          <h3 className="text-lg font-semibold mb-2">Historical Data ({deviceData.length} points)</h3>
+          <h3 className="text-lg font-semibold mb-2">Recent Data ({deviceData.length} points)</h3>
           <div className="overflow-y-auto max-h-64">
             <table className="min-w-full text-sm">
               <thead>
