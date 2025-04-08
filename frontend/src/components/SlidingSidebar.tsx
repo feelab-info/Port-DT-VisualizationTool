@@ -17,10 +17,9 @@ type DeviceGroup = {
 const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
   position = 'left',
   title = 'Energy Dashboard',
-  children,
   mapRef
 }) => {
-  const [collapsed, setCollapsed] = useState(true);
+  const [expanded, setExpanded] = useState(false); // Changed from collapsed to expanded for clarity
   const [deviceGroups, setDeviceGroups] = useState<DeviceGroup[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -112,7 +111,7 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
       right: 0
     };
     
-    if (collapsed) {
+    if (!expanded) { // Changed from collapsed to expanded
       // Set the specific side to 300
       padding[position] = 300;
       
@@ -134,7 +133,7 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
       }
     }
     
-    setCollapsed(!collapsed);
+    setExpanded(!expanded); // Changed from collapsed to expanded
   };
 
   // Format timestamp to a readable format
@@ -342,43 +341,31 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
   };
 
   return (
-    <div
-      className={`sidebar flex-center ${position} ${collapsed ? 'collapsed' : ''}`}
-      id={position}
-    >
-      <div className="sidebar-content rounded-rect flex-center">
-        <div className="p-4 w-full">
+    <div className={`sidebar ${position} ${expanded ? 'expanded' : ''}`}>
+      <div className="sidebar-content">
+        <div className="p-4">
           <h2 className="text-xl font-bold mb-4">{title}</h2>
-          
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
+              <p>{error}</p>
             </div>
           )}
-          
-          {loading && !error ? (
-            <div className="text-center py-4">Loading energy data...</div>
+          {loading ? (
+            <div className="flex justify-center items-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
           ) : (
-            <div className="energy-data-container">
-              {deviceGroups.length === 0 ? (
-                <p>No devices available yet</p>
-              ) : (
-                <>
-                  {selectedDevice ? renderDeviceDetails() : renderDeviceSelection()}
-                </>
-              )}
-            </div>
+            <>
+              {selectedDevice ? renderDeviceDetails() : renderDeviceSelection()}
+            </>
           )}
-          
-          {children}
         </div>
-        
-        <div
-          className={`sidebar-toggle rounded-rect ${position}`}
-          onClick={toggleSidebar}
-        >
-          {position === 'left' ? '→' : '←'}
-        </div>
+      </div>
+      
+      <div className={`sidebar-toggle ${position}`} onClick={toggleSidebar}>
+        {position === 'left' ? 
+          (expanded ? '←' : '→') : 
+          (expanded ? '→' : '←')}
       </div>
     </div>
   );

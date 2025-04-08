@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Light theme (default) */
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -9,13 +10,24 @@
   --sidebar-bg: #1f2937; /* Gray-800 color from Tailwind */
   --sidebar-text: #f9fafb; /* Gray-50 color from Tailwind */
   --sidebar-highlight: #3b82f6; /* Blue-500 color from Tailwind */
+  --card-bg: #ffffff;
+  --card-shadow: rgba(0, 0, 0, 0.1);
+  --hover-bg: #f3f4f6;
+  --border-color: #e5e7eb;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Dark theme */
+[data-theme='dark'] {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --port-blue: #3b82f6;
+  --sidebar-bg: #111827; /* Darker gray for sidebar */
+  --sidebar-text: #f9fafb;
+  --sidebar-highlight: #60a5fa;
+  --card-bg: #1f2937;
+  --card-shadow: rgba(0, 0, 0, 0.3);
+  --hover-bg: #374151;
+  --border-color: #4b5563;
 }
 
 body {
@@ -26,12 +38,37 @@ body {
 
 /* Improve text visibility in the application */
 .text-gray-500, .text-gray-600 {
-  color: #374151 !important; /* Darker gray for better visibility */
+  color: var(--foreground) !important;
+  opacity: 0.7;
 }
 
 /* Use port blue for headings and important text */
 h1, h2, h3, h4, h5, h6 {
   color: var(--port-blue);
+}
+
+/* Card styling */
+.bg-white {
+  background-color: var(--card-bg) !important;
+}
+
+.shadow-md, .shadow-sm, .shadow-lg {
+  box-shadow: 0 4px 6px var(--card-shadow) !important;
+}
+
+/* Hover states */
+.hover\:bg-gray-100:hover {
+  background-color: var(--hover-bg) !important;
+}
+
+.hover\:bg-blue-50:hover {
+  background-color: var(--sidebar-highlight) !important;
+  opacity: 0.2;
+}
+
+/* Border colors */
+.border {
+  border-color: var(--border-color) !important;
 }
 
 /* Sidebar styles */
@@ -46,10 +83,16 @@ h1, h2, h3, h4, h5, h6 {
 
 .sidebar.left {
   left: 0;
+  transform: translateX(-100%); /* Start hidden by default */
 }
 
 .sidebar.right {
-  right: -300px;
+  right: 0;
+  transform: translateX(100%); /* Start hidden by default */
+}
+
+.sidebar.expanded {
+  transform: translateX(0); /* Show when expanded */
 }
 
 .sidebar.collapsed {
@@ -61,7 +104,7 @@ h1, h2, h3, h4, h5, h6 {
   height: 100%;
   background-color: var(--sidebar-bg);
   box-shadow: 2px 0 5px rgba(0,0,0,0.2);
-  overflow: scroll;
+  overflow: auto; /* Changed from scroll to auto for better UX */
   color: var(--sidebar-text);
 }
 
@@ -71,22 +114,22 @@ h1, h2, h3, h4, h5, h6 {
   transform: translateY(-50%);
   cursor: pointer;
   background-color: var(--sidebar-bg);
-  padding-top: 5px;
-  padding-bottom: 5px;
-  padding-left: 10px;
-  padding-right: 10px;
+  padding: 8px;
   box-shadow: 2px 0 5px rgba(0,0,0,0.2);
-  border-radius: 30%;
+  border-radius: 50%;
   color: var(--sidebar-text);
-  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20; /* Ensure toggle is above other elements */
 }
 
 .sidebar-toggle.left {
-  right: -50px;
+  left: 10px; /* Position toggle button at the edge of the screen */
 }
 
 .sidebar-toggle.right {
-  left: -50px;
+  right: 315px; /* Position toggle button at the edge of the screen */
 }
 
 /* Device selection and details styling */
@@ -97,7 +140,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .sidebar .bg-white {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.1) !important;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
@@ -133,4 +176,17 @@ h1, h2, h3, h4, h5, h6 {
 
 .sidebar button.hover\:bg-gray-100:hover {
   background-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Dark mode specific overrides for charts and data displays */
+[data-theme='dark'] .bg-gray-100 {
+  background-color: #374151 !important;
+}
+
+[data-theme='dark'] .text-gray-800 {
+  color: #f3f4f6 !important;
+}
+
+[data-theme='dark'] .text-gray-600 {
+  color: #d1d5db !important;
 }
