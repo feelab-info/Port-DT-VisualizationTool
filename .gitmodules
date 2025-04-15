@@ -1,3 +1,6 @@
 [submodule "dc_power_flow"]
 	path = dc_power_flow
 	url = https://github.com/SHIFT2DC/port-power-flow.git
+[submodule "vessel_modelling"]
+	path = vessel_modelling
+	url = https://github.com/feelab-info/vessel_modelling.git

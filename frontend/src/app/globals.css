@@ -63,7 +63,6 @@ h1, h2, h3, h4, h5, h6 {
 
 .hover\:bg-blue-50:hover {
   background-color: var(--sidebar-highlight) !important;
-  opacity: 0.2;
 }
 
 /* Border colors */
@@ -114,14 +113,15 @@ h1, h2, h3, h4, h5, h6 {
   transform: translateY(-50%);
   cursor: pointer;
   background-color: var(--sidebar-bg);
-  padding: 8px;
-  box-shadow: 2px 0 5px rgba(0,0,0,0.2);
-  border-radius: 50%;
+  padding: 5px 10px;
+  box-shadow: 2px 0 5px #0003;
+  border-radius: 30%;
   color: var(--sidebar-text);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 20; /* Ensure toggle is above other elements */
+  z-index: 20;
+  font-size: larger;
 }
 
 .sidebar-toggle.left {
