@@ -432,4 +432,47 @@ app.get('/api/simulation/latest-results', async (req, res) => {
   }
 });
 
+app.post('/api/vessel/registered', async (req, res) => {
+  try {
+    const vesselApiUrl = process.env.VESSEL_API_URL || 'http://localhost:5003/api/registered-vessel';
+    const response = await axios.post(vesselApiUrl, req.body);
+    res.json(response.data);
+  } catch (error) {
+    console.error('Vessel modeling error:', error);
+    res.status(500).json({ 
+      error: 'Failed to process registered vessel',
+      details: (error as any).response?.data || (error as Error).message 
+    });
+  }
+});
+
+app.post('/api/vessel/custom', async (req, res) => {
+  try {
+    const vesselApiUrl = process.env.VESSEL_API_URL || 'http://localhost:5003/api/custom-vessel';
+    const response = await axios.post(vesselApiUrl, req.body);
+    res.json(response.data);
+  } catch (error) {
+    console.error('Vessel modeling error:', error);
+    res.status(500).json({ 
+      error: 'Failed to process custom vessel',
+      details: (error as any).response?.data || (error as Error).message 
+    });
+  }
+});
+
+app.get('/api/vessel/available', async (req, res) => {
+  try {
+    const vesselApiUrl = process.env.VESSEL_API_URL || 'http://localhost:5003/api/available-vessels';
+    const response = await axios.get(vesselApiUrl);
+    res.json(response.data);
+  } catch (error) {
+    console.error('Vessel modeling error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get available vessels',
+      details: (error as any).response?.data || (error as Error).message 
+    });
+  }
+});
+
+
 
