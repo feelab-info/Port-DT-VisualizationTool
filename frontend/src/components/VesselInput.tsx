@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { simulationService } from '../services/SimulationService';
+import VesselEnergyProfile from './VesselEnergyProfile';
 
 interface VesselInputProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -11,6 +13,7 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
   const [availableVessels, setAvailableVessels] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [vesselResult, setVesselResult] = useState<any>(null);
   
   const [formData, setFormData] = useState({
     vessel_name: '',
@@ -61,6 +64,7 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
         ? await simulationService.submitRegisteredVessel(processedData)
         : await simulationService.submitCustomVessel(processedData);
       
+      setVesselResult(result);
       onSubmit(result);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to submit vessel data');
@@ -70,29 +74,30 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
   };
 
   return (
-    <div className="mb-6 p-4 bg-white rounded-lg shadow">
-      <div className="mb-4">
-        <label className="inline-flex items-center mr-4">
-          <input
-            type="radio"
-            value="registered"
-            checked={mode === 'registered'}
-            onChange={(e) => setMode(e.target.value as 'registered' | 'custom')}
-            className="mr-2"
-          />
-          Registered Vessel
-        </label>
-        <label className="inline-flex items-center">
-          <input
-            type="radio"
-            value="custom"
-            checked={mode === 'custom'}
-            onChange={(e) => setMode(e.target.value as 'registered' | 'custom')}
-            className="mr-2"
-          />
-          Custom Vessel
-        </label>
-      </div>
+    <div>
+      <div className="mb-6 p-4 bg-white rounded-lg shadow">
+        <div className="mb-4">
+          <label className="inline-flex items-center mr-4">
+            <input
+              type="radio"
+              value="registered"
+              checked={mode === 'registered'}
+              onChange={(e) => setMode(e.target.value as 'registered' | 'custom')}
+              className="mr-2"
+            />
+            Registered Vessel
+          </label>
+          <label className="inline-flex items-center">
+            <input
+              type="radio"
+              value="custom"
+              checked={mode === 'custom'}
+              onChange={(e) => setMode(e.target.value as 'registered' | 'custom')}
+              className="mr-2"
+            />
+            Custom Vessel
+          </label>
+        </div>
 
       <form onSubmit={handleSubmit}>
         {mode === 'registered' ? (
@@ -198,6 +203,20 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
           {loading ? 'Processing...' : 'Submit Vessel Data'}
         </button>
       </form>
+
+      {vesselResult && vesselResult.success && (
+        <div className="mt-6">
+          <h2 className="text-xl font-bold mb-4">Vessel Energy Profile Results</h2>
+          <VesselEnergyProfile 
+            closest_ship={vesselResult.closest_ship}
+            data={vesselResult.data}
+            message={vesselResult.message}
+            scaling_factor={vesselResult.scaling_factor}
+            success={vesselResult.success}
+          />
+        </div>
+      )}
+      </div>
     </div>
   );
 }
