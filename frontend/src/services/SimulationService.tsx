@@ -91,7 +91,7 @@ class SimulationService extends EventEmitter {
 
   public async submitRegisteredVessel(data: VesselData): Promise<any> {
     try {
-      const response = await fetch(`${this.vesselUrl}/api/registered-vessel`, {
+      const response = await fetch(`${this.baseUrl}/api/vessel/registered`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

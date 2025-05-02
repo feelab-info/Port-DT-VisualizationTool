@@ -11,6 +11,10 @@ import {ScenegraphLayer} from '@deck.gl/mesh-layers';
 import SlidingSidebar from './SlidingSidebar';
 import { energyDataService, EnergyData } from '../services/EnergyDataService';
 import { MapCoordinatesHelper } from './mapCoordinatesHelper';
+import vesselSimulationService, { 
+  DetailedSimulationsResponse, 
+  SimulationDetail 
+} from '@/services/VesselSimulationService';
 
 
 
@@ -35,7 +39,21 @@ const PORT_LOCATIONS = [
   { id: 'terminal-2', name: 'Terminal 2', longitude: -16.914975, latitude: 32.643076, elevation: 0 },
 ];
 
-const boatModel = '/models/boat.gltf';
+// Define all available boat model paths
+const ALL_BOAT_MODELS = [
+  '/models/standard/boat.gltf',     // Original boat
+  //'/models/west/sceneWest.gltf',    // West model 
+  //'/models/spirit/sceneSpirit.gltf' // Spirit model
+];
+
+// Start with just the simplest model to reduce memory usage
+const DEFAULT_BOAT_MODEL = ALL_BOAT_MODELS[0];
+
+// Original animated boat model (keep this consistent for the animated boat)
+const boatModel = DEFAULT_BOAT_MODEL;
+
+// Limit to only 3 vessels (port capacity)
+const MAX_VESSELS = 3;
 
 // Boat path definition - route that boat will follow
 const BOAT_PATHS = [
@@ -139,11 +157,47 @@ const BOAT_PATHS = [
   }
 ];
 
+// Define docking locations for stationary vessels - limit to only 3 positions
+const VESSEL_DOCKING_POSITIONS = [
+  // Main dock
+  {
+    name: "West Terminal Berth",
+    longitude: -16.913029,
+    latitude: 32.641917,
+    elevation: -5,
+    rotation: 190,
+    scale: 0.23  // Slightly smaller scale for memory efficiency
+  },
+  // East Terminal
+  {
+    name: "East Terminal Berth",
+    longitude: -16.913820,
+    latitude: 32.643247,
+    elevation: -5,
+    rotation: 215,
+    scale: 0.23  // Slightly smaller scale for memory efficiency
+  },
+  {
+    name: "Main Dock Berth",
+    longitude: -16.90923641097217,
+    latitude: 32.64237832255226,
+    elevation: -5,
+    rotation: 180,
+    scale: 0.23  // Slightly smaller scale for memory efficiency
+  },
+  
+  // West Terminal
+  
+];
+
 export default function MapVisualization() {
   // Create a ref to access the map instance
   const mapRef = useRef<MapRef>(null);
   const [energyData, setEnergyData] = useState<EnergyData[]>([]);
   const [animationTime, setAnimationTime] = useState(0);
+  
+  // State for available models - start with just one for memory efficiency
+  const [availableModels, setAvailableModels] = useState([DEFAULT_BOAT_MODEL]);
   
   // Boat animation state
   const [boatPosition, setBoatPosition] = useState({ 
@@ -163,6 +217,18 @@ export default function MapVisualization() {
   // Add state to track if initial zoom animation has completed
   const [initialZoomCompleted, setInitialZoomCompleted] = useState(false);
   
+  // Add state for vessel simulations
+  const [simulationsData, setSimulationsData] = useState<DetailedSimulationsResponse | null>(null);
+  const [stationaryVessels, setStationaryVessels] = useState<Array<{
+    id: string;
+    name: string;
+    position: [number, number, number];
+    rotation: number;
+    scale?: number;
+    dockName?: string;
+    model: string; // Add model property to track which 3D model to use
+  }>>([]);
+
   const [viewState, setViewState] = useState({
     latitude: 32.74, // Start with a wider view of Madeira island
     longitude: -16.95,
@@ -216,6 +282,94 @@ export default function MapVisualization() {
       energyDataService.removeListener('data-update', handleDataUpdate);
     };
   }, []);
+
+  // Add progressive loading of more boat models once the map is stable
+  useEffect(() => {
+    if (initialZoomCompleted) {
+      // After map is loaded and zoomed in, we can start adding more models
+      const timer = setTimeout(() => {
+        console.log('Adding second boat model');
+        setAvailableModels([
+          DEFAULT_BOAT_MODEL,
+          ALL_BOAT_MODELS[1] // Add the second model
+        ]);
+        
+        // Add the third model after another delay
+        const timer2 = setTimeout(() => {
+          console.log('Adding third boat model');
+          setAvailableModels(ALL_BOAT_MODELS); // Add all models
+        }, 15000); // 15 seconds after the second model
+        
+        return () => {
+          clearTimeout(timer2);
+        };
+      }, 10000); // 10 seconds after initial zoom
+      
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+  }, [initialZoomCompleted]);
+
+  // Fetch vessel simulations and set up stationary ships
+  useEffect(() => {
+    const fetchVesselSimulations = async () => {
+      try {
+        // Get current date in YYYY-MM-DD format
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Fetch detailed simulations
+        const data = await vesselSimulationService.getDetailedSimulations(today);
+        setSimulationsData(data);
+        
+        // Create stationary vessels at dock positions based on simulations
+        if (data && data.success && data.simulations.length > 0) {
+          // Limit to maximum 3 vessels (port capacity)
+          const vesselCount = Math.min(data.simulations.length, MAX_VESSELS);
+          
+          const vesselsData = data.simulations.slice(0, vesselCount).map((simulation, index) => {
+            // Get the specific docking position
+            const dockPosition = VESSEL_DOCKING_POSITIONS[index % VESSEL_DOCKING_POSITIONS.length];
+            
+            // Use random model from available models (or default if not enough models available)
+            const modelIndex = Math.min(
+              Math.floor(Math.random() * availableModels.length),
+              availableModels.length - 1
+            );
+            
+            return {
+              id: `vessel-${index}`,
+              name: simulation.data.vessel,
+              position: [dockPosition.longitude, dockPosition.latitude, dockPosition.elevation] as [number, number, number],
+              rotation: dockPosition.rotation,
+              scale: dockPosition.scale,
+              dockName: dockPosition.name,
+              model: availableModels.length > 0 ? availableModels[modelIndex] || DEFAULT_BOAT_MODEL : DEFAULT_BOAT_MODEL
+            };
+          });
+          
+          setStationaryVessels(vesselsData);
+        } else {
+          setStationaryVessels([]);
+        }
+      } catch (error) {
+        console.error('Error fetching vessel simulations for map:', error);
+        setStationaryVessels([]);
+      }
+    };
+    
+    // Initial fetch
+    fetchVesselSimulations();
+    
+    // Set up a polling interval to refresh data periodically - but increase the interval to reduce load
+    const intervalId = setInterval(() => {
+      fetchVesselSimulations();
+    }, 120000); // Refresh every 2 minutes instead of 1 minute
+    
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [availableModels]); // Add availableModels to dependency array to update vessels when models change
 
   // Animation effect for power lines
   useEffect(() => {
@@ -365,6 +519,7 @@ export default function MapVisualization() {
   const getLayers = () => {
     const latestData = getLatestData();
 
+    // Create animated boat layer
     const boatLayer = new ScenegraphLayer({
       id: 'boat-model',
       data: [
@@ -373,17 +528,76 @@ export default function MapVisualization() {
         }
       ],
       scenegraph: boatModel,
-      sizeScale: 0.25, // Adjust as needed
+      sizeScale: 0.18, // Slightly smaller to improve performance
       _lighting: 'pbr',
       getPosition: d => d.position,
-      // This is key - set the orientation as [x, y, z] Euler angles in degrees
       getOrientation: d => [0, boatRotation, 90], // Try different combinations
       pickable: true,
-      visible: boatVisible
+      visible: boatVisible,
+      parameters: {
+        depthTest: true
+      }
     });
     
-    
-    
+    // Create individual vessel layers - one layer per vessel to avoid matrix issues
+    const vesselLayers = stationaryVessels.slice(0, MAX_VESSELS).map((vessel, index) => {
+      try {
+        return new ScenegraphLayer({
+          id: `vessel-${index}`,
+          data: [vessel],
+          scenegraph: vessel.model || DEFAULT_BOAT_MODEL,
+          sizeScale: vessel.scale || 0.18,
+          _lighting: 'pbr',
+          getPosition: d => d.position,
+          getOrientation: d => [0, d.rotation, 90],
+          pickable: true,
+          getTooltip: (d: {
+            id: string; 
+            name: string;
+            position: [number, number, number];
+            rotation: number;
+            scale?: number;
+            dockName?: string;
+            model: string;
+          }) => `${d.name}\nDocked at: ${d.dockName || 'Port'}`,
+          visible: true,
+          parameters: {
+            depthTest: true
+          },
+          loadOptions: {
+            // Add loading options to minimize memory usage
+            gl: {
+              preserveDrawingBuffer: false
+            },
+            // Add cross-origin settings for external models
+            fetch: {
+              mode: 'cors'
+            }
+          }
+        });
+      } catch (error) {
+        console.error(`Error creating vessel layer ${index}:`, error);
+        // Return a simple placeholder layer if the 3D model failed to load
+        return new ScatterplotLayer({
+          id: `vessel-${index}-placeholder`,
+          data: [vessel],
+          getPosition: d => d.position,
+          getFillColor: [255, 0, 0],
+          getRadius: 5,
+          radiusScale: 10,
+          pickable: true,
+          getTooltip: (d: {
+            id: string; 
+            name: string;
+            position: [number, number, number];
+            rotation: number;
+            scale?: number;
+            dockName?: string;
+            model: string;
+          }) => `${d.name}\nDocked at: ${d.dockName || 'Port'} (3D model failed to load)`
+        });
+      }
+    });
     
     // Visualize boat path for debugging (optional)
     const boatPathLayer = new ScatterplotLayer({
@@ -402,9 +616,7 @@ export default function MapVisualization() {
       getLineColor: [255, 140, 0]
     });
     
-    if (!latestData) return [boatLayer,
-      //boatPathLayer
-    ];
+    if (!latestData) return [boatLayer, ...vesselLayers];
     
     // Column layer to show power consumption
     const columns = new ColumnLayer({
@@ -632,7 +844,8 @@ export default function MapVisualization() {
       powerLines, 
       particles, 
       centerMarker, 
-      centerLabel, 
+      centerLabel,
+      ...vesselLayers, // Add all vessel layers 
       boatLayer,
       //boatPathLayer // Uncomment for debugging
     ];
@@ -668,6 +881,30 @@ export default function MapVisualization() {
         title="Port Energy Analytics"
       >
         {/* Right sidebar content */}
+        {simulationsData && simulationsData.success && (
+          <div className="p-4">
+            <h3 className="text-lg font-semibold mb-2">Vessels in Port</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              Currently showing {stationaryVessels.length} of {simulationsData.simulations.length} vessel{simulationsData.simulations.length !== 1 ? 's' : ''} at port
+              {simulationsData.simulations.length > VESSEL_DOCKING_POSITIONS.length && (
+                <span className="block text-amber-600 mt-1">
+                  (Port can only accommodate {VESSEL_DOCKING_POSITIONS.length} vessels at once)
+                </span>
+              )}
+            </p>
+            <ul className="space-y-2">
+              {stationaryVessels.map((vessel, index) => (
+                <li key={vessel.id} className="p-3 bg-blue-50 rounded border border-blue-100">
+                  <p className="font-medium">{vessel.name}</p>
+                  <p className="text-sm text-gray-600">Docked at: {vessel.dockName || 'Port'}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Model: {vessel.model ? vessel.model.split('/').pop()?.replace('.gltf', '') || 'Unknown' : 'Default'}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </SlidingSidebar>
       
 

@@ -474,5 +474,57 @@ app.get('/api/vessel/available', async (req, res) => {
   }
 });
 
+// Add these vessel simulation endpoints
+app.get('/api/vessel/simulations', async (req, res) => {
+  try {
+    const date = req.query.date as string;
+    let vesselApiUrl = process.env.VESSEL_API_URL || 'http://localhost:5003/api/simulations';
+    
+    if (date) {
+      vesselApiUrl += `?date=${date}`;
+    }
+    
+    const response = await axios.get(vesselApiUrl);
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching vessel simulations:', error);
+    res.status((error as any).response?.status || 500).json({ 
+      error: 'Failed to fetch vessel simulations',
+      details: (error as any).response?.data || (error as Error).message 
+    });
+  }
+});
+
+app.get('/api/vessel/simulations/:date', async (req, res) => {
+  try {
+    const { date } = req.params;
+    const vesselApiUrl = process.env.VESSEL_API_URL || `http://localhost:5003/api/simulations/${date}`;
+    
+    const response = await axios.get(vesselApiUrl);
+    res.json(response.data);
+  } catch (error) {
+    console.error(`Error fetching vessel simulations for date ${req.params.date}:`, error);
+    res.status((error as any).response?.status || 500).json({ 
+      error: 'Failed to fetch vessel simulations for date',
+      details: (error as any).response?.data || (error as Error).message 
+    });
+  }
+});
+
+app.get('/api/vessel/current-simulations', async (req, res) => {
+  try {
+    const vesselApiUrl = process.env.VESSEL_API_URL || 'http://localhost:5003/api/current-simulations';
+    
+    const response = await axios.get(vesselApiUrl);
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching current vessel simulations:', error);
+    res.status((error as any).response?.status || 500).json({ 
+      error: 'Failed to fetch current vessel simulations',
+      details: (error as any).response?.data || (error as Error).message 
+    });
+  }
+});
+
 
 

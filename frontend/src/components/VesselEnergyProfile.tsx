@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React from 'react';
+import React, { useState } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -54,6 +54,10 @@ const VesselEnergyProfile: React.FC<VesselEnergyProfileProps> = ({
   scaling_factor,
   success
 }) => {
+  // Add pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 10;
+
   if (!success) {
     return (
       <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -142,6 +146,28 @@ const VesselEnergyProfile: React.FC<VesselEnergyProfileProps> = ({
     0
   ) / 12; // Convert from 5-minute intervals to kWh (divide by 12)
 
+  // Pagination calculations
+  const totalPages = Math.ceil(data.energy_profile_data.length / recordsPerPage);
+  const indexOfLastRecord = currentPage * recordsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const currentRecords = data.energy_profile_data.slice(indexOfFirstRecord, indexOfLastRecord);
+
+  // Change page handler
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  
+  // Navigate to next and previous pages
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+  
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="mb-4">
@@ -194,7 +220,7 @@ const VesselEnergyProfile: React.FC<VesselEnergyProfileProps> = ({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {data.energy_profile_data.slice(0, 10).map((point, index) => (
+              {currentRecords.map((point, index) => (
                 <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(point.Timestamp).toLocaleString()}
@@ -212,11 +238,108 @@ const VesselEnergyProfile: React.FC<VesselEnergyProfileProps> = ({
               ))}
             </tbody>
           </table>
-          {data.energy_profile_data.length > 10 && (
-            <div className="text-center py-2 text-sm text-gray-500">
-              Showing 10 of {data.energy_profile_data.length} records
+          
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 mt-4">
+            <div className="flex flex-1 justify-between sm:hidden">
+              <button
+                onClick={goToPreviousPage}
+                disabled={currentPage === 1}
+                className={`relative inline-flex items-center rounded-md px-4 py-2 text-sm font-medium ${
+                  currentPage === 1
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Previous
+              </button>
+              <button
+                onClick={goToNextPage}
+                disabled={currentPage === totalPages}
+                className={`relative ml-3 inline-flex items-center rounded-md px-4 py-2 text-sm font-medium ${
+                  currentPage === totalPages
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Next
+              </button>
             </div>
-          )}
+            
+            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Showing <span className="font-medium">{indexOfFirstRecord + 1}</span> to{' '}
+                  <span className="font-medium">
+                    {Math.min(indexOfLastRecord, data.energy_profile_data.length)}
+                  </span>{' '}
+                  of <span className="font-medium">{data.energy_profile_data.length}</span> results
+                </p>
+              </div>
+              <div>
+                <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                  <button
+                    onClick={goToPreviousPage}
+                    disabled={currentPage === 1}
+                    className={`relative inline-flex items-center rounded-l-md px-2 py-2 ${
+                      currentPage === 1
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="sr-only">Previous</span>
+                    &larr;
+                  </button>
+                  
+                  {/* Page buttons - show limited numbers if there are many pages */}
+                  {Array.from({ length: Math.min(totalPages, 5) }).map((_, idx) => {
+                    // Determine which pages to show
+                    let pageNumber: number;
+                    if (totalPages <= 5) {
+                      // If 5 or fewer pages, show all
+                      pageNumber = idx + 1;
+                    } else if (currentPage <= 3) {
+                      // If near start, show first 5
+                      pageNumber = idx + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      // If near end, show last 5
+                      pageNumber = totalPages - 4 + idx;
+                    } else {
+                      // Otherwise show current ± 2
+                      pageNumber = currentPage - 2 + idx;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNumber}
+                        onClick={() => paginate(pageNumber)}
+                        className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                          currentPage === pageNumber
+                            ? 'bg-blue-600 text-white focus:z-20'
+                            : 'bg-white text-gray-900 hover:bg-gray-50'
+                        }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  })}
+                  
+                  <button
+                    onClick={goToNextPage}
+                    disabled={currentPage === totalPages}
+                    className={`relative inline-flex items-center rounded-r-md px-2 py-2 ${
+                      currentPage === totalPages
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="sr-only">Next</span>
+                    &rarr;
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
