@@ -39,6 +39,126 @@ const io = new Server(httpServer, {
 app.use(cors());
 app.use(express.json());
 
+// DC Power Flow Simulation API proxy
+const DC_POWER_FLOW_API = process.env.DC_POWER_FLOW_API || 'http://localhost:5002';
+
+// Forward the latest results request to the DC Power Flow API
+app.get('/api/simulation/latest-results', async (req, res) => {
+  try {
+    const response = await axios.get(`${DC_POWER_FLOW_API}/get-latest-results`);
+    res.json(response.data);
+  } catch (error: any) {
+    console.error('Error forwarding request to DC Power Flow API:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch simulation results',
+      details: error.message
+    });
+  }
+});
+
+// Add a route to get sizing results
+app.get('/api/simulation/sizing-results', async (req, res) => {
+  try {
+    const response = await axios.get(`${DC_POWER_FLOW_API}/get-sizing-results`);
+    res.json(response.data);
+  } catch (error: any) {
+    console.error('Error fetching sizing results:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch sizing results',
+      details: error.message
+    });
+  }
+});
+
+// Start the simulation service
+app.post('/api/simulation/start-service', async (req, res) => {
+  try {
+    const response = await axios.post(`${DC_POWER_FLOW_API}/start-simulation-service`);
+    res.json(response.data);
+  } catch (error: any) {
+    console.error('Error starting simulation service:', error);
+    res.status(500).json({ 
+      error: 'Failed to start simulation service',
+      details: error.message
+    });
+  }
+});
+
+// Stop the simulation service - Deprecated: Keep for compatibility but clients should use pause locally
+app.post('/api/simulation/stop-service', async (req, res) => {
+  console.warn('DEPRECATED: Client used /api/simulation/stop-service which affects all users. Clients should pause locally.');
+  try {
+    // Return success but don't actually stop the simulation
+    res.json({ 
+      status: 'Simulation updates paused for your client only',
+      note: 'For a better experience, update your client to use local pausing instead of stopping the simulation service.'
+    });
+  } catch (error: any) {
+    console.error('Error handling deprecated stop request:', error);
+    res.status(500).json({ 
+      error: 'Failed to process request',
+      details: error.message
+    });
+  }
+});
+
+// Forward Socket.IO events from DC Power Flow API to clients
+const dcPowerFlowSocket = ioClient(DC_POWER_FLOW_API);
+dcPowerFlowSocket.on('simulation_update', (data) => {
+  // Forward the update to all connected clients
+  io.emit('simulation_update', data);
+  console.log('Forwarded simulation update to clients');
+});
+
+dcPowerFlowSocket.on('simulation_stopped', (data) => {
+  // Forward simulation stopped event to all clients
+  io.emit('simulation_stopped', data);
+  console.log('Forwarded simulation stopped event to clients');
+});
+
+// Add a route for admins to stop the simulation service (not exposed in regular UI)
+app.post('/api/admin/simulation/stop-service', async (req, res) => {
+  try {
+    // Add basic auth check here in a real application
+    // if (!isAuthorizedAdmin(req)) return res.status(403).json({ error: 'Unauthorized' });
+    
+    const response = await axios.post(`${DC_POWER_FLOW_API}/stop-simulation-service`);
+    res.json(response.data);
+    console.log('Admin stopped simulation service');
+  } catch (error: any) {
+    console.error('Error stopping simulation service:', error);
+    res.status(500).json({ 
+      error: 'Failed to stop simulation service',
+      details: error.message
+    });
+  }
+});
+
+// Add a route for admins to restart the simulation service
+app.post('/api/admin/simulation/restart-service', async (req, res) => {
+  try {
+    // Add basic auth check here in a real application
+    // if (!isAuthorizedAdmin(req)) return res.status(403).json({ error: 'Unauthorized' });
+    
+    // First stop the service
+    await axios.post(`${DC_POWER_FLOW_API}/stop-simulation-service`);
+    
+    // Wait a moment for it to stop completely
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Then start it again
+    const response = await axios.post(`${DC_POWER_FLOW_API}/start-simulation-service`);
+    res.json(response.data);
+    console.log('Admin restarted simulation service');
+  } catch (error: any) {
+    console.error('Error restarting simulation service:', error);
+    res.status(500).json({ 
+      error: 'Failed to restart simulation service',
+      details: error.message
+    });
+  }
+});
+
 // Basic health check route
 app.get('/health', (req, res) => {
   res.json({ status: 'OK' });
@@ -194,6 +314,12 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('Client disconnected');
   });
+
+  // Client-specific preferences for simulation updates
+  socket.on('toggle_simulation_updates', (isPaused: boolean) => {
+    socket.data.pauseSimulationUpdates = isPaused;
+    console.log(`Client ${socket.id} ${isPaused ? 'paused' : 'resumed'} simulation updates`);
+  });
 });
 
 async function watchMongoChanges(io: Server) {
@@ -339,14 +465,13 @@ httpServer.listen(PORT, async () => {
 // Add this route to your Express app (after your existing routes)
 app.post('/api/simulation', async (req, res) => {
   try {
-    const flaskApiUrl = process.env.FLASK_API_URL || 'http://localhost:5002/run-simulation';
-    const response = await axios.post(flaskApiUrl, req.body);
+    const response = await axios.post(`${DC_POWER_FLOW_API}/run-simulation`, req.body);
     res.json(response.data);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Simulation error:', error);
     res.status(500).json({ 
       error: 'Failed to run simulation',
-      details: (error as any).response?.data || (error as Error).message 
+      details: error.response?.data || error.message 
     });
   }
 });
@@ -355,79 +480,13 @@ app.post('/api/simulation', async (req, res) => {
 app.get('/api/simulation/:scenarioId', async (req, res) => {
   try {
     const { scenarioId } = req.params;
-    const flaskApiUrl = process.env.FLASK_API_URL || `http://localhost:5002/get-results/${scenarioId}`;
-    const response = await axios.get(flaskApiUrl);
+    const response = await axios.get(`${DC_POWER_FLOW_API}/get-results/${scenarioId}`);
     res.json(response.data);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching simulation results:', error);
-    res.status(((error as any).response?.status) || 500).json({
+    res.status(error.response?.status || 500).json({
       error: 'Failed to fetch simulation results',
-      details: (error as any).response?.data || (error as Error).message
-    });
-  }
-});
-
-
-// Connect to the Flask Socket.IO server
-const flaskSocketUrl = process.env.FLASK_API_URL || 'http://localhost:5002';
-const flaskSocket = ioClient(flaskSocketUrl);
-
-// Listen for simulation updates from Flask
-flaskSocket.on('simulation_update', (data) => {
-  // Relay the simulation update to all connected clients
-  io.emit('simulation_update', data);
-  console.log('Relayed simulation update to clients');
-});
-
-// Add this route to start the simulation service
-app.post('/api/simulation/start-service', async (req, res) => {
-  try {
-    const flaskApiUrl = process.env.FLASK_API_URL || 'http://localhost:5002/start-simulation-service';
-    const response = await axios.post(flaskApiUrl, {}, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error starting simulation service:', error);
-    res.status(500).json({ 
-      error: 'Failed to start simulation service',
-      details: (error as any).response?.data || (error as Error).message 
-    });
-  }
-});
-
-// Add this route to stop the simulation service
-app.post('/api/simulation/stop-service', async (req, res) => {
-  try {
-    const flaskApiUrl = process.env.FLASK_API_URL || 'http://localhost:5002/stop-simulation-service';
-    const response = await axios.post(flaskApiUrl, {}, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error stopping simulation service:', error);
-    res.status(500).json({ 
-      error: 'Failed to stop simulation service',
-      details: (error as any).response?.data || (error as Error).message 
-    });
-  }
-});
-
-// Add this route to get the latest simulation results
-app.get('/api/simulation/latest-results', async (req, res) => {
-  try {
-    const flaskApiUrl = process.env.FLASK_API_URL || 'http://localhost:5002';
-    const response = await axios.get(flaskApiUrl);
-    res.json(response.data);
-  } catch (error) {
-    console.error('Error fetching latest simulation results:', error);
-    res.status((error as any).response?.status || 500).json({ 
-      error: 'Failed to fetch latest simulation results',
-      details: (error as any).response?.data || (error as Error).message 
+      details: error.response?.data || error.message
     });
   }
 });
@@ -522,6 +581,28 @@ app.get('/api/vessel/current-simulations', async (req, res) => {
     res.status((error as any).response?.status || 500).json({ 
       error: 'Failed to fetch current vessel simulations',
       details: (error as any).response?.data || (error as Error).message 
+    });
+  }
+});
+
+// Add a route to get timesteps load flow results
+app.get('/api/simulation/timesteps-results', async (req, res) => {
+  try {
+    // Explicitly use the full URL to avoid path confusion
+    const fullUrl = 'http://localhost:5002/get-timesteps-results';
+    console.log(`Attempting to fetch timesteps results from ${fullUrl}`);
+    const response = await axios.get(fullUrl);
+    console.log(`Successfully received timesteps results with status ${response.status}`);
+    res.json(response.data);
+  } catch (error: any) {
+    console.error('Error fetching timesteps load flow results:', error);
+    if (error.response) {
+      console.error(`Response status: ${error.response.status}`);
+      console.error(`Response data:`, error.response.data);
+    }
+    res.status(500).json({ 
+      error: 'Failed to fetch timesteps load flow results',
+      details: error.message
     });
   }
 });
