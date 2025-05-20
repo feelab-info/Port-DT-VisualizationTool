@@ -21,14 +21,25 @@ interface VesselData {
   departure_time: string;
 }
 
+interface TimestepData {
+  timestamp: string;
+  bus_id?: number;
+  voltage?: number;
+  power?: number;
+  load?: number;
+  [key: string]: string | number | boolean | object | undefined;
+}
+
 class SimulationService extends EventEmitter {
   private baseUrl: string;
   private vesselUrl: string;
+  private dcPowerFlowUrl: string;
   
   constructor() {
     super();
     this.baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001';
     this.vesselUrl = process.env.NEXT_PUBLIC_VESSEL_URL || 'http://localhost:5003';
+    this.dcPowerFlowUrl = process.env.NEXT_PUBLIC_DC_POWER_FLOW_URL || 'http://localhost:5002';
   }
   
   public async runSimulation(params: SimulationParams): Promise<SimulationResult> {
@@ -131,6 +142,87 @@ class SimulationService extends EventEmitter {
       }
       
       return await response.json();
+    } catch (error) {
+      this.emit('error', error instanceof Error ? error.message : 'An unknown error occurred');
+      throw error;
+    }
+  }
+
+  public async getTimestepsResults(): Promise<TimestepData[]> {
+    try {
+      // Try fetching from the backend first
+      try {
+        const response = await fetch(`${this.baseUrl}/api/simulation/timesteps-results`);
+        if (response.ok) {
+          const data = await response.json();
+          return data;
+        }
+      } catch (error) {
+        console.warn('Backend endpoint failed, trying direct API access:', error);
+      }
+      
+      // If backend fails, try direct access to the DC power flow API
+      const directResponse = await fetch(`${this.dcPowerFlowUrl}/get-timesteps-results`);
+      if (directResponse.ok) {
+        const directData = await directResponse.json();
+        return directData;
+      }
+      
+      throw new Error('Failed to fetch timesteps results from both sources');
+    } catch (error) {
+      this.emit('error', error instanceof Error ? error.message : 'An unknown error occurred');
+      throw error;
+    }
+  }
+
+  public async getKpiResults(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/simulation/kpi-results`);
+      if (response.ok) {
+        return await response.json();
+      }
+      throw new Error('KPI endpoint not implemented yet');
+    } catch (error) {
+      this.emit('error', error instanceof Error ? error.message : 'An unknown error occurred');
+      throw error;
+    }
+  }
+
+  public async startSimulationService(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/simulation/start-service`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to start simulation service');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      this.emit('error', error instanceof Error ? error.message : 'An unknown error occurred');
+      throw error;
+    }
+  }
+
+  public async toggleSimulationUpdates(paused: boolean): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/simulation/toggle-updates`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ paused })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to toggle simulation updates');
+      }
     } catch (error) {
       this.emit('error', error instanceof Error ? error.message : 'An unknown error occurred');
       throw error;

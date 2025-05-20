@@ -20,13 +20,13 @@ export default function PredictionPage() {
   const [error, setError] = useState<string | null>(null);
   const [simulationsData, setSimulationsData] = useState<DetailedSimulationsResponse | null>(null);
   const [detailedSimulationError, setDetailedSimulationError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     // Fetch initial vessel simulation data using the service
     const fetchVesselSimulations = async () => {
       try {
         setIsLoading(true);
-        // Use the service method instead of direct fetch
         const data = await vesselSimulationService.getVesselSimulations();
         setSimulationResults(data);
       } catch (error) {
@@ -41,11 +41,7 @@ export default function PredictionPage() {
     const fetchDetailedSimulations = async () => {
       setDetailedSimulationError(null);
       try {
-        // Get current date in YYYY-MM-DD format
-        const today = new Date().toISOString().split('T')[0];
-        
-        // Use the service method to get detailed simulations
-        const data = await vesselSimulationService.getDetailedSimulations(today);
+        const data = await vesselSimulationService.getDetailedSimulations(selectedDate);
         setSimulationsData(data);
       } catch (error) {
         console.error('Error fetching detailed simulations:', error);
@@ -60,13 +56,13 @@ export default function PredictionPage() {
     const intervalId = setInterval(() => {
       fetchVesselSimulations();
       fetchDetailedSimulations();
-    }, 30000); // Refresh every 30 seconds
+    }, 3000000); // Refresh every 3000 seconds
     
     // Clean up on unmount
     return () => {
       clearInterval(intervalId);
     };
-  }, []);
+  }, [selectedDate]); // Add selectedDate as a dependency
 
   const handleVesselSubmit = async (data: VesselData) => {
     try {
@@ -78,20 +74,6 @@ export default function PredictionPage() {
       const result = await vesselSimulationService.predictVesselEnergy(data);
       setVesselResult(result);
       
-      // Optionally refresh the simulation list to include the new prediction
-      const updatedSimulations = await vesselSimulationService.getVesselSimulations();
-      setSimulationResults(updatedSimulations);
-      
-      // Also refresh the detailed simulations
-      setDetailedSimulationError(null);
-      try {
-        const today = new Date().toISOString().split('T')[0];
-        const detailedData = await vesselSimulationService.getDetailedSimulations(today);
-        setSimulationsData(detailedData);
-      } catch (error) {
-        console.error('Error refreshing detailed simulations:', error);
-        setDetailedSimulationError((error as Error).message);
-      }
       
     } catch (error) {
       console.error('Error submitting vessel data:', error);
@@ -99,6 +81,11 @@ export default function PredictionPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // The useEffect will automatically trigger with the new selectedDate
   };
 
   // Function to calculate total energy consumption from energy profile data
@@ -174,10 +161,36 @@ export default function PredictionPage() {
               </div>
             )}
           </div>
-        
         </div>
       </div>
       
+      {/* Date Selection Form */}
+      <div className="container mx-auto px-6 mb-6">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-4">Select Date for Detailed Simulations</h2>
+          <form onSubmit={handleDateSubmit} className="flex gap-4 items-end">
+            <div className="flex-1">
+              <label htmlFor="simulation-date" className="block text-sm font-medium text-gray-700 mb-1">
+                Date
+              </label>
+              <input
+                type="date"
+                id="simulation-date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              Update
+            </button>
+          </form>
+        </div>
+      </div>
+
       {/* Vessel Energy Cards - Simplified View */}
       {detailedSimulationError ? (
         <div className="container mx-auto p-6">

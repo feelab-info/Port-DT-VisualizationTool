@@ -4,7 +4,4 @@
  */
 
 console.log('Loading application from new entry point: src/server.ts');
-require('./dist/server');
-
-
-
+require('./dist/server'); 

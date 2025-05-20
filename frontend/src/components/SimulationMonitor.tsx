@@ -7,6 +7,7 @@ import {
   Tooltip, Legend, ResponsiveContainer, 
   Area, AreaChart
 } from 'recharts';
+import { simulationService } from '@/services/SimulationService';
 
 interface BusData {
   vm_pu: number;
@@ -15,34 +16,13 @@ interface BusData {
   q_mvar: number;
 }
 
-interface LineSizingData {
-  "Line Index": number;
-  "From Bus": number;
-  "To Bus": number;
-  "Section (mm²)": number | null;
-}
-
-interface ConverterSizingData {
-  "Converter Index": number;
-  "Converter Name": string;
-  "From Bus": number;
-  "To Bus": number;
-  "Nominal Power Installed (kW)": number;
-}
-
-interface SizingData {
-  "Line Sizing": LineSizingData[];
-  "Converter Sizing": ConverterSizingData[];
-}
-
 interface SimulationData {
   timestamp: number;
   res_bus: BusData[];
-  sizing_data?: SizingData;
   is_mock?: boolean;
 }
 
-// Add a more specific interface for timesteps data
+// Interface for timesteps data
 interface TimestepData {
   timestamp: string;
   bus_id?: number;
@@ -50,7 +30,7 @@ interface TimestepData {
   power?: number;
   load?: number;
   // Add other fields as needed
-  [key: string]: string | number | boolean | object | undefined; // More specific types for additional fields
+  [key: string]: string | number | boolean | object | undefined;
 }
 
 // Add a KPI interface for future implementation
@@ -75,17 +55,14 @@ interface ChartDataPoint {
 }
 
 export default function SimulationMonitor() {
-  const [simulationData, setSimulationData] = useState<SimulationData | null>(null);
-  const [sizingData, setSizingData] = useState<SizingData | null>(null);
   const [timestepsData, setTimestepsData] = useState<TimestepData[] | null>(null);
-  // Will use KpiData in future implementation:
-  // const [kpiData, setKpiData] = useState<KpiData | null>(null);
   const [lastUpdate, setLastUpdate] = useState<string>('No updates yet');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting');
-  const [activeTab, setActiveTab] = useState<'powerFlow' | 'sizing' | 'timesteps' | 'kpi'>('timesteps');
+  const [activeTab, setActiveTab] = useState<'timesteps' | 'kpi'>('timesteps');
   const [visualizationType, setVisualizationType] = useState<'table' | 'lineChart' | 'areaChart'>('table');
   const [selectedMetric, setSelectedMetric] = useState<'voltage' | 'load' | 'converterPower'>('voltage');
   
@@ -96,67 +73,26 @@ export default function SimulationMonitor() {
   const [timestepFilter, setTimestepFilter] = useState<string>('');
   
   // Reference to the socket connection
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [socket, setSocket] = useState<Socket | null>(null);
   
   // Fetch timesteps results
   const fetchTimestepsResults = async () => {
     try {
-      // Try fetching from the backend first
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001'}/api/simulation/timesteps-results`);
-        if (response.ok) {
-          const data = await response.json();
-          setTimestepsData(data);
-          return;
-        } else {
-          console.warn('Backend endpoint failed, trying direct API access');
-        }
-      } catch (error) {
-        console.warn('Error using backend endpoint, trying direct API access:', error);
-      }
-      
-      // If backend fails, try direct access to the DC power flow API
-      const directResponse = await fetch('http://localhost:5002/get-timesteps-results');
-      if (directResponse.ok) {
-        const directData = await directResponse.json();
-        setTimestepsData(directData);
-        console.log('Successfully fetched timesteps data directly from DC power flow API');
-      } else {
-        console.error('Failed to fetch timesteps results from both sources');
-      }
+      const data = await simulationService.getTimestepsResults();
+      setTimestepsData(data);
     } catch (error) {
       console.error('Error fetching timesteps results:', error);
     }
   };
   
-  // Fetch KPI results (placeholder for future implementation)
+  // Fetch KPI results
   const fetchKpiResults = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001'}/api/simulation/kpi-results`);
-      if (response.ok) {
-        // Store KPI data in state when implemented
-        // const data = await response.json();
-        console.log('KPI data fetched successfully, will be implemented in future');
-      } else {
-        console.warn('KPI endpoint not implemented yet');
-      }
+      await simulationService.getKpiResults();
+      console.log('KPI data fetched successfully, will be implemented in future');
     } catch (error) {
       console.warn('KPI API not available yet:', error);
-    }
-  };
-  
-  // Fetch sizing results separately
-  const fetchSizingResults = async () => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001'}/api/simulation/sizing-results`);
-      if (response.ok) {
-        const data = await response.json();
-        setSizingData(data);
-      } else {
-        console.error('Failed to fetch sizing results');
-      }
-    } catch (error) {
-      console.error('Error fetching sizing results:', error);
     }
   };
   
@@ -181,30 +117,7 @@ export default function SimulationMonitor() {
       setError(`Connection error: ${err.message}`);
     });
     
-    // Fetch initial data
-    const fetchInitialData = async () => {
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001'}/api/simulation/latest-results`);
-        if (response.ok) {
-          const data = await response.json();
-          setSimulationData(data);
-          if (data.sizing_data) {
-            setSizingData(data.sizing_data);
-          }
-          setLastUpdate(new Date(data.timestamp * 1000).toLocaleTimeString());
-          setIsRunning(true);
-        } else {
-          const errorData = await response.json();
-          setError(`Error fetching data: ${errorData.error || response.statusText}`);
-        }
-      } catch (error) {
-        console.error('Error fetching initial simulation data:', error);
-        setError(`Error connecting to server: ${(error as Error).message}`);
-      }
-    };
     
-    fetchInitialData();
-    fetchSizingResults();
     fetchTimestepsResults(); // Fetch timesteps data
     fetchKpiResults(); // Fetch KPI data (for future)
     
@@ -212,10 +125,6 @@ export default function SimulationMonitor() {
     socketConnection.on('simulation_update', (data: SimulationData) => {
       // Only update if not paused
       if (!isPaused) {
-        setSimulationData(data);
-        if (data.sizing_data) {
-          setSizingData(data.sizing_data);
-        }
         setLastUpdate(new Date(data.timestamp * 1000).toLocaleTimeString());
         
         // Refresh timesteps data when simulation updates
@@ -241,43 +150,21 @@ export default function SimulationMonitor() {
     };
   }, [isPaused]);
   
-  // Function to start the simulation service
-  const startSimulationService = async () => {
-    try {
-      setError(null);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001'}/api/simulation/start-service`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Simulation service status:', data.status);
-        setIsRunning(true);
-        setIsPaused(false); // Resume updates when starting
-      } else {
-        const errorData = await response.json();
-        setError(`Failed to start simulation: ${errorData.error || response.statusText}`);
-      }
-    } catch (error) {
-      console.error('Error starting simulation service:', error);
-      setError(`Error connecting to server: ${(error as Error).message}`);
-    }
-  };
+
   
-  // Function to toggle pausing updates (client-side only)
-  const togglePauseUpdates = () => {
+  // Function to toggle pausing updates
+  const togglePauseUpdates = async () => {
     const newPausedState = !isPaused;
     setIsPaused(newPausedState);
     
-    // Also inform the server about this client's preference
-    if (socket && socket.connected) {
-      socket.emit('toggle_simulation_updates', newPausedState);
+    try {
+      await simulationService.toggleSimulationUpdates(newPausedState);
+      console.log(`${newPausedState ? 'Paused' : 'Resumed'} receiving updates from simulation`);
+    } catch (error) {
+      console.error('Error toggling simulation updates:', error);
+      // Revert the state if the server request failed
+      setIsPaused(!newPausedState);
     }
-    
-    console.log(`${newPausedState ? 'Paused' : 'Resumed'} receiving updates from simulation`);
   };
 
   // Apply filters to timesteps data
@@ -505,13 +392,7 @@ export default function SimulationMonitor() {
           </span>
         </div>
         <div className="space-x-2">
-          <button 
-            onClick={startSimulationService}
-            className={`px-4 py-2 ${isRunning ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'} text-white rounded`}
-            disabled={isRunning}
-          >
-            Start Simulation
-          </button>
+          
           <button 
             onClick={togglePauseUpdates}
             className={`px-4 py-2 ${isPaused ? 'bg-blue-500 hover:bg-blue-600' : 'bg-yellow-500 hover:bg-yellow-600'} text-white rounded`}
@@ -534,11 +415,6 @@ export default function SimulationMonitor() {
             Updates paused
           </span>
         )}
-        {simulationData?.is_mock && (
-          <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-            Using mock data
-          </span>
-        )}
       </div>
       
       {/* Tabs */}
@@ -558,111 +434,6 @@ export default function SimulationMonitor() {
           </button>
         </div>
       </div>
-      
-      {activeTab === 'powerFlow' && (
-        simulationData ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white border border-gray-200">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="py-2 px-4 border">Bus</th>
-                  <th className="py-2 px-4 border">Voltage (p.u.)</th>
-                  <th className="py-2 px-4 border">Angle (deg)</th>
-                  <th className="py-2 px-4 border">Active Power (MW)</th>
-                  <th className="py-2 px-4 border">Reactive Power (Mvar)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {simulationData.res_bus.map((bus, index) => (
-                  <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                    <td className="py-2 px-4 border">{`Bus ${index}`}</td>
-                    <td className="py-2 px-4 border">
-                      {bus.vm_pu !== null && typeof bus.vm_pu === 'number' ? bus.vm_pu.toFixed(4) : '-'}
-                    </td>
-                    <td className="py-2 px-4 border">
-                      {bus.va_degree !== null && typeof bus.va_degree === 'number' ? 
-                        bus.va_degree.toFixed(4) : '-'}
-                    </td>
-                    <td className="py-2 px-4 border">
-                      {bus.p_mw !== null && typeof bus.p_mw === 'number' ? bus.p_mw.toFixed(6) : '-'}
-                    </td>
-                    <td className="py-2 px-4 border">
-                      {bus.q_mvar !== null && typeof bus.q_mvar === 'number' ? 
-                        bus.q_mvar.toFixed(6) : '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center py-4">
-            <p>No simulation data available yet. Please start the simulation service.</p>
-          </div>
-        )
-      )}
-      
-      {activeTab === 'sizing' && (
-        sizingData ? (
-          <div>
-            <h3 className="text-lg font-semibold mb-2">Line Sizing</h3>
-            <div className="overflow-x-auto mb-6">
-              <table className="min-w-full bg-white border border-gray-200">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="py-2 px-4 border">Line Index</th>
-                    <th className="py-2 px-4 border">From Bus</th>
-                    <th className="py-2 px-4 border">To Bus</th>
-                    <th className="py-2 px-4 border">Section (mm²)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sizingData["Line Sizing"].map((line, index) => (
-                    <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                      <td className="py-2 px-4 border">{line["Line Index"]}</td>
-                      <td className="py-2 px-4 border">{line["From Bus"]}</td>
-                      <td className="py-2 px-4 border">{line["To Bus"]}</td>
-                      <td className="py-2 px-4 border">
-                        {line["Section (mm²)"] !== null ? line["Section (mm²)"] : '-'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            
-            <h3 className="text-lg font-semibold mb-2">Converter Sizing</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white border border-gray-200">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="py-2 px-4 border">Converter Index</th>
-                    <th className="py-2 px-4 border">Converter Name</th>
-                    <th className="py-2 px-4 border">From Bus</th>
-                    <th className="py-2 px-4 border">To Bus</th>
-                    <th className="py-2 px-4 border">Nominal Power (kW)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sizingData["Converter Sizing"].map((converter, index) => (
-                    <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                      <td className="py-2 px-4 border">{converter["Converter Index"]}</td>
-                      <td className="py-2 px-4 border">{converter["Converter Name"]}</td>
-                      <td className="py-2 px-4 border">{converter["From Bus"]}</td>
-                      <td className="py-2 px-4 border">{converter["To Bus"]}</td>
-                      <td className="py-2 px-4 border">{converter["Nominal Power Installed (kW)"]}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-4">
-            <p>No sizing data available yet. Please start the simulation service.</p>
-          </div>
-        )
-      )}
       
       {activeTab === 'timesteps' && (
         timestepsData ? (

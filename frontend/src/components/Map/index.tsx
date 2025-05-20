@@ -186,8 +186,8 @@ export default function MapVisualization() {
     const fetchVesselSimulations = async () => {
       try {
         // Get current date in YYYY-MM-DD format
-        const today = new Date().toISOString().split('T')[0];
-        
+        //const today = new Date().toISOString().split('T')[0];
+        const today = new Date('2025-04-28').toISOString().split('T')[0];
         // Fetch detailed simulations
         const data = await vesselSimulationService.getDetailedSimulations(today);
         setSimulationsData(data);
