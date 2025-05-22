@@ -4,7 +4,7 @@
   "scripts": {
     "install-all": "cd frontend && npm install && cd ../backend && npm install",
     "setup-python": "cd vessel_modelling && pip install -r requirements.txt && cd ../dc_power_flow && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt",
-    "dev": "concurrently \"cd dc_power_flow && source venv/bin/activate && python api_server.py\" \"cd backend && npm run dev\" \"cd frontend && npm run dev\" \"cd vessel_modelling && python3 api_server.py\"",
+    "dev": "concurrently \"cd dc_power_flow && source venv/bin/activate && python api_server.py\" \"cd dc_power_flow && bash run_simulation.sh\" \"cd backend && npm run dev\" \"cd frontend && npm run dev\" \"cd vessel_modelling && python3 api_server.py\"",
     "dev:with-simulation": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\" \"cd dc_power_flow && source venv/bin/activate && python api_server.py > simulation.log 2>&1\" \"cd vessel_modelling && python api_server.py > vessel.log 2>&1\"",
     "build": "concurrently \"cd backend && npm run build\" \"cd frontend && npm run build\"",
     "start": "concurrently \"cd backend && npm start\" \"cd frontend && npm start\"",
