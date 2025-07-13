@@ -111,10 +111,10 @@ export async function collectDeviceData(): Promise<any[]> {
  * @param reading Device reading object
  */
 export function calculateTotalPower(reading: any): number {
-  // Adjust this based on your actual data structure
-  let totalPower = 0;
+  // Initialize total power as float
+  let totalPower = 0.0;
   
-  // Example: Sum power from different phases
+  // Sum power from different phases and convert to kW
   if (reading.L1 && typeof reading.L1.P === 'number') {
     totalPower += reading.L1.P;
   }
@@ -127,8 +127,8 @@ export function calculateTotalPower(reading: any): number {
     totalPower += reading.L3.P;
   }
   
-  // Convert to appropriate units if needed (e.g., from W to kW)
-  // For example: totalPower = totalPower / 1000;
+  // Convert from watts to kilowatts
+  totalPower = totalPower / 1000.0;
   
   return totalPower;
 }

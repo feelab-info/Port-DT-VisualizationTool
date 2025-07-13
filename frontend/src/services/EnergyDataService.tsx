@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { EventEmitter } from 'events';
+import deviceDataHealthMonitor from './DeviceDataHealthMonitor';
 
 export interface LineData {
   V: number;
@@ -132,6 +133,10 @@ class EnergyDataService extends EventEmitter {
       if (uniqueNewData.length > 0) {
         this.backgroundData = [...this.backgroundData, ...uniqueNewData];
         this.emit('background-update', this.backgroundData);
+        
+        // Update device data health monitor
+        const deviceCount = new Set(uniqueNewData.map(item => item.device)).size;
+        deviceDataHealthMonitor.updateDataTimestamp(deviceCount, new Date().toISOString());
       }
     });
     
@@ -155,6 +160,10 @@ class EnergyDataService extends EventEmitter {
         if (uniqueNewData.length > 0) {
           this.backgroundData = [...this.backgroundData, ...uniqueNewData];
           this.emit('background-update', this.backgroundData);
+          
+          // Update device data health monitor
+          const deviceCount = new Set(uniqueNewData.map(item => item.device)).size;
+          deviceDataHealthMonitor.updateDataTimestamp(deviceCount, new Date().toISOString());
         }
       } else {
         // Normal mode - update main data
@@ -165,6 +174,10 @@ class EnergyDataService extends EventEmitter {
         if (uniqueNewData.length > 0) {
           this.data = [...this.data, ...uniqueNewData].slice(-100); // Keep last 100 records
           this.emit('data-update', this.data);
+          
+          // Update device data health monitor
+          const deviceCount = new Set(uniqueNewData.map(item => item.device)).size;
+          deviceDataHealthMonitor.updateDataTimestamp(deviceCount, new Date().toISOString());
         }
       }
     });
@@ -182,6 +195,10 @@ class EnergyDataService extends EventEmitter {
         this.data = validData;
         this.isInitialDataLoaded = true;
         this.emit('data-update', this.data);
+        
+        // Update device data health monitor
+        const deviceCount = new Set(validData.map(item => item.device)).size;
+        deviceDataHealthMonitor.updateDataTimestamp(deviceCount, new Date().toISOString());
       }
     });
   }

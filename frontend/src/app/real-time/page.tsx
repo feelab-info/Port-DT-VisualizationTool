@@ -5,6 +5,7 @@ import { useEnergyData } from '@/hooks/useEnergyData';
 import DeviceSelection from '@/components/real-time/DeviceSelection';
 import DataDisplay from '@/components/real-time/DataDisplay';
 import HistoricalControls from '@/components/real-time/HistoricalControls';
+import { useDeviceDataHealth } from '@/hooks/useDeviceDataHealth';
 
 export default function RealTimeDataPage() {
   const {
@@ -24,6 +25,12 @@ export default function RealTimeDataPage() {
     switchToLiveData,
   } = useEnergyData();
 
+  // Use device data health to determine connection status
+  const { isHealthy: isDeviceDataHealthy } = useDeviceDataHealth();
+  
+  // Combine both connection statuses - if either is disconnected, show disconnected
+  const overallConnectionStatus = isConnected && isDeviceDataHealthy;
+
   return (
     <DashboardLayout>
       <div className="container mx-auto">
@@ -36,7 +43,7 @@ export default function RealTimeDataPage() {
             isHistoricalView={isHistoricalView}
             hasBackgroundUpdates={hasBackgroundUpdates}
             backgroundData={backgroundData}
-            isConnected={isConnected}
+            isConnected={overallConnectionStatus}
             switchToLiveData={switchToLiveData}
           />
         </div>

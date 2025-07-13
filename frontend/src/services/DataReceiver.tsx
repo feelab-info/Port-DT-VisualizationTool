@@ -1,23 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import io from 'socket.io-client';
 import MapVisualization from '@/components/Map';
+import deviceDataHealthMonitor from './DeviceDataHealthMonitor';
 
 const socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001');
 
 export default function DataReceiver() {
-  interface MapData {
-    longitude: number;
-    latitude: number;
-    value?: number;
-  }
-
-  const [data, setData] = useState<MapData[]>([]);
-
   useEffect(() => {
-    socket.on('db_update', (update: MapData[]) => {
-      setData(update);
+    socket.on('db_update', (update: unknown[]) => {
+      // Update device data health monitor
+      if (update && update.length > 0) {
+        deviceDataHealthMonitor.updateDataTimestamp(update.length, new Date().toISOString());
+      }
     });
 
     return () => {
@@ -27,7 +23,7 @@ export default function DataReceiver() {
 
   return (
     <div className="h-screen w-full">
-      <MapVisualization data={data} />
+      <MapVisualization />
     </div>
   );
 }
