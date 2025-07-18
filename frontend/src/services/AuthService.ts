@@ -13,11 +13,43 @@ export interface LoginResponse {
   user?: User;
   message?: string;
   error?: string;
+  nextStep?: string;
+  requiresVerification?: boolean;
 }
 
-export interface ApiError {
+export interface RegistrationResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  nextStep?: string;
+  email?: string;
+}
+
+export interface VerificationResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  nextStep?: string;
+}
+
+export interface ResendCodeResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+interface ApiError {
   error: string;
-  details?: string;
+  errorType?: string;
+  nextStep?: string;
+  requiresVerification?: boolean;
+}
+
+// Custom type for axios config to include _retry flag
+declare module 'axios' {
+  interface InternalAxiosRequestConfig {
+    _retry?: boolean;
+  }
 }
 
 class AuthService {
@@ -25,10 +57,6 @@ class AuthService {
   private readonly USER_KEY = 'port_auth_user';
   private isRefreshing = false;
   private refreshSubscribers: ((token: string) => void)[] = [];
-
-  constructor() {
-    this.setupInterceptors();
-  }
 
   // Set up axios interceptors for automatic token handling
   private setupInterceptors(): void {
@@ -44,13 +72,35 @@ class AuthService {
       (error) => Promise.reject(error)
     );
 
-    // Response interceptor - handle token refresh on 401
+    // Response interceptor - handle token refresh on 401 only
     axios.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
         const originalRequest = error.config;
         
+        // Only handle 401 errors for token refresh, let other errors pass through
         if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+          // Skip token refresh for auth endpoints - be more specific with URL matching
+          const requestUrl = originalRequest.url || '';
+          const isAuthEndpoint = requestUrl.includes('/api/auth/login') || 
+                                requestUrl.includes('/api/auth/register') ||
+                                requestUrl.includes('/api/auth/verify-email') ||
+                                requestUrl.includes('/api/auth/resend-code') ||
+                                requestUrl.includes('/api/auth/debug-email');
+          
+          console.log('[AuthService] 401 error detected:', {
+            url: requestUrl,
+            isAuthEndpoint,
+            shouldSkipRefresh: isAuthEndpoint
+          });
+          
+          if (isAuthEndpoint) {
+            console.log('[AuthService] Skipping token refresh for auth endpoint - letting error pass through');
+            // For auth endpoints, we want the error to be handled by the calling code
+            // Don't try to refresh token, just pass the error through
+            return Promise.reject(error);
+          }
+          
           if (this.isRefreshing) {
             // If already refreshing, wait for it to complete
             return new Promise((resolve) => {
@@ -86,41 +136,124 @@ class AuthService {
           }
         }
 
+        // For all other errors (including 403), just reject and let the calling code handle it
         return Promise.reject(error);
       }
     );
   }
 
+  // Initialize auth service
+  initialize(): void {
+    this.setupInterceptors();
+  }
+
   // Get stored token
   getToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(this.TOKEN_KEY);
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(this.TOKEN_KEY);
+    }
+    return null;
   }
 
-  // Get stored user data
+  // Get current user data
   getCurrentUser(): User | null {
-    if (typeof window === 'undefined') return null;
-    const userData = localStorage.getItem(this.USER_KEY);
-    return userData ? JSON.parse(userData) : null;
+    if (typeof window !== 'undefined') {
+      const userData = localStorage.getItem(this.USER_KEY);
+      return userData ? JSON.parse(userData) : null;
+    }
+    return null;
   }
 
-  // Set authorization header for axios requests
-  setAuthHeader(token: string): void {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  // Registration function
+  async register(email: string, name: string): Promise<RegistrationResponse> {
+    try {
+      const response = await axios.post<RegistrationResponse>(`${API_BASE_URL}/api/auth/register`, {
+        email,
+        name,
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('Registration error:', error);
+      
+      if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError<ApiError>;
+        return {
+          success: false,
+          error: axiosError.response?.data?.error || 'Network error during registration',
+        };
+      }
+      
+      return {
+        success: false,
+        error: 'An unexpected error occurred during registration',
+      };
+    }
   }
 
-  // Remove authorization header
-  removeAuthHeader(): void {
-    delete axios.defaults.headers.common['Authorization'];
+  // Verify email function
+  async verifyEmail(email: string, code: string): Promise<VerificationResponse> {
+    try {
+      const response = await axios.post<VerificationResponse>(`${API_BASE_URL}/api/auth/verify-email`, {
+        email,
+        code,
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('Email verification error:', error);
+      
+      if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError<ApiError>;
+        return {
+          success: false,
+          error: axiosError.response?.data?.error || 'Network error during verification',
+        };
+      }
+      
+      return {
+        success: false,
+        error: 'An unexpected error occurred during verification',
+      };
+    }
+  }
+
+  // Resend verification code function
+  async resendVerificationCode(email: string): Promise<ResendCodeResponse> {
+    try {
+      const response = await axios.post<ResendCodeResponse>(`${API_BASE_URL}/api/auth/resend-code`, {
+        email,
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('Resend code error:', error);
+      
+      if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError<ApiError>;
+        return {
+          success: false,
+          error: axiosError.response?.data?.error || 'Network error during code resend',
+        };
+      }
+      
+      return {
+        success: false,
+        error: 'An unexpected error occurred while resending code',
+      };
+    }
   }
 
   // Login function
   async login(email: string, name: string): Promise<LoginResponse> {
     try {
+      console.log('[AuthService] Making login request:', { email, name });
       const response = await axios.post<LoginResponse>(`${API_BASE_URL}/api/auth/login`, {
         email,
         name,
       });
+
+      console.log('[AuthService] Login response:', response.status, response.data);
 
       if (response.data.success && response.data.token) {
         // Store token and user data
@@ -129,19 +262,44 @@ class AuthService {
         
         return response.data;
       } else {
+        console.log('[AuthService] Login failed with response data:', response.data);
         return {
           success: false,
           error: response.data.error || 'Login failed',
+          nextStep: response.data.nextStep,
+          requiresVerification: response.data.requiresVerification,
         };
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('[AuthService] Login error:', error);
       
       if (axios.isAxiosError(error)) {
         const axiosError = error as AxiosError<ApiError>;
+        console.log('[AuthService] Axios error details:', {
+          status: axiosError.response?.status,
+          data: axiosError.response?.data,
+          message: axiosError.message
+        });
+        
+        // For 401 errors from auth endpoints, the response should contain our API error data
+        if (axiosError.response?.status === 401 && axiosError.response?.data) {
+          console.log('[AuthService] Processing 401 response data:', axiosError.response.data);
+          const responseData = axiosError.response.data;
+          
+          return {
+            success: false,
+            error: responseData.error || 'Authentication failed',
+            nextStep: responseData.nextStep,
+            requiresVerification: responseData.requiresVerification,
+          };
+        }
+        
+        // For other errors, use generic error handling
         return {
           success: false,
           error: axiosError.response?.data?.error || 'Network error during login',
+          nextStep: axiosError.response?.data?.nextStep,
+          requiresVerification: axiosError.response?.data?.requiresVerification,
         };
       }
       
@@ -154,26 +312,16 @@ class AuthService {
 
   // Validate current token
   async validateToken(): Promise<boolean> {
-    const token = this.getToken();
-    if (!token) return false;
-
     try {
-      const response = await axios.get<LoginResponse>(`${API_BASE_URL}/api/auth/validate`);
+      const response = await axios.get(`${API_BASE_URL}/api/auth/validate`);
       return response.data.success;
-    } catch (error) {
-      console.error('Token validation error:', error);
-      this.logout();
+    } catch {
       return false;
     }
   }
 
   // Refresh token
   async refreshToken(): Promise<LoginResponse> {
-    const token = this.getToken();
-    if (!token) {
-      return { success: false, error: 'No token to refresh' };
-    }
-
     try {
       const response = await axios.post<LoginResponse>(`${API_BASE_URL}/api/auth/refresh`);
       
@@ -181,48 +329,23 @@ class AuthService {
         // Update stored token and user data
         localStorage.setItem(this.TOKEN_KEY, response.data.token);
         localStorage.setItem(this.USER_KEY, JSON.stringify(response.data.user));
-        
-        return response.data;
-      } else {
-        this.logout();
-        return {
-          success: false,
-          error: response.data.error || 'Token refresh failed',
-        };
       }
+      
+      return response.data;
     } catch (error) {
       console.error('Token refresh error:', error);
-      this.logout();
-      
-      if (axios.isAxiosError(error)) {
-        const axiosError = error as AxiosError<ApiError>;
-        return {
-          success: false,
-          error: axiosError.response?.data?.error || 'Network error during token refresh',
-        };
-      }
-      
       return {
         success: false,
-        error: 'An unexpected error occurred during token refresh',
+        error: 'Failed to refresh token',
       };
     }
   }
 
-  // Logout
+  // Logout function
   logout(): void {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(this.TOKEN_KEY);
       localStorage.removeItem(this.USER_KEY);
-    }
-    this.removeAuthHeader();
-  }
-
-  // Initialize auth service (set token on app startup)
-  initialize(): void {
-    const token = this.getToken();
-    if (token) {
-      this.setAuthHeader(token);
     }
   }
 
@@ -238,11 +361,6 @@ class AuthService {
   }
 }
 
-// Custom type for axios config to include _retry flag
-declare module 'axios' {
-  interface AxiosRequestConfig {
-    _retry?: boolean;
-  }
-}
-
-export const authService = new AuthService(); 
+// Create singleton instance
+const authService = new AuthService();
+export { authService }; 

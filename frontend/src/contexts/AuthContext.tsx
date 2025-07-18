@@ -7,7 +7,12 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, name: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, name: string) => Promise<{ 
+    success: boolean; 
+    error?: string; 
+    requiresVerification?: boolean;
+    nextStep?: string;
+  }>;
   logout: () => void;
   refreshToken: () => Promise<boolean>;
 }
@@ -57,21 +62,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initAuth();
   }, []);
 
-  const login = async (email: string, name: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (email: string, name: string): Promise<{ 
+    success: boolean; 
+    error?: string; 
+    requiresVerification?: boolean;
+    nextStep?: string;
+  }> => {
     try {
+      console.log('[AuthContext] Starting login process');
       setIsLoading(true);
-      const result = await authService.login(email, name);
+      
+      const result = await authService.login(email, name).catch((serviceError) => {
+        console.error('[AuthContext] AuthService.login threw error:', serviceError);
+        return {
+          success: false,
+          error: 'Network error. Please try again.',
+          requiresVerification: false,
+          nextStep: undefined,
+          user: undefined,
+        };
+      });
+      
+      console.log('[AuthContext] AuthService result:', result);
       
       if (result.success) {
+        console.log('[AuthContext] Login successful, setting user');
         setUser(result.user!);
         return { success: true };
       } else {
-        return { success: false, error: result.error };
+        console.log('[AuthContext] Login failed, returning error');
+        return { 
+          success: false, 
+          error: result.error,
+          requiresVerification: result.requiresVerification,
+          nextStep: result.nextStep,
+        };
       }
     } catch (error) {
-      console.error('Login error:', error);
-      return { success: false, error: 'An unexpected error occurred during login' };
+      console.error('[AuthContext] Unexpected error in login:', error);
+      return {
+        success: false,
+        error: 'An unexpected error occurred. Please try again.',
+      };
     } finally {
+      console.log('[AuthContext] Setting loading to false');
       setIsLoading(false);
     }
   };

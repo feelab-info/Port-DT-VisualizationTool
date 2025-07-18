@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import axios from 'axios';
 
 export interface VesselData {
   vesselId?: string;
@@ -67,12 +68,8 @@ class VesselSimulationService extends EventEmitter {
    */
   public async getAvailableVessels(): Promise<VesselData[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/vessel/available`);
-      if (!response.ok) {
-        console.warn(`Failed to fetch vessels: ${response.statusText}`);
-        return [];
-      }
-      return await response.json();
+      const response = await axios.get(`${this.baseUrl}/api/vessel/available`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching available vessels:', error);
       // Return empty array instead of throwing error to prevent UI disruption
@@ -85,22 +82,13 @@ class VesselSimulationService extends EventEmitter {
    */
   public async predictVesselEnergy(vesselData: VesselData): Promise<VesselSimulationResult> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/vessel/registered`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(vesselData)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || response.statusText);
-      }
-
-      return await response.json();
+      const response = await axios.post(`${this.baseUrl}/api/vessel/registered`, vesselData);
+      return response.data;
     } catch (error) {
       console.error('Error predicting vessel energy:', error);
+      if (axios.isAxiosError(error)) {
+        throw new Error(error.response?.data?.error || error.message);
+      }
       throw error;
     }
   }
@@ -110,11 +98,8 @@ class VesselSimulationService extends EventEmitter {
    */
   public async getVesselSimulations(): Promise<VesselSimulationResult[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/vessel/simulations`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch vessel simulations: ${response.statusText}`);
-      }
-      const data = await response.json();
+      const response = await axios.get(`${this.baseUrl}/api/vessel/simulations`);
+      const data = response.data;
       
       // Check if the response has a simulations array property
       if (data && data.simulations && Array.isArray(data.simulations)) {
@@ -131,6 +116,9 @@ class VesselSimulationService extends EventEmitter {
       return [];
     } catch (error) {
       console.error('Error fetching vessel simulations:', error);
+      if (axios.isAxiosError(error)) {
+        throw new Error(error.response?.data?.error || error.message);
+      }
       throw error;
     }
   }
@@ -145,12 +133,8 @@ class VesselSimulationService extends EventEmitter {
       // Try date-specific endpoint if a date is provided
       if (date) {
         try {
-          const response = await fetch(`${this.baseUrl}/api/vessel/simulations/${date}`);
-          if (response.ok) {
-            const data = await response.json();
-            return data;
-          }
-          console.warn(`Failed to fetch from date-specific endpoint: ${response.statusText}`);
+          const response = await axios.get(`${this.baseUrl}/api/vessel/simulations/${date}`);
+          return response.data;
         } catch (error) {
           console.warn('Error with date-specific endpoint:', error);
         }
@@ -158,25 +142,21 @@ class VesselSimulationService extends EventEmitter {
       
       // Try the general endpoint
       try {
-        const response = await fetch(`${this.baseUrl}/api/vessel/simulations`);
-        if (response.ok) {
-          const data = await response.json();
-          return data;
-        }
-        console.warn(`Failed to fetch from general endpoint: ${response.statusText}`);
+        const response = await axios.get(`${this.baseUrl}/api/vessel/simulations`);
+        return response.data;
       } catch (error) {
         console.warn('Error with general endpoint:', error);
       }
       
       // Try current-simulations as last resort
-      const response = await fetch(`${this.baseUrl}/api/vessel/current-simulations`);
-      if (!response.ok) {
-        throw new Error(`All simulation endpoints failed. Last error: ${response.statusText}`);
-      }
-      
-      return await response.json();
+      const response = await axios.get(`${this.baseUrl}/api/vessel/current-simulations`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching detailed simulations:', error);
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.error || error.message;
+        throw new Error(`All simulation endpoints failed. Last error: ${errorMessage}`);
+      }
       throw error;
     }
   }
