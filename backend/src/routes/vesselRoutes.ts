@@ -7,17 +7,18 @@ import {
   getVesselSimulationsByDate,
   getCurrentVesselSimulations
 } from '../controllers/vesselController';
+import { authenticateToken } from '../middleware/authMiddleware';
 
 /**
  * Configure vessel related routes
  * @param app Express application
  */
 export function vesselRoutes(app: Express): void {
-  // Vessel API routes
-  app.post('/api/vessel/registered', processRegisteredVessel);
-  app.post('/api/vessel/custom', processCustomVessel);
-  app.get('/api/vessel/available', getAvailableVessels);
-  app.get('/api/vessel/simulations', getVesselSimulations);
-  app.get('/api/vessel/simulations/:date', getVesselSimulationsByDate);
-  app.get('/api/vessel/current-simulations', getCurrentVesselSimulations);
+  // Vessel API routes - all protected with authentication
+  app.post('/api/vessel/registered', authenticateToken, processRegisteredVessel);
+  app.post('/api/vessel/custom', authenticateToken, processCustomVessel);
+  app.get('/api/vessel/available', authenticateToken, getAvailableVessels);
+  app.get('/api/vessel/simulations', authenticateToken, getVesselSimulations);
+  app.get('/api/vessel/simulations/:date', authenticateToken, getVesselSimulationsByDate);
+  app.get('/api/vessel/current-simulations', authenticateToken, getCurrentVesselSimulations);
 } 

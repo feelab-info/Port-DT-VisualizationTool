@@ -9,21 +9,22 @@ import {
   updateDeviceData,
   getExcelDeviceData
 } from '../controllers/simulationController';
+import { authenticateToken } from '../middleware/authMiddleware';
 
 /**
  * Configure simulation related routes
  * @param app Express application
  */
 export function simulationRoutes(app: Express): void {
-  // Simulation API routes
-  app.post('/api/simulation', runSimulation);
-  app.get('/api/simulation/:scenarioId', getSimulationResults);
-  app.get('/api/simulation/latest-results', getLatestResults);
-  app.get('/api/simulation/sizing-results', getSizingResults);
-  app.get('/api/simulation/timesteps-results', getTimestepsResults);
-  app.post('/api/simulation/start-service', startSimulationService);
+  // Simulation API routes - all protected with authentication
+  app.post('/api/simulation', authenticateToken, runSimulation);
+  app.get('/api/simulation/:scenarioId', authenticateToken, getSimulationResults);
+  app.get('/api/simulation/latest-results', authenticateToken, getLatestResults);
+  app.get('/api/simulation/sizing-results', authenticateToken, getSizingResults);
+  app.get('/api/simulation/timesteps-results', authenticateToken, getTimestepsResults);
+  app.post('/api/simulation/start-service', authenticateToken, startSimulationService);
   
-  // Device data update routes
-  app.post('/api/simulation/update-device-data', updateDeviceData);
-  app.get('/api/simulation/excel-device-data', getExcelDeviceData);
+  // Device data update routes - also protected
+  app.post('/api/simulation/update-device-data', authenticateToken, updateDeviceData);
+  app.get('/api/simulation/excel-device-data', authenticateToken, getExcelDeviceData);
 } 
