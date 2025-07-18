@@ -160,7 +160,7 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
 
   // Format date for grouping in history view
   const formatDate = (timestamp: string) => {
-    return new Date(timestamp).toLocaleDateString();
+    return new Date(timestamp).toLocaleDateString('pt-PT');
   };
 
   // Format device ID to make it more readable

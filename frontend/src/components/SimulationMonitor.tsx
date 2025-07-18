@@ -48,12 +48,6 @@ interface KpiData {
   [key: string]: Record<string, number> | undefined;
 }
 
-// Create a type for chart data
-interface ChartDataPoint {
-  name: string;
-  [key: string]: string | number | null | undefined;
-}
-
 export default function SimulationMonitor() {
   const [timestepsData, setTimestepsData] = useState<TimestepData[] | null>(null);
   const [lastUpdate, setLastUpdate] = useState<string>('No updates yet');
@@ -177,9 +171,14 @@ export default function SimulationMonitor() {
         return false;
       }
       
-      // Apply timestep filter if specified
-      if (timestepFilter && !step.timestamp.toString().includes(timestepFilter)) {
-        return false;
+      // Apply timestep filter if specified - match exact timestep number
+      if (timestepFilter && step.timestamp) {
+        const timestampStr = step.timestamp.toString();
+        const match = timestampStr.match(/Timestep (\d+)/);
+        const timestepNumber = match ? match[1] : '';
+        if (timestepNumber !== timestepFilter) {
+          return false;
+        }
       }
       
       return true;
@@ -213,7 +212,7 @@ export default function SimulationMonitor() {
       <button 
         key="first" 
         onClick={() => goToPage(1)} 
-        className={`px-3 py-1 mx-1 ${currentPage === 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'} rounded`}
+        className={`px-3 py-1 mx-1 ${currentPage === 1 ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500'} rounded border border-gray-300 dark:border-gray-600 transition-colors`}
       >
         1
       </button>
@@ -230,7 +229,7 @@ export default function SimulationMonitor() {
     
     // Add ellipsis if needed
     if (startPage > 2) {
-      buttons.push(<span key="ellipsis1" className="px-2">...</span>);
+      buttons.push(<span key="ellipsis1" className="px-2 text-gray-500 dark:text-gray-400">...</span>);
     }
     
     // Add pages in the middle
@@ -239,7 +238,7 @@ export default function SimulationMonitor() {
         <button 
           key={i} 
           onClick={() => goToPage(i)} 
-          className={`px-3 py-1 mx-1 ${currentPage === i ? 'bg-blue-500 text-white' : 'bg-gray-200'} rounded`}
+          className={`px-3 py-1 mx-1 ${currentPage === i ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500'} rounded border border-gray-300 dark:border-gray-600 transition-colors`}
         >
           {i}
         </button>
@@ -248,7 +247,7 @@ export default function SimulationMonitor() {
     
     // Add ellipsis if needed
     if (endPage < totalPages - 1) {
-      buttons.push(<span key="ellipsis2" className="px-2">...</span>);
+      buttons.push(<span key="ellipsis2" className="px-2 text-gray-500 dark:text-gray-400">...</span>);
     }
     
     // Always show last page if there is more than 1 page
@@ -257,7 +256,7 @@ export default function SimulationMonitor() {
         <button 
           key="last" 
           onClick={() => goToPage(totalPages)} 
-          className={`px-3 py-1 mx-1 ${currentPage === totalPages ? 'bg-blue-500 text-white' : 'bg-gray-200'} rounded`}
+          className={`px-3 py-1 mx-1 ${currentPage === totalPages ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500'} rounded border border-gray-300 dark:border-gray-600 transition-colors`}
         >
           {totalPages}
         </button>
@@ -288,82 +287,132 @@ export default function SimulationMonitor() {
     const timesteps = new Set<string>();
     timestepsData.forEach(step => {
       if (step.timestamp) {
-        const timestamp = step.timestamp.toString().split(' ')[1]; // Extract timestep number
-        timesteps.add(timestamp);
+        const match = step.timestamp.toString().match(/Timestep (\d+)/);
+        if (match) {
+          timesteps.add(match[1]); // Add just the timestep number
+        }
       }
     });
     
-    return Array.from(timesteps).sort();
+    return Array.from(timesteps).sort((a, b) => parseInt(a) - parseInt(b));
   }, [timestepsData]);
   
-  // Prepare data for charts
+  // Prepare data for charts - redesigned for better readability
   const prepareChartData = useMemo(() => {
-    if (!timestepsData) return [];
+    if (!timestepsData) {
+      console.log('No timestepsData available');
+      return [];
+    }
     
-    // Group data by timestamp
+    console.log('timestepsData length:', timestepsData.length);
+    console.log('filteredTimesteps length:', filteredTimesteps.length);
+    
+    if (filteredTimesteps.length === 0) {
+      console.log('No filtered timesteps available');
+      return [];
+    }
+    
+    // Group data by timestamp and calculate statistics
     const timestepGroups = new Map<string, {
       timestamp: string;
-      buses: Map<string | number, {
-        voltage: number | undefined;
-        load: number | undefined;
-        converterPower: number | null;
-        converterLoading: number | null;
-      }>;
+      avgVoltage: number;
+      minVoltage: number;
+      maxVoltage: number;
+      totalLoad: number;
+      busCount: number;
+      voltageStd: number;
+      totalConverterPower: number;
+      avgConverterPower: number;
+      converterCount: number;
     }>();
     
     // Process all timesteps data or just the filtered ones
     const dataToProcess = filteredTimesteps;
     
+    // Group by timestamp
+    const rawGroups = new Map<string, number[]>();
+    const loadGroups = new Map<string, number[]>();
+    const converterPowerGroups = new Map<string, number[]>();
+    
     dataToProcess.forEach(step => {
       const timestamp = step.timestamp?.toString() || '';
-      if (!timestepGroups.has(timestamp)) {
-        timestepGroups.set(timestamp, {
-          timestamp,
-          buses: new Map()
-        });
+      
+      if (!rawGroups.has(timestamp)) {
+        rawGroups.set(timestamp, []);
+        loadGroups.set(timestamp, []);
+        converterPowerGroups.set(timestamp, []);
       }
       
-      const group = timestepGroups.get(timestamp)!;
-      const busId = step.bus_id !== undefined ? step.bus_id : 'unknown';
+      if (step.voltage !== undefined && step.voltage !== null) {
+        rawGroups.get(timestamp)!.push(step.voltage);
+      }
       
-      // Find converter power and loading values
-      const converterPowerKeys = Object.keys(step).filter(key => key.includes('converter_') && key.includes('_power'));
-      const converterPower = converterPowerKeys.length > 0 ? step[converterPowerKeys[0]] : null;
-      
-      const converterLoadingKeys = Object.keys(step).filter(key => key.includes('converter_') && key.includes('_loading'));
-      const converterLoading = converterLoadingKeys.length > 0 ? step[converterLoadingKeys[0]] : null;
-      
-      // Store bus-specific data
-      group.buses.set(busId, {
-        voltage: step.voltage,
-        load: step.load,
-        converterPower: converterPower !== null ? Number(converterPower) : null,
-        converterLoading: converterLoading !== null ? Number(converterLoading) : null
-      });
-    });
-    
-    // For line chart - create series by bus
-    const lineChartData: ChartDataPoint[] = [];
-    
-    // Process each timestep
-    timestepGroups.forEach((group, timestamp) => {
-      const entry: ChartDataPoint = { name: timestamp };
-      
-      // Extract all bus values for this timestep
-      group.buses.forEach((busData, busId) => {
-        if (busIdFilter === '' || busIdFilter === busId) {
-          entry[`Bus ${busId} Voltage`] = busData.voltage;
-          entry[`Bus ${busId} Load`] = busData.load;
-          entry[`Bus ${busId} ConverterPower`] = busData.converterPower;
-          entry[`Bus ${busId} ConverterLoading`] = busData.converterLoading;
+      if (step.load !== undefined && step.load !== null) {
+        loadGroups.get(timestamp)!.push(step.load);
+      }
+
+      // Collect converter power data from all converter_X_power fields
+      Object.keys(step).forEach(key => {
+        if (key.includes('converter_') && key.includes('_power')) {
+          const powerValue = step[key];
+          if (powerValue !== undefined && powerValue !== null) {
+            converterPowerGroups.get(timestamp)!.push(Number(powerValue));
+          }
         }
       });
-      
-      lineChartData.push(entry);
     });
     
+    console.log('rawGroups size:', rawGroups.size);
+    console.log('rawGroups keys:', Array.from(rawGroups.keys()));
+    
+    // Calculate statistics for each timestamp
+    rawGroups.forEach((voltages, timestamp) => {
+      if (voltages.length === 0) return;
+      
+      const loads = loadGroups.get(timestamp) || [];
+      const converterPowers = converterPowerGroups.get(timestamp) || [];
+      
+      const avgVoltage = voltages.reduce((sum, v) => sum + v, 0) / voltages.length;
+      const minVoltage = Math.min(...voltages);
+      const maxVoltage = Math.max(...voltages);
+      const totalLoad = loads.reduce((sum, l) => sum + l, 0);
+      const totalConverterPower = converterPowers.reduce((sum, p) => sum + p, 0);
+      const avgConverterPower = converterPowers.length > 0 ? totalConverterPower / converterPowers.length : 0;
+      
+      // Calculate standard deviation
+      const variance = voltages.reduce((sum, v) => sum + Math.pow(v - avgVoltage, 2), 0) / voltages.length;
+      const voltageStd = Math.sqrt(variance);
+      
+      timestepGroups.set(timestamp, {
+        timestamp,
+        avgVoltage,
+        minVoltage,
+        maxVoltage,
+        totalLoad,
+        busCount: voltages.length,
+        voltageStd,
+        totalConverterPower,
+        avgConverterPower,
+        converterCount: converterPowers.length
+      });
+    });
+    
+    // Convert to chart data
+    const chartData = Array.from(timestepGroups.values()).map(group => ({
+      name: group.timestamp,
+      'Average Voltage': Number(group.avgVoltage.toFixed(6)),
+      'Min Voltage': Number(group.minVoltage.toFixed(6)),
+      'Max Voltage': Number(group.maxVoltage.toFixed(6)),
+      'Total Load': Number(group.totalLoad.toFixed(6)),
+      'Voltage Std Dev': Number(group.voltageStd.toFixed(6)),
+      'Bus Count': group.busCount,
+      'Total Converter Power': Number(group.totalConverterPower.toFixed(6)),
+      'Average Converter Power': Number(group.avgConverterPower.toFixed(6)),
+      'Converter Count': group.converterCount
+    }));
+    
     // Sort data by timestamp
-    lineChartData.sort((a, b) => {
+    chartData.sort((a, b) => {
       const getTimestepNumber = (ts: string) => {
         const match = ts.match(/Timestep (\d+)/);
         return match ? parseInt(match[1]) : 0;
@@ -374,403 +423,628 @@ export default function SimulationMonitor() {
       return aNum - bNum;
     });
     
-    return lineChartData;
-  }, [filteredTimesteps, busIdFilter]);
+    console.log('Final chartData:', chartData);
+    console.log('Sample chartData item:', chartData[0]);
+    
+    return chartData;
+  }, [filteredTimesteps]);
   
   return (
-    <div className="p-4 bg-white rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center">
-          <h2 className="text-xl font-bold mr-3">Power Flow Simulation Monitor</h2>
-          <div className={`h-3 w-3 rounded-full mr-1 ${
-            connectionStatus === 'connected' ? 'bg-green-500' : 
-            connectionStatus === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'
-          }`}></div>
-          <span className="text-sm text-gray-500">
-            {connectionStatus === 'connected' ? 'Connected' : 
-             connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
-          </span>
-        </div>
-        <div className="space-x-2">
-          
-          <button 
-            onClick={togglePauseUpdates}
-            className={`px-4 py-2 ${isPaused ? 'bg-blue-500 hover:bg-blue-600' : 'bg-yellow-500 hover:bg-yellow-600'} text-white rounded`}
-          >
-            {isPaused ? 'Resume Updates' : 'Pause Updates'}
-          </button>
+    <div className="space-y-8">
+      {/* Status Header Card */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-700 dark:to-blue-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <div className={`h-4 w-4 rounded-full ${
+                  connectionStatus === 'connected' ? 'bg-green-500' : 
+                  connectionStatus === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'
+                }`}></div>
+                <span className={`text-sm font-medium ${
+                  connectionStatus === 'connected' ? 'text-green-700 dark:text-green-400' : 
+                  connectionStatus === 'connecting' ? 'text-yellow-700 dark:text-yellow-400' : 'text-red-700 dark:text-red-400'
+                }`}>
+                  {connectionStatus === 'connected' ? 'Connected' : 
+                   connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
+                </span>
+              </div>
+              <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                <span className="font-medium mr-2">Last Update:</span>
+                <span>{lastUpdate}</span>
+                {isPaused && (
+                  <span className="ml-3 px-3 py-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-400 text-xs rounded-full border border-yellow-200 dark:border-yellow-700 font-medium">
+                    Paused
+                  </span>
+                )}
+              </div>
+            </div>
+            <button 
+              onClick={togglePauseUpdates}
+              className={`px-4 py-2 ${isPaused ? 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700' : 'bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-600 dark:hover:bg-yellow-700'} text-white rounded-lg font-medium transition-colors`}
+            >
+              {isPaused ? 'Resume Updates' : 'Pause Updates'}
+            </button>
+          </div>
         </div>
       </div>
-      
+
       {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-          {error}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="p-6">
+            <div className="flex items-start space-x-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-red-800 dark:text-red-300 mb-2">Connection Error</h3>
+                <p className="text-red-700 dark:text-red-400">{error}</p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
-      
-      <div className="mb-2 flex items-center">
-        <span className="font-semibold mr-2">Last Update:</span> {lastUpdate}
-        {isPaused && (
-          <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-            Updates paused
-          </span>
-        )}
-      </div>
       
       {/* Tabs */}
-      <div className="mb-4 border-b border-gray-200">
-        <div className="flex">
-          <button
-            className={`px-4 py-2 ${activeTab === 'timesteps' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-600'}`}
-            onClick={() => setActiveTab('timesteps')}
-          >
-            Timesteps Results
-          </button>
-          <button
-            className={`px-4 py-2 ${activeTab === 'kpi' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-600'}`}
-            onClick={() => setActiveTab('kpi')}
-          >
-            KPI Results
-          </button>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="border-b border-gray-200 dark:border-gray-600">
+          <div className="flex px-6">
+            <button
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'timesteps' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
+              onClick={() => setActiveTab('timesteps')}
+            >
+              Timesteps Results
+            </button>
+            <button
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'kpi' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
+              onClick={() => setActiveTab('kpi')}
+            >
+              KPI Results
+            </button>
+          </div>
         </div>
-      </div>
-      
-      {activeTab === 'timesteps' && (
-        timestepsData ? (
-          <div className="overflow-x-auto">
-            <div className="mb-4 text-sm">
-              <p className="text-gray-600">This is the time series data from the simulation. It shows how values change over time for each bus.</p>
-            </div>
-            
-            {/* Visualization controls */}
-            <div className="mb-4 flex flex-wrap items-center justify-between">
-              <div className="flex items-center gap-4 mb-2 md:mb-0">
-                <h3 className="text-md font-medium">Visualization Type:</h3>
-                <div className="flex bg-gray-100 rounded-lg p-1">
-                  <button 
-                    onClick={() => setVisualizationType('table')}
-                    className={`px-3 py-2 rounded-md text-sm font-medium ${
-                      visualizationType === 'table' 
-                        ? 'bg-white text-blue-600 shadow' 
-                        : 'text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    Table
-                  </button>
-                  <button 
-                    onClick={() => setVisualizationType('lineChart')}
-                    className={`px-3 py-2 rounded-md text-sm font-medium ${
-                      visualizationType === 'lineChart' 
-                        ? 'bg-white text-blue-600 shadow' 
-                        : 'text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    Line Chart
-                  </button>
-                  <button 
-                    onClick={() => setVisualizationType('areaChart')}
-                    className={`px-3 py-2 rounded-md text-sm font-medium ${
-                      visualizationType === 'areaChart' 
-                        ? 'bg-white text-blue-600 shadow' 
-                        : 'text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    Area Chart
-                  </button>
+        
+        <div className="p-6">
+          {activeTab === 'timesteps' && (
+            timestepsData ? (
+              <div className="space-y-8">
+                <div className="text-sm text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
+                  <p>This is the time series data from the simulation. It shows how values change over time for each bus.</p>
                 </div>
-              </div>
-              
-              {visualizationType !== 'table' && (
-                <div className="flex items-center gap-2">
-                  <h3 className="text-md font-medium">Metric:</h3>
-                  <select
-                    value={selectedMetric}
-                    onChange={(e) => setSelectedMetric(e.target.value as 'voltage' | 'load' | 'converterPower')}
-                    className="p-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="voltage">Voltage (pu)</option>
-                    <option value="load">Load (MW)</option>
-                    <option value="converterPower">Converter Power (MW)</option>
-                  </select>
-                </div>
-              )}
-            </div>
-            
-            {/* Filters */}
-            <div className="mb-4 flex flex-wrap items-center gap-4">
-              <div>
-                <label htmlFor="busFilter" className="block text-sm font-medium text-gray-700 mb-1">Filter by Bus ID:</label>
-                <select 
-                  id="busFilter" 
-                  value={busIdFilter === '' ? '' : busIdFilter.toString()}
-                  onChange={(e) => setBusIdFilter(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="p-2 border border-gray-300 rounded-md w-32"
-                >
-                  <option value="">All Buses</option>
-                  {uniqueBusIds.map((id) => (
-                    <option key={id} value={id}>Bus {id}</option>
-                  ))}
-                </select>
-              </div>
-              
-              {visualizationType === 'table' && (
-                <>
-                  <div>
-                    <label htmlFor="timestepFilter" className="block text-sm font-medium text-gray-700 mb-1">Filter by Timestep:</label>
-                    <select 
-                      id="timestepFilter" 
-                      value={timestepFilter}
-                      onChange={(e) => setTimestepFilter(e.target.value)}
-                      className="p-2 border border-gray-300 rounded-md w-32"
-                    >
-                      <option value="">All Timesteps</option>
-                      {uniqueTimesteps.map((ts) => (
-                        <option key={ts} value={ts}>{ts}</option>
-                      ))}
-                    </select>
+                
+                {/* Visualization controls */}
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-md font-medium text-gray-900 dark:text-gray-100">Visualization Type:</h3>
+                    <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                      <button 
+                        onClick={() => setVisualizationType('table')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                          visualizationType === 'table' 
+                            ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        Table
+                      </button>
+                      <button 
+                        onClick={() => setVisualizationType('lineChart')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                          visualizationType === 'lineChart' 
+                            ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        Line Chart
+                      </button>
+                      <button 
+                        onClick={() => setVisualizationType('areaChart')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                          visualizationType === 'areaChart' 
+                            ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        Area Chart
+                      </button>
+                    </div>
                   </div>
                   
-                  <div>
-                    <label htmlFor="itemsPerPage" className="block text-sm font-medium text-gray-700 mb-1">Items per page:</label>
-                    <select 
-                      id="itemsPerPage" 
-                      value={itemsPerPage}
-                      onChange={(e) => {
-                        setItemsPerPage(Number(e.target.value));
-                        setCurrentPage(1); // Reset to first page when changing items per page
-                      }}
-                      className="p-2 border border-gray-300 rounded-md w-24"
-                    >
-                      <option value={10}>10</option>
-                      <option value={20}>20</option>
-                      <option value={50}>50</option>
-                      <option value={100}>100</option>
-                    </select>
+                  {visualizationType !== 'table' && (
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-md font-medium text-gray-900 dark:text-gray-100">Metric:</h3>
+                      <select
+                        value={selectedMetric}
+                        onChange={(e) => setSelectedMetric(e.target.value as 'voltage' | 'load' | 'converterPower')}
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      >
+                        <option value="voltage">Voltage (pu)</option>
+                        <option value="load">Load (MW)</option>
+                        <option value="converterPower">Converter Power (MW)</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Filters */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                  <h3 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">Filters</h3>
+                  <div className="flex flex-wrap items-end gap-4">
+                    <div>
+                      <label htmlFor="busFilter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by Bus ID:</label>
+                      <select 
+                        id="busFilter" 
+                        value={busIdFilter === '' ? '' : busIdFilter.toString()}
+                        onChange={(e) => setBusIdFilter(e.target.value === '' ? '' : Number(e.target.value))}
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg w-32 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      >
+                        <option value="">All Buses</option>
+                        {uniqueBusIds.map((id) => (
+                          <option key={id} value={id}>Bus {id}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {visualizationType === 'table' && (
+                      <>
+                        <div>
+                          <label htmlFor="timestepFilter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by Timestep:</label>
+                          <select 
+                            id="timestepFilter" 
+                            value={timestepFilter}
+                            onChange={(e) => setTimestepFilter(e.target.value)}
+                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg w-32 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          >
+                            <option value="">All Timesteps</option>
+                            {uniqueTimesteps.map((ts) => (
+                              <option key={ts} value={ts}>{ts}</option>
+                            ))}
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label htmlFor="itemsPerPage" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Items per page:</label>
+                          <select 
+                            id="itemsPerPage" 
+                            value={itemsPerPage}
+                            onChange={(e) => {
+                              setItemsPerPage(Number(e.target.value));
+                              setCurrentPage(1); // Reset to first page when changing items per page
+                            }}
+                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg w-24 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                          </select>
+                        </div>
+                      </>
+                    )}
+                    
+                    <div>
+                      <button 
+                        onClick={() => {
+                          setBusIdFilter('');
+                          setTimestepFilter('');
+                        }}
+                        className="px-4 py-2 bg-gray-600 dark:bg-gray-500 hover:bg-gray-700 dark:hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Clear Filters
+                      </button>
+                    </div>
                   </div>
-                </>
-              )}
-              
-              <div>
-                <button 
-                  onClick={() => {
-                    setBusIdFilter('');
-                    setTimestepFilter('');
-                  }}
-                  className="mt-6 px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-sm"
-                >
-                  Clear Filters
-                </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900">
+                  <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h3 className="mt-4 text-sm font-medium text-gray-900 dark:text-gray-100">No timesteps data available yet</h3>
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Please start the simulation service to begin collecting data.</p>
+              </div>
+            )
+          )}
+          
+          {activeTab === 'kpi' && (
+            <div className="text-center py-12">
+              <div className="mx-auto max-w-md">
+                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 dark:bg-blue-900/20">
+                  <svg className="h-8 w-8 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+                <div className="mt-6 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700">
+                  <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-300 mb-3">KPI Results - Coming Soon</h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    The Key Performance Indicators (KPI) view is under development. This tab will display efficiency, economic, and environmental metrics for your DC power flow simulations.
+                  </p>
+                  <div className="text-left bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-600">
+                    <p className="text-gray-600 dark:text-gray-400 mb-3 font-medium">
+                      Future metrics will include:
+                    </p>
+                    <ul className="space-y-2 text-gray-600 dark:text-gray-400">
+                      <li className="flex items-center">
+                        <div className="h-1.5 w-1.5 bg-blue-500 rounded-full mr-3"></div>
+                        Energy efficiency and losses
+                      </li>
+                      <li className="flex items-center">
+                        <div className="h-1.5 w-1.5 bg-blue-500 rounded-full mr-3"></div>
+                        Capital and operational expenses
+                      </li>
+                      <li className="flex items-center">
+                        <div className="h-1.5 w-1.5 bg-blue-500 rounded-full mr-3"></div>
+                        Carbon footprint and environmental impact
+                      </li>
+                      <li className="flex items-center">
+                        <div className="h-1.5 w-1.5 bg-blue-500 rounded-full mr-3"></div>
+                        System reliability statistics
+                      </li>
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            {filteredTimesteps.length > 0 ? (
-              <>
-                {/* Table visualization */}
-                {visualizationType === 'table' && (
-                  <>
-                    <table className="min-w-full bg-white border border-gray-200">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="py-2 px-4 border">Time</th>
-                          <th className="py-2 px-4 border">Bus ID</th>
-                          <th className="py-2 px-4 border">Voltage (pu)</th>
-                          <th className="py-2 px-4 border">Load (MW)</th>
-                          <th className="py-2 px-4 border">Converter Power (MW)</th>
-                          <th className="py-2 px-4 border">Converter Loading (%)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {currentPageData.map((step, index) => {
-                          // Find converter power and loading values
-                          const converterPowerKeys = Object.keys(step).filter(key => key.includes('converter_') && key.includes('_power'));
-                          const converterPower = converterPowerKeys.length > 0 ? step[converterPowerKeys[0]] : null;
-                          
-                          const converterLoadingKeys = Object.keys(step).filter(key => key.includes('converter_') && key.includes('_loading'));
-                          const converterLoading = converterLoadingKeys.length > 0 ? step[converterLoadingKeys[0]] : null;
-                          
-                          return (
-                            <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                              <td className="py-2 px-4 border">{step.timestamp || '—'}</td>
-                              <td className="py-2 px-4 border">{step.bus_id !== undefined ? step.bus_id : '—'}</td>
-                              <td className="py-2 px-4 border">{step.voltage !== undefined && step.voltage !== null ? step.voltage.toFixed(4) : '—'}</td>
-                              <td className="py-2 px-4 border">{step.load !== undefined && step.load !== null ? step.load.toFixed(6) : '—'}</td>
-                              <td className="py-2 px-4 border">{converterPower !== undefined && converterPower !== null ? Number(converterPower).toFixed(6) : '—'}</td>
-                              <td className="py-2 px-4 border">{converterLoading !== undefined && converterLoading !== null ? Number(converterLoading).toFixed(2) : '—'}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                    
-                    {/* Pagination */}
-                    <div className="mt-4 flex flex-wrap justify-between items-center">
-                      <div className="text-sm text-gray-500 mb-2 md:mb-0">
-                        Showing {filteredTimesteps.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, filteredTimesteps.length)} of {filteredTimesteps.length} records
-                      </div>
-                      
-                      {totalPages > 1 && (
-                        <div className="flex items-center">
-                          <button 
-                            onClick={() => goToPage(currentPage - 1)} 
-                            disabled={currentPage === 1}
-                            className={`px-3 py-1 mx-1 ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 hover:bg-gray-300'} rounded`}
-                          >
-                            Previous
-                          </button>
-                          
-                          {renderPageButtons()}
-                          
-                          <button 
-                            onClick={() => goToPage(currentPage + 1)} 
-                            disabled={currentPage === totalPages}
-                            className={`px-3 py-1 mx-1 ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 hover:bg-gray-300'} rounded`}
-                          >
-                            Next
-                          </button>
-                        </div>
-                      )}
+          )}
+        </div>
+      </div>
+
+      {/* Chart and Table Sections - Only show when timestepsData is available and there are filtered results */}
+      {activeTab === 'timesteps' && timestepsData && filteredTimesteps.length > 0 && (
+        <>
+          {/* Table visualization */}
+          {visualizationType === 'table' && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-700 dark:to-slate-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-slate-500 to-gray-600 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0V7a2 2 0 012-2h8a2 2 0 012 2v13H5z" />
+                      </svg>
                     </div>
-                  </>
-                )}
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Simulation Data Table</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Power flow simulation timestep data</p>
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {filteredTimesteps.length} records
+                  </div>
+                </div>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Time</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Bus ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Voltage (pu)</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Load (MW)</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Converter Power (MW)</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Converter Loading (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+                    {currentPageData.map((step, index) => {
+                      // Find converter power and loading values
+                      const converterPowerKeys = Object.keys(step).filter(key => key.includes('converter_') && key.includes('_power'));
+                      const converterPower = converterPowerKeys.length > 0 ? step[converterPowerKeys[0]] : null;
+                      
+                      const converterLoadingKeys = Object.keys(step).filter(key => key.includes('converter_') && key.includes('_loading'));
+                      const converterLoading = converterLoadingKeys.length > 0 ? step[converterLoadingKeys[0]] : null;
+                      
+                      return (
+                        <tr key={index} className={`${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700/30'} hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors duration-150`}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{step.timestamp || '—'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{step.bus_id !== undefined ? step.bus_id : '—'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{step.voltage !== undefined && step.voltage !== null ? step.voltage.toFixed(4) : '—'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{step.load !== undefined && step.load !== null ? step.load.toFixed(6) : '—'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{converterPower !== undefined && converterPower !== null ? Number(converterPower).toFixed(6) : '—'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{converterLoading !== undefined && converterLoading !== null ? Number(converterLoading).toFixed(2) : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Pagination */}
+              <div className="bg-white dark:bg-gray-800 px-6 py-3 border-t border-gray-200 dark:border-gray-600 flex flex-wrap justify-between items-center">
+                <div className="text-sm text-gray-700 dark:text-gray-300 mb-2 md:mb-0">
+                  Showing {filteredTimesteps.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, filteredTimesteps.length)} of {filteredTimesteps.length} records
+                </div>
                 
-                {/* Line Chart visualization */}
-                {visualizationType === 'lineChart' && (
-                  <div className="mt-4 bg-white p-4 rounded-lg border border-gray-200">
-                    <h3 className="text-lg font-semibold mb-4">
-                      {selectedMetric === 'voltage' ? 'Voltage Over Time' : 
-                       selectedMetric === 'load' ? 'Load Over Time' : 
+                {totalPages > 1 && (
+                  <div className="flex items-center">
+                    <button 
+                      onClick={() => goToPage(currentPage - 1)} 
+                      disabled={currentPage === 1}
+                      className={`px-3 py-1 mx-1 ${currentPage === 1 ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed' : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500'} rounded border border-gray-300 dark:border-gray-600 transition-colors`}
+                    >
+                      Previous
+                    </button>
+                    
+                    {renderPageButtons()}
+                    
+                    <button 
+                      onClick={() => goToPage(currentPage + 1)} 
+                      disabled={currentPage === totalPages}
+                      className={`px-3 py-1 mx-1 ${currentPage === totalPages ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed' : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500'} rounded border border-gray-300 dark:border-gray-600 transition-colors`}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* Line Chart visualization */}
+          {visualizationType === 'lineChart' && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {selectedMetric === 'voltage' ? 'Voltage Statistics Over Time' : 
+                       selectedMetric === 'load' ? 'Total Load Over Time' : 
                        'Converter Power Over Time'}
                     </h3>
-                    <div className="h-96 w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
-                          data={prepareChartData}
-                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis 
-                            dataKey="name" 
-                            label={{ value: 'Timestep', position: 'insideBottomRight', offset: -10 }} 
-                          />
-                          <YAxis 
-                            label={{ 
-                              value: selectedMetric === 'voltage' ? 'Voltage (pu)' : 
-                                     selectedMetric === 'load' ? 'Load (MW)' : 
-                                     'Converter Power (MW)', 
-                              angle: -90, 
-                              position: 'insideLeft' 
-                            }}
-                          />
-                          <Tooltip />
-                          <Legend />
-                          {prepareChartData.length > 0 && Object.keys(prepareChartData[0])
-                            .filter(key => key !== 'name' && key.includes(selectedMetric === 'voltage' ? 'Voltage' : 
-                                                                        selectedMetric === 'load' ? 'Load' : 
-                                                                        'ConverterPower'))
-                            .map((key, index) => (
-                              <Line 
-                                type="monotone" 
-                                dataKey={key} 
-                                key={key}
-                                stroke={
-                                  ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#00C49F', '#FFBB28', '#FF8042', '#0088FE'][index % 8]
-                                }
-                                activeDot={{ r: 8 }}
-                              />
-                            ))
-                          }
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {selectedMetric === 'voltage' ? 'Average, minimum, and maximum voltage across all buses' : 
+                       selectedMetric === 'load' ? 'Total load consumption across all buses' : 
+                       'Total and average converter power across all converters'}
+                    </p>
                   </div>
-                )}
-                
-                {/* Area Chart visualization */}
-                {visualizationType === 'areaChart' && (
-                  <div className="mt-4 bg-white p-4 rounded-lg border border-gray-200">
-                    <h3 className="text-lg font-semibold mb-4">
-                      {selectedMetric === 'voltage' ? 'Voltage Area Chart' : 
-                       selectedMetric === 'load' ? 'Load Area Chart' : 
-                       'Converter Power Area Chart'}
-                    </h3>
-                    <div className="h-96 w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart
-                          data={prepareChartData}
-                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis 
-                            dataKey="name" 
-                            label={{ value: 'Timestep', position: 'insideBottomRight', offset: -10 }} 
-                          />
-                          <YAxis 
-                            label={{ 
-                              value: selectedMetric === 'voltage' ? 'Voltage (pu)' : 
-                                     selectedMetric === 'load' ? 'Load (MW)' : 
-                                     'Converter Power (MW)', 
-                              angle: -90, 
-                              position: 'insideLeft' 
-                            }}
-                          />
-                          <Tooltip />
-                          <Legend />
-                          {prepareChartData.length > 0 && Object.keys(prepareChartData[0])
-                            .filter(key => key !== 'name' && key.includes(selectedMetric === 'voltage' ? 'Voltage' : 
-                                                                        selectedMetric === 'load' ? 'Load' : 
-                                                                        'ConverterPower'))
-                            .map((key, index) => (
-                              <Area 
-                                type="monotone" 
-                                dataKey={key} 
-                                key={key}
-                                stroke={
-                                  ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#00C49F', '#FFBB28', '#FF8042', '#0088FE'][index % 8]
-                                }
-                                fillOpacity={0.3}
-                                fill={
-                                  ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#00C49F', '#FFBB28', '#FF8042', '#0088FE'][index % 8]
-                                }
-                              />
-                            ))
-                          }
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-4 bg-gray-50 rounded-lg">
-                <p>No data found with the current filters. Try adjusting your filters.</p>
+                </div>
               </div>
-            )}
-          </div>
-        ) : (
-          <div className="text-center py-4">
-            <p>No timesteps data available yet. Please start the simulation service.</p>
-          </div>
-        )
-      )}
-      
-      {activeTab === 'kpi' && (
-        <div className="text-center py-4">
-          <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <h3 className="text-lg font-semibold text-blue-700 mb-2">KPI Results - Coming Soon</h3>
-            <p className="text-gray-600">
-              The Key Performance Indicators (KPI) view is under development. This tab will display efficiency, economic, and environmental metrics for your DC power flow simulations.
-            </p>
-          </div>
-          <p className="text-gray-600">
-            Future metrics will include:
-          </p>
-          <ul className="mt-2 inline-block text-left text-gray-600">
-            <li className="mb-1">• Energy efficiency and losses</li>
-            <li className="mb-1">• Capital and operational expenses</li>
-            <li className="mb-1">• Carbon footprint and environmental impact</li>
-            <li className="mb-1">• System reliability statistics</li>
-          </ul>
-        </div>
+              <div className="p-6">
+                <div className="h-96 w-full">
+                  {prepareChartData.length === 0 ? (
+                    <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700 rounded-lg">
+                      <div className="text-center">
+                        <p className="text-gray-500 dark:text-gray-400">No chart data available</p>
+                        <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
+                          Data points: {prepareChartData.length} | 
+                          Filtered timesteps: {filteredTimesteps.length} |
+                          Raw timesteps: {timestepsData?.length || 0}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={prepareChartData}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis 
+                          dataKey="name" 
+                          stroke="#6B7280"
+                          label={{ value: 'Timestep', position: 'insideBottomRight', offset: -10 }} 
+                        />
+                        <YAxis 
+                          stroke="#6B7280"
+                          label={{ 
+                            value: selectedMetric === 'voltage' ? 'Voltage (pu)' : 
+                                   selectedMetric === 'load' ? 'Load (MW)' : 
+                                   'Converter Power (MW)', 
+                            angle: -90, 
+                            position: 'insideLeft' 
+                          }}
+                        />
+                        <Tooltip 
+                          contentStyle={{
+                            backgroundColor: '#1F2937',
+                            border: '1px solid #374151',
+                            borderRadius: '8px',
+                            color: '#F9FAFB'
+                          }}
+                        />
+                        <Legend />
+                        {selectedMetric === 'voltage' && (
+                          <>
+                            <Line 
+                              type="monotone" 
+                              dataKey="Average Voltage" 
+                              stroke="#3B82F6"
+                              strokeWidth={2}
+                              activeDot={{ r: 6 }}
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="Min Voltage" 
+                              stroke="#EF4444"
+                              strokeWidth={1}
+                              strokeDasharray="5 5"
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="Max Voltage" 
+                              stroke="#10B981"
+                              strokeWidth={1}
+                              strokeDasharray="5 5"
+                            />
+                          </>
+                        )}
+                        {selectedMetric === 'load' && (
+                          <Line 
+                            type="monotone" 
+                            dataKey="Total Load" 
+                            stroke="#8B5CF6"
+                            strokeWidth={2}
+                            activeDot={{ r: 6 }}
+                          />
+                        )}
+                        {selectedMetric === 'converterPower' && (
+                          <>
+                            <Line 
+                              type="monotone" 
+                              dataKey="Total Converter Power" 
+                              stroke="#F59E0B"
+                              strokeWidth={2}
+                              activeDot={{ r: 6 }}
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="Average Converter Power" 
+                              stroke="#06B6D4"
+                              strokeWidth={1}
+                              strokeDasharray="3 3"
+                            />
+                          </>
+                        )}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Area Chart visualization */}
+          {visualizationType === 'areaChart' && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {selectedMetric === 'voltage' ? 'Voltage Range Over Time' : 
+                       selectedMetric === 'load' ? 'Load Accumulation Over Time' : 
+                       'Converter Power Over Time'}
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {selectedMetric === 'voltage' ? 'Voltage range showing min-max spread across all buses' : 
+                       selectedMetric === 'load' ? 'Cumulative load showing total system demand' : 
+                       'Total converter power showing system power conversion'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="h-96 w-full">
+                  {prepareChartData.length === 0 ? (
+                    <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700 rounded-lg">
+                      <div className="text-center">
+                        <p className="text-gray-500 dark:text-gray-400">No chart data available</p>
+                        <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
+                          Data points: {prepareChartData.length} | 
+                          Filtered timesteps: {filteredTimesteps.length} |
+                          Raw timesteps: {timestepsData?.length || 0}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={prepareChartData}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis 
+                          dataKey="name" 
+                          stroke="#6B7280"
+                          label={{ value: 'Timestep', position: 'insideBottomRight', offset: -10 }} 
+                        />
+                        <YAxis 
+                          stroke="#6B7280"
+                          label={{ 
+                            value: selectedMetric === 'voltage' ? 'Voltage (pu)' : 
+                                   selectedMetric === 'load' ? 'Load (MW)' : 
+                                   'Converter Power (MW)', 
+                            angle: -90, 
+                            position: 'insideLeft' 
+                          }}
+                        />
+                        <Tooltip 
+                          contentStyle={{
+                            backgroundColor: '#1F2937',
+                            border: '1px solid #374151',
+                            borderRadius: '8px',
+                            color: '#F9FAFB'
+                          }}
+                        />
+                        <Legend />
+                        {selectedMetric === 'voltage' && (
+                          <>
+                            <Area 
+                              type="monotone" 
+                              dataKey="Max Voltage" 
+                              stackId="1"
+                              stroke="#10B981"
+                              fill="#10B981"
+                              fillOpacity={0.3}
+                            />
+                            <Area 
+                              type="monotone" 
+                              dataKey="Average Voltage" 
+                              stackId="1"
+                              stroke="#3B82F6"
+                              fill="#3B82F6"
+                              fillOpacity={0.6}
+                            />
+                          </>
+                        )}
+                        {selectedMetric === 'load' && (
+                          <Area 
+                            type="monotone" 
+                            dataKey="Total Load" 
+                            stroke="#8B5CF6"
+                            fill="#8B5CF6"
+                            fillOpacity={0.4}
+                          />
+                        )}
+                        {selectedMetric === 'converterPower' && (
+                          <Area 
+                            type="monotone" 
+                            dataKey="Total Converter Power" 
+                            stroke="#F59E0B"
+                            fill="#F59E0B"
+                            fillOpacity={0.4}
+                          />
+                        )}
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* No data fallback when filtered results are empty */}
+          {filteredTimesteps.length === 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="p-12 text-center bg-gray-50 dark:bg-gray-700/50">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-gray-100 dark:bg-gray-600">
+                  <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h3 className="mt-4 text-sm font-medium text-gray-900 dark:text-gray-100">No data found with the current filters</h3>
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Try adjusting your filters to see more results.</p>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

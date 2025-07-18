@@ -174,28 +174,28 @@ export default function PortEnergyOverview() {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Port Energy Overview</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Port Energy Overview</h2>
         <div className="h-64 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          <span className="ml-2 text-gray-500">Loading energy data...</span>
+          <span className="ml-2 text-gray-500 dark:text-gray-400">Loading energy data...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-800">Port Energy Overview</h2>
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Port Energy Overview</h2>
         <div className="flex items-center space-x-2">
           {isConnected ? (
-            <div className="flex items-center text-green-600">
+            <div className="flex items-center text-green-600 dark:text-green-400">
               <Wifi className="h-4 w-4 mr-1" />
               <span className="text-sm">Live</span>
             </div>
           ) : (
-            <div className="flex items-center text-red-600">
+            <div className="flex items-center text-red-600 dark:text-red-400">
               <WifiOff className="h-4 w-4 mr-1" />
               <span className="text-sm">Offline</span>
             </div>
@@ -205,56 +205,56 @@ export default function PortEnergyOverview() {
 
       {/* Summary Statistics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-blue-50 rounded-lg p-4">
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
           <div className="flex items-center">
-            <Database className="h-8 w-8 text-blue-600" />
+            <Database className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">Total Devices</p>
-              <p className="text-2xl font-bold text-gray-900">{summaryStats.totalDevices}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Devices</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{summaryStats.totalDevices}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-green-50 rounded-lg p-4">
+        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-700">
           <div className="flex items-center">
-            <Activity className="h-8 w-8 text-green-600" />
+            <Activity className="h-8 w-8 text-green-600 dark:text-green-400" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">Active Devices</p>
-              <p className="text-2xl font-bold text-gray-900">{summaryStats.activeDevices}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Active Devices</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{summaryStats.activeDevices}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-yellow-50 rounded-lg p-4">
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-700">
           <div className="flex items-center">
-            <Zap className="h-8 w-8 text-yellow-600" />
+            <Zap className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">Current Power</p>
-              <p className="text-2xl font-bold text-gray-900">{summaryStats.currentTotalPower.toLocaleString()}</p>
-              <p className="text-xs text-gray-500">Watts</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Current Power</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{summaryStats.currentTotalPower.toLocaleString()}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Watts</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-purple-50 rounded-lg p-4">
+        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
           <div className="flex items-center">
-            <Activity className="h-8 w-8 text-purple-600" />
+            <Activity className="h-8 w-8 text-purple-600 dark:text-purple-400" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">Avg Power Factor</p>
-              <p className="text-2xl font-bold text-gray-900">{summaryStats.averagePowerFactor}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Avg Power Factor</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{summaryStats.averagePowerFactor}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Power Trend Chart */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <h3 className="text-lg font-medium text-gray-800 mb-3">Real-time Power Trend</h3>
+      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+        <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-3">Real-time Power Trend</h3>
         <div className="h-48">
           {allData.length > 0 ? (
             <Line data={trendChartData} options={chartOptions} />
           ) : (
-            <div className="h-full flex items-center justify-center text-gray-500">
+            <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
               {isConnected ? "Waiting for data..." : "Connect to view real-time data"}
             </div>
           )}
@@ -262,7 +262,7 @@ export default function PortEnergyOverview() {
       </div>
 
       {/* Quick Status */}
-      <div className="mt-4 text-sm text-gray-600">
+      <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
         <p>
           Last updated: {allData.length > 0 ? new Date(allData[allData.length - 1]?.timestamp).toLocaleTimeString() : 'N/A'}
         </p>

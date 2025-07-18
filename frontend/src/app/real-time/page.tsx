@@ -33,9 +33,10 @@ export default function RealTimeDataPage() {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">
+      <div className="container mx-auto space-y-8">
+        {/* Simplified Header Section */}
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {isHistoricalView ? 'Historical' : 'Real-Time'} Port Energy Data
           </h1>
           

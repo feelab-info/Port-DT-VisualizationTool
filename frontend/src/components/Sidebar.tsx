@@ -17,20 +17,20 @@ export default function Sidebar() {
   ];
 
   return (
-    <div className="h-full w-64 bg-gray-800 text-white p-4 flex flex-col">
+    <div className="h-full w-64 bg-sidebar-bg text-sidebar-text p-4 flex flex-col">
       <div className="mb-8 flex items-center gap-3">
         <Anchor className="h-8 w-8" />
-        <h1 className="text-xl font-bold text-white">Port Digital Twin</h1>
+        <h1 className="text-xl font-bold text-sidebar-text">Port Digital Twin</h1>
       </div>
       
       {/* User profile placeholder */}
-      <div className="mb-6 p-3 bg-gray-700 rounded-lg flex items-center gap-3">
-        <div className="bg-blue-600 p-2 rounded-full">
+      <div className="mb-6 p-3 bg-gray-700 dark:bg-gray-600 rounded-lg flex items-center gap-3">
+        <div className="bg-blue-600 dark:bg-blue-500 p-2 rounded-full">
           <User className="h-5 w-5" />
         </div>
         <div>
-          <p className="font-medium">Welcome, Admin</p>
-          <p className="text-xs text-gray-400">Port Authority</p>
+          <p className="font-medium text-sidebar-text">Welcome, Admin</p>
+          <p className="text-xs text-gray-400 dark:text-gray-300">Port Authority</p>
         </div>
       </div>
       
@@ -46,8 +46,8 @@ export default function Sidebar() {
                   href={item.href}
                   className={`flex items-center gap-3 px-4 py-3 rounded-md transition-colors ${
                     isActive 
-                      ? 'bg-blue-600 text-white' 
-                      : 'text-gray-300 hover:bg-gray-700'
+                      ? 'bg-blue-600 dark:bg-blue-500 text-white dark:text-white' 
+                      : 'text-gray-300 dark:text-gray-200 hover:bg-gray-700 dark:hover:bg-gray-600'
                   }`}
                 >
                   <Icon className="h-5 w-5" />
@@ -59,11 +59,11 @@ export default function Sidebar() {
         </ul>
       </nav>
       
-      <div className="mt-auto pt-4 border-t border-gray-700 flex items-center justify-between">
-        <span className="text-sm text-gray-400">v1.0</span>
+      <div className="mt-auto pt-4 border-t border-gray-700 dark:border-gray-600 flex items-center justify-between">
+        <span className="text-sm text-gray-400 dark:text-gray-300">v1.0</span>
         <button 
           onClick={toggleTheme}
-          className="p-2 rounded-full hover:bg-gray-700 transition-colors flex items-center gap-2"
+          className="p-2 rounded-full hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors flex items-center gap-2"
           aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
         >
           {theme === 'light' ? (

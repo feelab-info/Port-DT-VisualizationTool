@@ -6,12 +6,24 @@ export default {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  darkMode: ['selector', '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        "port-blue": "#3b82f6", // Adding the blue color from sidebar
+        "port-blue": "var(--port-blue)",
+        "card-bg": "var(--card-bg)",
+        "hover-bg": "var(--hover-bg)",
+        "border-color": "var(--border-color)",
+        sidebar: {
+          bg: "var(--sidebar-bg)",
+          text: "var(--sidebar-text)",
+          highlight: "var(--sidebar-highlight)",
+        },
+      },
+      boxShadow: {
+        'card': '0 4px 6px var(--card-shadow)',
       },
     },
   },

@@ -27,9 +27,9 @@ class DeviceDataHealthMonitor extends EventEmitter {
   private lastDeviceUpdate: string | null = null;
 
   constructor(config: DeviceHealthCheckConfig = {
-    expectedDataInterval: 90000, // 45 seconds (slightly more than the 30s polling interval)
+    expectedDataInterval: 150000, // 150The  seconds (slightly more than the 30s polling interval)
     maxConsecutiveFailures: 2,
-    healthCheckInterval: 30000 // 15 seconds
+    healthCheckInterval: 50000 // 50 seconds
   }) {
     super();
     this.config = config;

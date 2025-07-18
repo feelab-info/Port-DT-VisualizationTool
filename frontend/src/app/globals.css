@@ -36,40 +36,6 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Improve text visibility in the application */
-.text-gray-500, .text-gray-600 {
-  color: var(--foreground) !important;
-  opacity: 0.7;
-}
-
-/* Use port blue for headings and important text */
-h1, h2, h3, h4, h5, h6 {
-  color: var(--port-blue);
-}
-
-/* Card styling */
-.bg-white {
-  background-color: var(--card-bg) !important;
-}
-
-.shadow-md, .shadow-sm, .shadow-lg {
-  box-shadow: 0 4px 6px var(--card-shadow) !important;
-}
-
-/* Hover states */
-.hover\:bg-gray-100:hover {
-  background-color: var(--hover-bg) !important;
-}
-
-.hover\:bg-blue-50:hover {
-  background-color: var(--sidebar-highlight) !important;
-}
-
-/* Border colors */
-.border {
-  border-color: var(--border-color) !important;
-}
-
 /* Sidebar styles */
 .sidebar {
   position: absolute;
@@ -132,26 +98,19 @@ h1, h2, h3, h4, h5, h6 {
   right: 315px; /* Position toggle button at the edge of the screen */
 }
 
-/* Device selection and details styling */
-.device-selection h3,
-.device-details h3,
-.device-details h4 {
-  color: var(--sidebar-text);
-}
-
+/* Sidebar-specific styling overrides */
 .sidebar .bg-white {
   background-color: rgba(255, 255, 255, 0.1) !important;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.sidebar button:hover {
-  background-color: rgba(59, 130, 246, 0.3) !important;
+.sidebar .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.2) !important;
 }
 
-.sidebar .font-medium,
-.sidebar .font-bold,
-.sidebar .font-semibold {
-  color: var(--sidebar-text);
+.sidebar .bg-gray-50,
+.sidebar .bg-gray-100 {
+  background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .sidebar .text-gray-500,
@@ -161,32 +120,30 @@ h1, h2, h3, h4, h5, h6 {
   color: rgba(255, 255, 255, 0.7) !important;
 }
 
-.sidebar .bg-blue-50 {
-  background-color: rgba(59, 130, 246, 0.2);
+.sidebar .font-medium,
+.sidebar .font-bold,
+.sidebar .font-semibold {
+  color: var(--sidebar-text) !important;
 }
 
-.sidebar .bg-gray-50,
-.sidebar .bg-gray-100 {
-  background-color: rgba(255, 255, 255, 0.1);
+.sidebar button:hover,
+.sidebar .hover\:bg-gray-100:hover,
+.sidebar button.hover\:bg-gray-100:hover {
+  background-color: rgba(59, 130, 246, 0.3) !important;
 }
 
 .sidebar table {
   color: var(--sidebar-text);
 }
 
-.sidebar button.hover\:bg-gray-100:hover {
-  background-color: rgba(59, 130, 246, 0.3);
+/* Device selection and details styling */
+.device-selection h3,
+.device-details h3,
+.device-details h4 {
+  color: var(--sidebar-text);
 }
 
-/* Dark mode specific overrides for charts and data displays */
-[data-theme='dark'] .bg-gray-100 {
-  background-color: #374151 !important;
-}
-
-[data-theme='dark'] .text-gray-800 {
-  color: #f3f4f6 !important;
-}
-
-[data-theme='dark'] .text-gray-600 {
-  color: #d1d5db !important;
+/* Chart.js dark mode compatibility */
+[data-theme='dark'] .chartjs-render-monitor {
+  filter: brightness(0.9);
 }

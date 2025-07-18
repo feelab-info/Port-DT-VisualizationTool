@@ -25,7 +25,7 @@ export function useEnergyData() {
       }
     });
     
-    return Array.from(deviceMap.entries())
+    const extractedDevices = Array.from(deviceMap.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => {
         // Sort D1-D31 numerically
@@ -46,6 +46,8 @@ export function useEnergyData() {
         // Default alphabetical sort
         return a.name.localeCompare(b.name);
       });
+    
+    return extractedDevices;
   };
   
   // Format device ID to make it more readable
@@ -79,6 +81,14 @@ export function useEnergyData() {
     } else {
       // Filter by selected device
       const deviceData = data.filter(item => item.device === deviceId);
+      
+      if (deviceData.length === 0) {
+        // This indicates a device ID mismatch between selection and data
+        // We should ideally show an error or message to the user
+        console.warn('❌ NO DATA FOUND FOR SELECTED DEVICE!');
+        console.warn('This indicates a device ID mismatch between selection and data');
+      }
+      
       setFilteredData(deviceData);
     }
   };
