@@ -60,12 +60,18 @@ export default function DeviceSelection({
 }: DeviceSelectionProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
-  // Use fallback devices if no devices are available from data
-  const availableDevices = deviceList.length > 0 ? deviceList : FALLBACK_DEVICES;
+  // Always show fallback devices plus any real devices, without duplicates
+  const mergedDevicesMap = new Map<string, {id: string, name: string}>();
+  [...FALLBACK_DEVICES, ...deviceList].forEach((device: {id: string, name: string}) => {
+    if (device && device.id) {
+      mergedDevicesMap.set(device.id, device);
+    }
+  });
+  const availableDevices: {id: string, name: string}[] = Array.from(mergedDevicesMap.values());
   const hasData = deviceList.length > 0;
 
   // Group devices by type
-  const groupedDevices = availableDevices.reduce((groups, device) => {
+  const groupedDevices = availableDevices.reduce((groups, device: {id: string, name: string}) => {
     if (device.id.startsWith('D')) {
       groups.dSeries.push(device);
     } else if (device.id === 'F9') {
@@ -77,7 +83,7 @@ export default function DeviceSelection({
   }, { dSeries: [] as {id: string, name: string}[], special: [] as {id: string, name: string}[] });
 
   // Sort D-series devices numerically
-  groupedDevices.dSeries.sort((a, b) => {
+  groupedDevices.dSeries.sort((a: {id: string, name: string}, b: {id: string, name: string}) => {
     const numA = parseInt(a.id.substring(1));
     const numB = parseInt(b.id.substring(1));
     return numA - numB;
@@ -129,7 +135,10 @@ export default function DeviceSelection({
               <button
                 type="button"
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="w-full px-3 py-2 text-left border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between"
+                disabled={isSearching}
+                className={`w-full px-3 py-2 text-left border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between ${
+                  isSearching ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
                 <span className={selectedDevice ? 'text-gray-900' : 'text-gray-500'}>
                   {getSelectedDeviceName()}
@@ -143,7 +152,7 @@ export default function DeviceSelection({
                 </svg>
               </button>
               
-              {isDropdownOpen && (
+              {isDropdownOpen && !isSearching && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                   {/* Special Devices */}
                   {groupedDevices.special.length > 0 && (
@@ -151,7 +160,7 @@ export default function DeviceSelection({
                       <div className="px-3 py-2 text-xs font-semibold text-gray-500 bg-gray-50 border-b">
                         Special Devices
                       </div>
-                      {groupedDevices.special.map((device) => (
+                      {groupedDevices.special.map((device: {id: string, name: string}) => (
                         <button
                           key={device.id}
                           onClick={() => {
@@ -174,7 +183,7 @@ export default function DeviceSelection({
                       <div className="px-3 py-2 text-xs font-semibold text-gray-500 bg-gray-50 border-b">
                         D-Series Devices ({groupedDevices.dSeries.length})
                       </div>
-                      {groupedDevices.dSeries.map((device) => (
+                      {groupedDevices.dSeries.map((device: {id: string, name: string}) => (
                         <button
                           key={device.id}
                           onClick={() => {
@@ -205,7 +214,10 @@ export default function DeviceSelection({
               id="date-select"
               value={selectedDate}
               onChange={handleDateChange}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              disabled={isSearching}
+              className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                isSearching ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             />
           </div>
           
@@ -214,14 +226,31 @@ export default function DeviceSelection({
             <button
               onClick={fetchHistoricalData}
               disabled={isSearching}
-              className={`px-4 py-2 rounded-md text-white ${
-                isSearching ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'
+              className={`px-4 py-2 rounded-md text-white flex items-center gap-2 ${
+                isSearching 
+                  ? 'bg-blue-400 cursor-not-allowed' 
+                  : 'bg-blue-500 hover:bg-blue-600'
               } transition-colors`}
             >
-              {isSearching ? 'Searching...' : 'Search'}
+              {isSearching ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Searching...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  Search
+                </>
+              )}
             </button>
             
-            {selectedDevice && (
+            {selectedDevice && !isSearching && (
               <button
                 onClick={() => handleDeviceSelect(null)}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
@@ -233,8 +262,24 @@ export default function DeviceSelection({
         </div>
       </div>
       
+      {/* Progress Bar for Search */}
+      {isSearching && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-700">Searching historical data...</span>
+            <span className="text-sm text-gray-500">Please wait</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="bg-blue-500 h-2 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+          </div>
+          <div className="mt-2 text-xs text-gray-500">
+            Connecting to remote database - this may take a few moments
+          </div>
+        </div>
+      )}
+      
       {/* Status Message - Moved below filters */}
-      {!hasData && (
+      {!hasData && !isSearching && (
         <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
           <div className="flex items-start">
             <div className="flex-shrink-0">

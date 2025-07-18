@@ -1,4 +1,5 @@
 import Sidebar from './Sidebar';
+import DeviceDataHealthNotification from './UI/DeviceDataHealthNotification';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -12,6 +13,7 @@ export default function DashboardLayout({ children, noContentPadding = false }: 
       <main className={`flex-1 ${noContentPadding ? 'overflow-hidden p-0' : 'overflow-auto p-6'}`}>
         {children}
       </main>
+      <DeviceDataHealthNotification />
     </div>
   );
 }

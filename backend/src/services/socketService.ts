@@ -26,6 +26,8 @@ export function initSocketHandlers(io: Server): void {
           return;
         }
         
+        console.log(`Received historical data request for deviceId: "${params.deviceId}", date: "${params.date}"`);
+        
         // Parse the date
         const requestedDate = new Date(params.date);
         requestedDate.setHours(0, 0, 0, 0);
@@ -47,11 +49,42 @@ export function initSocketHandlers(io: Server): void {
         
         // Add device filter if provided
         if (params.deviceId) {
-          query.device = params.deviceId;
+          // Get device mappings to convert friendly name to actual device ID
+          const deviceMappings = getDeviceMappings();
+          
+          // Find the actual device ID by matching the friendly name
+          let actualDeviceId = params.deviceId; // Default to the provided ID
+          
+          for (const [deviceId, deviceInfo] of Object.entries(deviceMappings)) {
+            if (deviceInfo.name === params.deviceId) {
+              actualDeviceId = deviceId;
+              console.log(`Converted friendly name "${params.deviceId}" to actual device ID: "${actualDeviceId}"`);
+              break;
+            }
+          }
+          
+          // If no conversion found, check if the provided ID is already an actual device ID
+          if (actualDeviceId === params.deviceId && !deviceMappings[params.deviceId]) {
+            console.log(`No device mapping found for "${params.deviceId}". Checking if it's an actual device ID...`);
+            // Check if this deviceId exists in the database
+            const deviceExists = await eGaugeCollection.findOne({ device: params.deviceId });
+            if (!deviceExists) {
+              console.log(`Device "${params.deviceId}" not found in database`);
+              callback({ success: false, error: `Device "${params.deviceId}" not found` });
+              return;
+            }
+          }
+          
+          query.device = actualDeviceId;
+          console.log(`Querying for device: "${actualDeviceId}"`);
         }
+        
+        console.log('Query:', JSON.stringify(query, null, 2));
         
         // Query for the specific device and date
         const historicalData = await eGaugeCollection.find(query).toArray();
+        
+        console.log(`Found ${historicalData.length} historical records`);
         
         // Enrich the data with device names
         const deviceMappings = getDeviceMappings();

@@ -165,9 +165,9 @@ export default function PredictionPage() {
       </div>
       
       {/* Date Selection Form */}
-      <div className="container mx-auto px-6 mb-6">
+      <div className="container mx-auto px-6">
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-4">Select Date for Detailed Simulations</h2>
+          <h2 className="text-xl font-semibold mb-4">Select Date for Historical Detailed Simulations</h2>
           <form onSubmit={handleDateSubmit} className="flex gap-4 items-end">
             <div className="flex-1">
               <label htmlFor="simulation-date" className="block text-sm font-medium text-gray-700 mb-1">

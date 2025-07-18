@@ -204,15 +204,20 @@ class EnergyDataService extends EventEmitter {
   }
 
   /**
- * Fetch historical data for a specific device and date
- * @param deviceId The device ID to fetch data for
- * @param date The date in ISO format (YYYY-MM-DD)
- * @returns Promise with the historical data
- */
+   * Fetch historical data for a specific device and date
+   * @param deviceId The device ID to fetch data for
+   * @param date The date in ISO format (YYYY-MM-DD)
+   * @returns Promise with the historical data
+   */
   public async fetchHistoricalData(deviceId: string, date: string): Promise<EnergyData[]> {
+    console.log('EnergyDataService: Starting fetchHistoricalData request', { deviceId, date });
+    
     if (!this.socket || !this.socket.connected) {
+      console.error('EnergyDataService: Socket not connected');
       throw new Error('Socket not connected');
     }
+    
+    console.log('EnergyDataService: Socket is connected, proceeding with request');
     
     // Enter historical mode
     this.enterHistoricalMode();
@@ -223,6 +228,7 @@ class EnergyDataService extends EventEmitter {
     return new Promise((resolve, reject) => {
       // Create a one-time listener for the response
       const responseHandler = (data: EnergyData[]) => {
+        console.log('EnergyDataService: Received historical_data_response', data?.length || 0, 'records');
         this.socket?.off('historical_data_response', responseHandler);
         resolve(data);
       };
@@ -232,15 +238,19 @@ class EnergyDataService extends EventEmitter {
       
       // Set a timeout in case the server doesn't respond
       const timeout = setTimeout(() => {
+        console.error('EnergyDataService: Timeout waiting for historical data response');
         this.socket?.off('historical_data_response', responseHandler);
         reject(new Error('Timeout waiting for historical data'));
       }, 100000); // 100 second timeout
       
       // Request the historical data
+      console.log('EnergyDataService: Emitting fetch_historical_data event');
       this.socket?.emit('fetch_historical_data', { deviceId, date }, (acknowledgement: { success: boolean, error?: string }) => {
+        console.log('EnergyDataService: Received acknowledgement', acknowledgement);
         clearTimeout(timeout);
         
         if (!acknowledgement.success) {
+          console.error('EnergyDataService: Server reported error', acknowledgement.error);
           this.socket?.off('historical_data_response', responseHandler);
           reject(new Error(acknowledgement.error || 'Failed to fetch historical data'));
         }

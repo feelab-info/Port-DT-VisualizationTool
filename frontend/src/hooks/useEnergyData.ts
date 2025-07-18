@@ -151,6 +151,15 @@ export function useEnergyData() {
       setBackgroundData([]);
       setHasBackgroundUpdates(false);
       
+      console.log('Fetching historical data for:', { selectedDevice, selectedDate });
+      console.log('Socket connected:', energyDataService.isConnected());
+      console.log('Backend URL:', process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001');
+      
+      // Check if socket is connected before proceeding
+      if (!energyDataService.isConnected()) {
+        throw new Error('Not connected to backend server. Please check if the backend is running.');
+      }
+      
       if (selectedDevice) {
         // Fetch data for specific device and date
         fetchedHistoricalData = await energyDataService.fetchHistoricalData(selectedDevice, selectedDate);
@@ -159,28 +168,39 @@ export function useEnergyData() {
         fetchedHistoricalData = await energyDataService.fetchHistoricalData('', selectedDate);
       }
       
+      console.log('Received historical data:', fetchedHistoricalData?.length || 0, 'records');
+      
       if (fetchedHistoricalData && fetchedHistoricalData.length > 0) {
         // Store the full historical dataset
         setHistoricalData(fetchedHistoricalData);
         
-        // Set filtered data based on the current selection
-        if (selectedDevice) {
-          const deviceData = fetchedHistoricalData.filter(item => item.device === selectedDevice);
-          setFilteredData(deviceData);
-        } else {
-          setFilteredData(fetchedHistoricalData);
-        }
+        // The backend already filtered the data correctly based on our request
+        // No need to filter again on the frontend
+        setFilteredData(fetchedHistoricalData);
+        
+        console.log(`Set ${fetchedHistoricalData.length} historical records for display`);
         
         setIsHistoricalView(true);
       } else {
         // If no data returned, show an empty array
+        console.warn('No historical data returned for the selected criteria');
         setHistoricalData([]);
         setFilteredData([]);
         setIsHistoricalView(true); // Still set historical view to true
+        
+        // Show user-friendly message (you can add a state for this)
+        alert('No historical data found for the selected device and date. Please try a different date or device.');
       }
     } catch (error) {
       console.error('Error fetching historical data:', error);
-      // Show error message
+      
+      // Display error to user
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to fetch historical data: ${errorMessage}`);
+      
+      // Reset states on error
+      setHistoricalData([]);
+      setFilteredData([]);
     } finally {
       setIsSearching(false);
       setIsLoading(false);

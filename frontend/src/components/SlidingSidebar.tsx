@@ -1,6 +1,7 @@
 import React, { useState, useEffect, ReactNode } from 'react';
 import { MapRef } from 'react-map-gl/maplibre';
 import { energyDataService, EnergyData, LineData } from '../services/EnergyDataService';
+import { useDeviceDataHealth } from '@/hooks/useDeviceDataHealth';
 
 interface SlidingSidebarProps {
   position: 'left' | 'right';
@@ -19,11 +20,14 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
   title = 'Energy Dashboard',
   mapRef
 }) => {
-  const [expanded, setExpanded] = useState(false); // Changed from collapsed to expanded for clarity
+  const [expanded, setExpanded] = useState(false);
   const [deviceGroups, setDeviceGroups] = useState<DeviceGroup[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+
+  // Get device data health status
+  const { isHealthy: isDeviceDataHealthy } = useDeviceDataHealth();
 
   useEffect(() => {
     const handleDataUpdate = (newData: EnergyData[]) => {
@@ -73,8 +77,6 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
           data
         }));
       });
-      
-      setLoading(false);
     };
     
     const handleError = (errorMsg: string) => {
@@ -83,26 +85,36 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
     
     const handleConnected = () => {
       setError(null);
+      setIsConnected(true);
+    };
+
+    const handleDisconnected = () => {
+      setIsConnected(false);
     };
     
     // Set initial state with existing data from service
     handleDataUpdate(energyDataService.getData());
-    setLoading(!energyDataService.isConnected());
+    setIsConnected(energyDataService.isConnected());
     
     // Subscribe to events
     energyDataService.on('data-update', handleDataUpdate);
     energyDataService.on('error', handleError);
     energyDataService.on('connected', handleConnected);
+    energyDataService.on('disconnected', handleDisconnected);
     
     return () => {
       // Cleanup listeners
       energyDataService.removeListener('data-update', handleDataUpdate);
       energyDataService.removeListener('error', handleError);
       energyDataService.removeListener('connected', handleConnected);
+      energyDataService.removeListener('disconnected', handleDisconnected);
     };
   }, []);
 
   const toggleSidebar = () => {
+    // Only allow toggling if we have data
+    if (!hasRealTimeData()) return;
+    
     // Explicitly define the padding object with all required properties
     const padding: { top: number; bottom: number; left: number; right: number } = {
       top: 0,
@@ -111,7 +123,7 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
       right: 0
     };
     
-    if (!expanded) { // Changed from collapsed to expanded
+    if (!expanded) {
       // Set the specific side to 300
       padding[position] = 300;
       
@@ -133,7 +145,12 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
       }
     }
     
-    setExpanded(!expanded); // Changed from collapsed to expanded
+    setExpanded(!expanded);
+  };
+
+  // Check if we have real-time data available
+  const hasRealTimeData = () => {
+    return isConnected && isDeviceDataHealthy && deviceGroups.length > 0;
   };
 
   // Format timestamp to a readable format
@@ -147,7 +164,6 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
   };
 
   // Format device ID to make it more readable
-  // Update the formatDeviceId function to handle device names
   const formatDeviceId = (deviceId: string, deviceName?: string) => {
     if (deviceName) {
       return deviceName;
@@ -160,7 +176,6 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
     const deviceData = deviceGroups.find(group => group.deviceId === deviceId);
     return deviceData ? deviceData.data : [];
   };
-
 
   // Handle device selection
   const handleDeviceSelect = (deviceId: string) => {
@@ -182,7 +197,6 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
             if (group.data.length === 0) return null;
             
             const latestData = group.data[group.data.length - 1];
-            // Debug the data structure            
             return (
               <button
                 key={group.deviceId}
@@ -340,6 +354,11 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
     );
   };
 
+  // Don't render the sidebar at all if there's no real-time data
+  if (!hasRealTimeData()) {
+    return null;
+  }
+
   return (
     <div className={`sidebar ${position} ${expanded ? 'expanded' : ''}`}>
       <div className="sidebar-content">
@@ -350,15 +369,7 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
               <p>{error}</p>
             </div>
           )}
-          {loading ? (
-            <div className="flex justify-center items-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          ) : (
-            <>
-              {selectedDevice ? renderDeviceDetails() : renderDeviceSelection()}
-            </>
-          )}
+          {selectedDevice ? renderDeviceDetails() : renderDeviceSelection()}
         </div>
       </div>
       

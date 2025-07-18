@@ -1,4 +1,5 @@
 import DashboardLayout from '@/components/DashboardLayout';
+import PortEnergyOverview from '@/components/PortEnergyOverview';
 import Link from 'next/link';
 import { Map, Activity, Database, BarChart2 } from 'lucide-react';
 
@@ -65,11 +66,8 @@ export default function Home() {
         ))}
       </div>
 
-      <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Port Energy Overview</h2>
-        <div className="h-64 flex items-center justify-center bg-gray-100 rounded">
-          <p className="text-gray-500">Energy consumption chart will be displayed here</p>
-        </div>
+      <div className="mt-8">
+        <PortEnergyOverview />
       </div>
     </DashboardLayout>
   );
