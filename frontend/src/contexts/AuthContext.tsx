@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, name: string) => Promise<{ 
+  login: (email: string, name: string, password: string) => Promise<{ 
     success: boolean; 
     error?: string; 
     requiresVerification?: boolean;
@@ -62,7 +62,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initAuth();
   }, []);
 
-  const login = async (email: string, name: string): Promise<{ 
+  const login = async (email: string, name: string, password: string): Promise<{ 
     success: boolean; 
     error?: string; 
     requiresVerification?: boolean;
@@ -72,7 +72,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('[AuthContext] Starting login process');
       setIsLoading(true);
       
-      const result = await authService.login(email, name).catch((serviceError) => {
+      const result = await authService.login(email, name, password).catch((serviceError) => {
         console.error('[AuthContext] AuthService.login threw error:', serviceError);
         return {
           success: false,

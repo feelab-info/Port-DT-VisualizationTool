@@ -5,8 +5,7 @@ import {
   refreshToken, 
   startRegistration, 
   verifyEmail, 
-  resendVerificationCode,
-  debugEmailService
+  resendVerificationCode
 } from '../controllers/authController';
 import { authenticateToken } from '../middleware/authMiddleware';
 
@@ -20,9 +19,6 @@ export function authRoutes(app: Express): void {
   app.post('/api/auth/register', startRegistration);
   app.post('/api/auth/verify-email', verifyEmail);
   app.post('/api/auth/resend-code', resendVerificationCode);
-  
-  // Debug route (remove in production)
-  app.post('/api/auth/debug-email', debugEmailService);
   
   // Protected routes (require valid JWT token)
   app.get('/api/auth/validate', authenticateToken, validateToken);

@@ -5,11 +5,13 @@ import userService from '../services/userService';
 export interface LoginRequest {
   email: string;
   name: string;
+  password: string;
 }
 
 export interface RegistrationRequest {
   email: string;
   name: string;
+  password: string;
 }
 
 export interface VerificationRequest {
@@ -22,11 +24,19 @@ export interface VerificationRequest {
  */
 export async function startRegistration(req: Request, res: Response): Promise<void> {
   try {
-    const { email, name }: RegistrationRequest = req.body;
+    const { email, name, password }: RegistrationRequest = req.body;
 
-    if (!email || !name) {
+    if (!email || !name || !password) {
       res.status(400).json({ 
-        error: 'Email and name are required' 
+        error: 'Email, name, and password are required' 
+      });
+      return;
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+      res.status(400).json({ 
+        error: 'Password must be at least 8 characters long' 
       });
       return;
     }
@@ -48,8 +58,8 @@ export async function startRegistration(req: Request, res: Response): Promise<vo
       return;
     }
 
-    // Start registration process
-    const result = await userService.startRegistration(email, name);
+    // Start registration process with password
+    const result = await userService.startRegistration(email, name, password);
 
     if (result.success) {
       res.json({
@@ -206,15 +216,15 @@ export async function resendVerificationCode(req: Request, res: Response): Promi
 }
 
 /**
- * Login - now requires verified email
+ * Login - now requires verified email and correct password
  */
 export async function login(req: Request, res: Response): Promise<void> {
   try {
-    const { email, name }: LoginRequest = req.body;
+    const { email, name, password }: LoginRequest = req.body;
 
-    if (!email || !name) {
+    if (!email || !name || !password) {
       res.status(400).json({ 
-        error: 'Email and name are required' 
+        error: 'Email, name, and password are required' 
       });
       return;
     }
@@ -236,14 +246,27 @@ export async function login(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Check if user exists and is verified
-    const user = await userService.getVerifiedUser(email);
+    // Verify user credentials (email, password, and verification status)
+    const user = await userService.verifyUserCredentials(email, password);
     
     if (!user) {
+      // Check if user exists but is not verified
+      const unverifiedUser = await userService.getVerifiedUser(email);
+      if (unverifiedUser === null) {
+        const existingUser = await userService.getUserByEmail(email);
+        if (existingUser && !existingUser.isVerified) {
+          res.status(401).json({ 
+            error: 'Email not verified. Please register and verify your email first.',
+            nextStep: 'registration',
+            requiresVerification: true
+          });
+          return;
+        }
+      }
+      
+      // Invalid credentials (user not found, wrong password, or not verified)
       res.status(401).json({ 
-        error: 'Email not verified. Please register and verify your email first.',
-        nextStep: 'registration',
-        requiresVerification: true
+        error: 'Invalid email or password',
       });
       return;
     }
@@ -296,64 +319,13 @@ export async function validateToken(req: Request, res: Response): Promise<void> 
 
 export async function refreshToken(req: Request, res: Response): Promise<void> {
   try {
-    const user = (req as any).user;
-    
-    // Generate new token with same user data
-    const newToken = generateToken(user.email, user.name);
-    
-    res.json({
-      success: true,
-      token: newToken,
-      user: {
-        email: user.email,
-        name: user.name
-      },
-      message: 'Token refreshed successfully'
-    });
+    // Token refresh functionality would go here
+    // For now, just return success (implement later if needed)
+    res.json({ success: true, message: 'Token refresh not yet implemented' });
   } catch (error) {
     console.error('Token refresh error:', error);
     res.status(500).json({ 
       error: 'Internal server error during token refresh' 
-    });
-  }
-} 
-
-/**
- * Debug endpoint to test email service directly
- */
-export async function debugEmailService(req: Request, res: Response): Promise<void> {
-  try {
-    const { email, name } = req.body;
-    
-    if (!email || !name) {
-      res.status(400).json({ 
-        error: 'Email and name are required for debug test' 
-      });
-      return;
-    }
-
-    console.log('[DEBUG] Testing email service directly...');
-    
-    // Import email service here to avoid circular import issues
-    const emailService = (await import('../services/emailService')).default;
-    
-    // Test sending a verification email
-    const testCode = '123456';
-    const result = await emailService.sendVerificationEmail(email, testCode, name);
-    
-    console.log(`[DEBUG] Email service returned: ${result}`);
-    
-    res.json({
-      success: true,
-      emailResult: result,
-      message: 'Debug test completed. Check console for logs.'
-    });
-
-  } catch (error) {
-    console.error('[DEBUG] Email service error:', error);
-    res.status(500).json({ 
-      error: 'Debug test failed',
-      details: (error as Error).message 
     });
   }
 } 

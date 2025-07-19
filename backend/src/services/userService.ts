@@ -1,12 +1,14 @@
 import { Collection } from 'mongodb';
 import { connectToMongo } from './databaseService';
 import emailService from './emailService';
+import bcrypt from 'bcryptjs';
 
 // User interface
 export interface User {
   _id?: string;
   email: string;
   name: string;
+  password: string; // Hashed password
   isVerified: boolean;
   createdAt: Date;
   lastLogin?: Date;
@@ -56,9 +58,10 @@ class UserService {
    * Start user registration process
    * @param email User email
    * @param name User name
+   * @param password User password (will be hashed)
    * @returns Success status and message
    */
-  async startRegistration(email: string, name: string): Promise<{ success: boolean; message: string }> {
+  async startRegistration(email: string, name: string, password: string): Promise<{ success: boolean; message: string }> {
     try {
       await this.initCollections();
 
@@ -72,14 +75,19 @@ class UserService {
         };
       }
 
+      // Hash the password
+      const saltRounds = 12;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+
       // If user exists but is not verified, allow them to re-register
       if (existingUser && !existingUser.isVerified) {
-        // Update user name in case it changed
+        // Update user data including new password
         await this.usersCollection!.updateOne(
           { email },
           { 
             $set: { 
               name,
+              password: hashedPassword,
               verificationAttempts: 0 
             } 
           }
@@ -89,6 +97,7 @@ class UserService {
         const newUser: User = {
           email,
           name,
+          password: hashedPassword,
           isVerified: false,
           createdAt: new Date(),
           verificationAttempts: 0
@@ -269,9 +278,71 @@ class UserService {
   }
 
   /**
-   * Check if user exists and is verified
+   * Verify user login credentials
    * @param email User email
-   * @returns User data if verified, null otherwise
+   * @param password User password
+   * @returns User object if credentials are valid, null otherwise
+   */
+  async verifyUserCredentials(email: string, password: string): Promise<User | null> {
+    try {
+      await this.initCollections();
+
+      // Find user by email
+      const user = await this.usersCollection!.findOne({ email });
+      
+      if (!user) {
+        return null; // User not found
+      }
+
+      if (!user.isVerified) {
+        return null; // User not verified
+      }
+
+      // Verify password
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      
+      if (!isPasswordValid) {
+        return null; // Invalid password
+      }
+
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = user;
+      return userWithoutPassword as User;
+    } catch (error) {
+      console.error('Error verifying user credentials:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get user by email (regardless of verification status)
+   * @param email User email
+   * @returns User object if exists, null otherwise
+   */
+  async getUserByEmail(email: string): Promise<User | null> {
+    try {
+      await this.initCollections();
+      
+      const user = await this.usersCollection!.findOne({ email });
+      
+      if (!user) {
+        return null;
+      }
+      
+      // Return user without password for security
+      const { password: _, ...userWithoutPassword } = user;
+      return userWithoutPassword as User;
+    } catch (error) {
+      console.error('Error getting user by email:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get verified user by email (without password verification - for legacy compatibility)
+   * @deprecated Use verifyUserCredentials instead
+   * @param email User email
+   * @returns User object if exists and verified, null otherwise
    */
   async getVerifiedUser(email: string): Promise<User | null> {
     try {
