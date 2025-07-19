@@ -15,6 +15,41 @@ export function useEnergyData() {
   const [hasBackgroundUpdates, setHasBackgroundUpdates] = useState(false);
   const [historicalData, setHistoricalData] = useState<EnergyData[]>([]);
 
+  // Update comprehensive device list - add new devices but never remove them
+  const updateAllKnownDevices = (newDevices: {id: string, name: string}[]) => {
+    setDeviceList(prevDevices => {
+      const deviceMap = new Map(prevDevices.map(d => [d.id, d]));
+      
+      // Add any new devices we haven't seen before
+      newDevices.forEach(device => {
+        if (!deviceMap.has(device.id)) {
+          deviceMap.set(device.id, device);
+        }
+      });
+      
+      // Return sorted array
+      return Array.from(deviceMap.values()).sort((a, b) => {
+        // Sort D1-D31 numerically
+        if (a.id.startsWith('D') && b.id.startsWith('D')) {
+          const numA = parseInt(a.id.substring(1));
+          const numB = parseInt(b.id.substring(1));
+          if (!isNaN(numA) && !isNaN(numB)) {
+            return numA - numB;
+          }
+        }
+        
+        // Special case for F9 and Entrada de energia
+        if (a.id === 'F9' && b.id.startsWith('D')) return 1;
+        if (b.id === 'F9' && a.id.startsWith('D')) return -1;
+        if (a.id === 'Entrada de energia') return 1;
+        if (b.id === 'Entrada de energia') return -1;
+        
+        // Default alphabetical sort
+        return a.name.localeCompare(b.name);
+      });
+    });
+  };
+
   // Extract unique devices from data
   const extractUniqueDevices = (data: EnergyData[]): {id: string, name: string}[] => {
     const deviceMap = new Map<string, string>();
@@ -247,7 +282,9 @@ export function useEnergyData() {
         
         // Update device list
         const devices = extractUniqueDevices(newData);
-        setDeviceList(devices);
+        
+        // Update comprehensive device list
+        updateAllKnownDevices(devices);
         
         // Update filtered data based on current selection
         updateFilteredData(newData, selectedDevice);
@@ -298,8 +335,10 @@ export function useEnergyData() {
       
       // Extract unique devices
       const devices = extractUniqueDevices(currentData);
-      setDeviceList(devices);
       
+      // Set comprehensive device list
+      updateAllKnownDevices(devices);
+
       // Set filtered data only if not in historical view
       if (!isHistoricalView) {
         updateFilteredData(currentData, selectedDevice);

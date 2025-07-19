@@ -65,7 +65,7 @@ export default function PortEnergyOverview() {
     }, 0);
 
     const totalConsumption = latestDataPoints.reduce((sum, item) => {
-      return sum + (item.measure_cons || 0);
+      return sum + (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
     }, 0);
 
     const powerFactors = latestDataPoints.flatMap(item => [

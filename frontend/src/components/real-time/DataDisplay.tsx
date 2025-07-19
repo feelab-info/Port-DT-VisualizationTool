@@ -82,7 +82,7 @@ export default function DataDisplay({
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
-          {safeRound(item.measure_cons)} W
+          {safeRound((item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0))} W
         </span>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">

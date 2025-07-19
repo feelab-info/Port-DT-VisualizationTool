@@ -213,7 +213,7 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">{latestData.measure_cons.toFixed(2)} W</p>
+                    <p className="font-bold">{((latestData.L1?.P || 0) + (latestData.L2?.P || 0) + (latestData.L3?.P || 0)).toFixed(2)} W</p>
                     <p className="text-xs text-gray-500">{formatTimestamp(latestData.timestamp)}</p>
                   </div>
                 </div>
@@ -338,7 +338,7 @@ const SlidingSidebar: React.FC<SlidingSidebarProps> = ({
                       )}
                       <tr className={index % 2 === 0 ? 'bg-gray-50' : ''}>
                         <td className="px-2 py-1">{formatTimestamp(data.timestamp)}</td>
-                        <td className="px-2 py-1 text-right">{data.measure_cons.toFixed(2)} W</td>
+                        <td className="px-2 py-1 text-right">{((data.L1 as LineData).P + (data.L2 as LineData).P + (data.L3 as LineData).P).toFixed(2)} W</td>
                         <td className="px-2 py-1 text-right">{(data.L1 as LineData).P.toFixed(1)}</td>
                         <td className="px-2 py-1 text-right">{(data.L2 as LineData).P.toFixed(1)}</td>
                         <td className="px-2 py-1 text-right">{(data.L3 as LineData).P.toFixed(1)}</td>
