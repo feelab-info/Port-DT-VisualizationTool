@@ -19,175 +19,224 @@ export interface StationaryVessel {
  * Create layers for power visualization (columns, power lines, etc)
  */
 export const createPowerLayers = (latestData: EnergyData, animationTime: number) => {
-  // Column layer to show power consumption
+  // Since all energy data comes from the main dock, we'll show the total power there
+  const mainDockLocation = PORT_LOCATIONS[0]; // Only main dock exists now
+  const totalPower = (latestData.L1.P || 0) + (latestData.L2.P || 0) + (latestData.L3.P || 0);
+  
+  // Column layer to show total power consumption at main dock
   const columns = new ColumnLayer({
     id: 'power-columns',
-    data: PORT_LOCATIONS.map((location, index) => {
-      // Distribute the power data across locations
-      const powerValue = index === 0 ? latestData.L1.P : 
-                         index === 1 ? latestData.L2.P : 
-                         latestData.L3.P;
-      
-      return {
-        ...location,
-        power: powerValue
-      };
-    }),
+    data: [{
+      ...mainDockLocation,
+      power: totalPower,
+      L1Power: latestData.L1.P || 0,
+      L2Power: latestData.L2.P || 0,
+      L3Power: latestData.L3.P || 0
+    }],
     diskResolution: 12,
-    radius: 20,
+    radius: 15, // Larger radius for better visibility
     extruded: true,
     pickable: true,
     elevationScale: 0.1,
     getPosition: d => [d.longitude, d.latitude, d.elevation],
     getFillColor: d => {
-      // Color based on power level (red for high, blue for low)
-      const normalizedPower = d.power / 25000; // Assume 25kW is max
+      // More vibrant colors for better visibility
+      const normalizedPower = d.power / 30000;
       return [
-        255 * Math.min(1, normalizedPower * 2), // More red as power increases
-        100 * (1 - normalizedPower),
-        255 * (1 - normalizedPower), // More blue as power decreases
-        200
+        255 * Math.min(1, normalizedPower * 1.2), 
+        50 + 150 * (1 - normalizedPower * 0.5),
+        255 * (1 - normalizedPower * 0.8), 
+        240 // Higher opacity
       ];
     },
-    getElevation: d => d.power * 0.01, // Scale height based on power
+    getElevation: d => Math.max(50, d.power * 0.01), // Minimum height for visibility
     updateTriggers: {
       getFillColor: [latestData],
       getElevation: [latestData]
     }
   });
   
-  // Scatterplot layer for locations
+  // Enhanced main dock marker with energy grid visualization
   const markers = new ScatterplotLayer({
-    id: 'location-markers',
-    data: PORT_LOCATIONS,
+    id: 'main-dock-marker',
+    data: [{
+      ...mainDockLocation,
+      totalPower: totalPower
+    }],
+    pickable: true,
+    opacity: 0.95,
+    stroked: true,
+    filled: true,
+    radiusScale: 10,
+    radiusMinPixels: 12,
+    radiusMaxPixels: 25,
+    lineWidthMinPixels: 3,
+    getPosition: d => [d.longitude, d.latitude, 0],
+    getRadius: d => 8 + (d.totalPower / 3000), // More responsive sizing
+    getFillColor: [0, 200, 255, 240],
+    getLineColor: [255, 200, 0, 255]
+  });
+  
+  // Infrastructure markers for energy consuming systems
+  const infrastructureMarkers = new ScatterplotLayer({
+    id: 'infrastructure-markers',
+    data: PORT_DESTINATIONS.slice(1), // Skip main dock as it's already shown
     pickable: true,
     opacity: 0.8,
     stroked: true,
     filled: true,
     radiusScale: 6,
-    radiusMinPixels: 5,
+    radiusMinPixels: 6,
     radiusMaxPixels: 15,
-    lineWidthMinPixels: 1,
+    lineWidthMinPixels: 2,
     getPosition: d => [d.longitude, d.latitude, 0],
-    getRadius: 5,
-    getFillColor: [0, 140, 255],
-    getLineColor: [0, 0, 0]
+    getRadius: d => {
+      // Different sizes based on system type
+      if (d.id.includes('crane')) return 8;
+      if (d.id.includes('shore-power')) return 7;
+      if (d.id.includes('lighting')) return 5;
+      return 6;
+    },
+    getFillColor: d => {
+      // Different colors for different infrastructure types
+      if (d.id.includes('crane')) return [255, 140, 0, 200]; // Orange for cranes
+      if (d.id.includes('shore-power')) return [0, 255, 100, 200]; // Green for shore power
+      if (d.id.includes('lighting')) return [255, 255, 100, 200]; // Yellow for lighting
+      if (d.id.includes('administrative')) return [100, 150, 255, 200]; // Blue for admin
+      return [200, 100, 255, 200]; // Purple for others
+    },
+    getLineColor: [255, 255, 255, 255]
   });
   
-  // Power distribution center marker
+  // Power distribution center marker (enhanced)
   const centerMarker = new ScatterplotLayer({
     id: 'center-marker',
     data: [PORT_CENTER],
     pickable: true,
-    opacity: 0.9,
+    opacity: 1.0,
     stroked: true,
     filled: true,
-    radiusScale: 10,
-    radiusMinPixels: 10,
-    radiusMaxPixels: 20,
-    lineWidthMinPixels: 2,
+    radiusScale: 15,
+    radiusMinPixels: 15,
+    radiusMaxPixels: 30,
+    lineWidthMinPixels: 4,
     getPosition: d => [d.longitude, d.latitude, 0],
-    getRadius: 8,
-    getFillColor: [255, 215, 0], // Gold color for the center
-    getLineColor: [255, 140, 0]
+    getRadius: 12,
+    getFillColor: [255, 215, 0, 255], // Bright gold
+    getLineColor: [255, 100, 0, 255] // Orange border
   });
   
-  // Create dynamic power line data with animation properties
+  // Create dynamic power line data for energy distribution network
   const powerLineData = PORT_DESTINATIONS.map((destination, index) => {
-    // Use different power values for each destination
-    const powerLineIndex = index % 3;
-    const powerValue = powerLineIndex === 0 ? latestData.L1.P : 
-                      powerLineIndex === 1 ? latestData.L2.P : 
+    // Simulate different power consumption for different systems
+    let systemPower;
+    const basePhase = index % 3;
+    const phasePower = basePhase === 0 ? latestData.L1.P : 
+                      basePhase === 1 ? latestData.L2.P : 
                       latestData.L3.P;
     
-    // Normalize power value for visual scaling (0-1 range)
-    const normalizedPower = Math.min(1, powerValue / 25000);
+    // Different power distribution based on system type
+    if (destination.id.includes('crane')) {
+      systemPower = phasePower * 0.4; // Cranes use lots of power
+    } else if (destination.id.includes('shore-power')) {
+      systemPower = phasePower * 0.3; // Shore power for ships
+    } else if (destination.id.includes('lighting')) {
+      systemPower = phasePower * 0.1; // Lighting uses less
+    } else if (destination.id.includes('administrative')) {
+      systemPower = phasePower * 0.15; // Office buildings
+    } else {
+      systemPower = phasePower * 0.2; // Other systems
+    }
+    
+    const normalizedPower = Math.min(1, systemPower / 10000);
     
     return {
       source: [PORT_CENTER.longitude, PORT_CENTER.latitude],
       target: [destination.longitude, destination.latitude],
-      power: powerValue,
+      power: systemPower,
       normalizedPower,
       name: destination.name,
-      id: destination.id
+      id: destination.id,
+      systemType: destination.id.split('-')[0]
     };
   });
   
-  // Animated power lines
+  // Dynamic energy distribution lines
   const powerLines = new ArcLayer({
     id: 'power-distribution-lines',
     data: powerLineData,
     pickable: true,
-    getSourceColor: [255, 255, 0, 200], // Yellow at source
-    getTargetColor: d => [
-      255 * Math.min(1, d.normalizedPower * 2),
-      100 * (1 - d.normalizedPower),
-      255 * (1 - d.normalizedPower),
-      200
-    ],
-    getWidth: d => 2 + d.normalizedPower * 6,
-    getTilt: 0,
-    getHeight: d => 0.5 + d.normalizedPower * 0.5,
+    getSourceColor: [255, 215, 0, 255], // Bright gold at source
+    getTargetColor: d => {
+      // Different colors based on system type and power level
+      const intensity = Math.max(0.3, d.normalizedPower);
+      if (d.systemType === 'crane') return [255, 140, 0, 200 + 55 * intensity];
+      if (d.systemType === 'shore') return [0, 255, 100, 200 + 55 * intensity];
+      if (d.systemType === 'lighting') return [255, 255, 100, 200 + 55 * intensity];
+      if (d.systemType === 'administrative') return [100, 150, 255, 200 + 55 * intensity];
+      return [200, 100, 255, 200 + 55 * intensity];
+    },
+    getWidth: d => Math.max(2, 2 + d.normalizedPower * 6), // Minimum width for visibility
+    getTilt: d => 10 + d.normalizedPower * 20,
+    getHeight: d => 0.2 + d.normalizedPower * 0.6,
     greatCircle: false,
     widthUnits: 'pixels',
-    // Animation
-    getSourcePosition: d => d.source, // Source remains fixed
-    getTargetPosition: d => {
-      const t = animationTime;
-      const [srcLng, srcLat] = d.source;
-      const [tgtLng, tgtLat] = d.target;
-      return [
-        srcLng + (tgtLng - srcLng) * t,
-        srcLat + (tgtLat - srcLat) * t
-      ];
-    },
+    getSourcePosition: d => d.source,
+    getTargetPosition: d => d.target,
     updateTriggers: {
-      getTargetPosition: [animationTime],
       getSourceColor: [latestData],
       getTargetColor: [latestData],
       getWidth: [latestData]
     }
   });
 
-  // Animated particles along power lines
+  // Enhanced energy flow particles - much more visible and dynamic
   const particles = new ScatterplotLayer({
-    id: 'power-particles',
+    id: 'energy-flow-particles',
     data: powerLineData.map(line => {
-      // Calculate position along the line based on animation time
       const [srcLng, srcLat] = line.source;
       const [tgtLng, tgtLat] = line.target;
       
-      // Create multiple particles per line with different offsets
-      return Array.from({ length: 5 }).map((_, i) => {
-        const particleOffset = (animationTime + i * 0.2) % 1;
+      // More particles per line for better visibility
+      return Array.from({ length: 12 }).map((_, i) => {
+        const particleOffset = (animationTime * 0.6 + i * 0.083) % 1;
+        const speed = 0.5 + line.normalizedPower * 0.5; // Speed based on power
+        const adjustedOffset = (animationTime * speed + i * 0.083) % 1;
+        
         return {
           position: [
-            srcLng + (tgtLng - srcLng) * particleOffset,
-            srcLat + (tgtLat - srcLat) * particleOffset
+            srcLng + (tgtLng - srcLng) * adjustedOffset,
+            srcLat + (tgtLat - srcLat) * adjustedOffset
           ],
           power: line.power,
-          normalizedPower: line.normalizedPower
+          normalizedPower: line.normalizedPower,
+          systemType: line.systemType,
+          particleIndex: i
         };
       });
     }).flat(),
     pickable: false,
-    opacity: 0.8,
-    stroked: false,
+    opacity: 0.9,
+    stroked: true,
     filled: true,
-    radiusScale: 3,
-    radiusMinPixels: 2,
-    radiusMaxPixels: 5,
+    radiusScale: 6, // Larger particles
+    radiusMinPixels: 3,
+    radiusMaxPixels: 10,
+    lineWidthMinPixels: 1,
     getPosition: d => d.position,
-    getRadius: d => 1 + d.normalizedPower * 3,
+    getRadius: d => 2 + d.normalizedPower * 4,
     getFillColor: d => {
-      // Color based on power level
-      return [
-        255, // Red
-        255 * (1 - d.normalizedPower), // Yellow to red gradient
-        0,
-        200 + 55 * Math.sin(animationTime * Math.PI * 2) // Pulsing effect
-      ];
+      // System-specific colors with pulsing effect
+      const pulse = 200 + 55 * Math.sin((animationTime * 2 + d.particleIndex * 0.5) * Math.PI);
+      
+      if (d.systemType === 'crane') return [255, 140, 0, pulse];
+      if (d.systemType === 'shore') return [0, 255, 100, pulse];
+      if (d.systemType === 'lighting') return [255, 255, 100, pulse];
+      if (d.systemType === 'administrative') return [100, 150, 255, pulse];
+      if (d.systemType === 'main') return [255, 50, 50, pulse]; // Red for main dock
+      return [200, 100, 255, pulse];
     },
+    getLineColor: [255, 255, 255, 150],
     updateTriggers: {
       getPosition: [animationTime],
       getFillColor: [animationTime, latestData],
@@ -195,54 +244,55 @@ export const createPowerLayers = (latestData: EnergyData, animationTime: number)
     }
   });
   
-  // Text layer for labels
+  // Enhanced text label for main dock with much better contrast - positioned to avoid overlap
   const labels = new TextLayer({
-    id: 'location-labels',
-    data: PORT_LOCATIONS.map((location, index) => {
-      const powerValue = index === 0 ? latestData.L1.P : 
-                         index === 1 ? latestData.L2.P : 
-                         latestData.L3.P;
-      return {
-        ...location,
-        text: `${location.name}\n${Math.round(powerValue)} W`
-      };
-    }),
-    pickable: true,
-    getPosition: d => [d.longitude, d.latitude, d.elevation + 40],
-    getText: d => d.text,
-    getSize: 14,
-    getAngle: 0,
-    getTextAnchor: 'middle',
-    getAlignmentBaseline: 'center',
-    getPixelOffset: [0, -20]
-  });
-  
-  // Center label
-  const centerLabel = new TextLayer({
-    id: 'center-label',
+    id: 'main-dock-label',
     data: [{
-      ...PORT_CENTER,
-      text: `Power Distribution Center\n${Math.round(latestData.measure_cons)} W Total`
+      ...mainDockLocation,
+      text: `${mainDockLocation.name}\nL1: ${Math.round(latestData.L1.P || 0)}W | L2: ${Math.round(latestData.L2.P || 0)}W | L3: ${Math.round(latestData.L3.P || 0)}W`
     }],
     pickable: true,
-    getPosition: d => [d.longitude, d.latitude, 50],
+    getPosition: d => [d.longitude, d.latitude + 0.0008, d.elevation + 40], // Offset position to avoid overlap
     getText: d => d.text,
-    getSize: 16,
+    getSize: 12,
     getAngle: 0,
     getTextAnchor: 'middle',
     getAlignmentBaseline: 'center',
-    getPixelOffset: [0, -40],
-    getColor: [255, 215, 0]
+    getPixelOffset: [0, -20],
+    getColor: [255, 255, 255, 255], // Pure white text
+    getBackgroundColor: [0, 0, 0, 200], // Strong black background
+    background: true,
+    backgroundPadding: [6, 3, 6, 3]
   });
+  
+  // Infrastructure labels with better contrast
+  const infrastructureLabels = new TextLayer({
+    id: 'infrastructure-labels',
+    data: PORT_DESTINATIONS.slice(1), // Skip main dock
+    pickable: true,
+    getPosition: d => [d.longitude, d.latitude, 25],
+    getText: d => d.name.replace(' System', '').replace(' Grid', ''),
+    getSize: 11,
+    getAngle: 0,
+    getTextAnchor: 'middle',
+    getAlignmentBaseline: 'center',
+    getPixelOffset: [0, -15],
+    getColor: [255, 255, 255, 255],
+    getBackgroundColor: [0, 0, 0, 180],
+    background: true,
+    backgroundPadding: [4, 2, 4, 2]
+  });
+  
   
   return {
     columns,
     markers,
+    infrastructureMarkers,
     centerMarker,
     powerLines,
     particles,
     labels,
-    centerLabel
+    infrastructureLabels
   };
 };
 

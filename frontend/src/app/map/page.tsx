@@ -18,7 +18,7 @@ export default function MapPage() {
 
   return (
     <DashboardLayout noContentPadding>
-      <div className={`absolute inset-0 left-64 ${isMapReady ? 'z-10' : ''}`}>
+      <div className={`w-full h-full ${isMapReady ? 'z-10' : ''}`}>
         <ClientMap />
       </div>
     </DashboardLayout>

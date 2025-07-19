@@ -1,15 +1,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { SimulationDetail } from '@/services/VesselSimulationService';
+import { StationaryVessel } from './layers';
 import { calculateTotalEnergy, getStayDuration } from './utils';
 
 interface VesselDetailsPopoverProps {
-  vessel: {
-    id: string;
-    name: string;
-    position: [number, number, number];
+  vessel: StationaryVessel & {
     simulation?: SimulationDetail;
-    dockName?: string;
   };
   onClose: () => void;
 }

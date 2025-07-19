@@ -2,16 +2,20 @@
 
 // Port center and destinations for power lines
 export const PORT_CENTER = { longitude: -16.91026503370738, latitude: 32.64184038298506 };
+
+// Energy distribution network - showing energy flowing to different port infrastructure
 export const PORT_DESTINATIONS = [
-  { id: 'east', name: 'East Terminal', longitude: -16.907203153852876, latitude: 32.64186799317473 },
-  { id: 'west', name: 'West Terminal', longitude: -16.915464898116372, latitude: 32.64102681507696 },
+  { id: 'main-dock', name: 'Main Dock Energy Grid', longitude: -16.910284, latitude: 32.641901 },
+  { id: 'crane-1', name: 'Port Crane System', longitude: -16.911741, latitude: 32.641808 }, // Updated coordinates
+  { id: 'shore-power', name: 'Shore Power Connection', longitude: -16.909400, latitude: 32.642000 }, // Near main dock for ship connections
+  { id: 'lighting-south', name: 'Port Lighting Grid', longitude: -16.914402, latitude: 32.641184 }, // Updated coordinates
+  { id: 'administrative', name: 'Administrative Buildings', longitude: -16.911058, latitude: 32.641813 }, // Updated coordinates
+  { id: 'fuel-station', name: 'Fuel Station Systems', longitude: -16.908800, latitude: 32.641800 }, // Reference point - correctly positioned
 ];
 
-// Port locations for visualization (existing points)
+// Port locations for visualization - only the main dock has energy monitoring
 export const PORT_LOCATIONS = [
   { id: 'main-dock', name: 'Main Dock', longitude: -16.910284, latitude: 32.641901, elevation: 0 },
-  { id: 'terminal-1', name: 'Terminal 1', longitude: -16.915753, latitude: 32.641252, elevation: 0 },
-  { id: 'terminal-2', name: 'Terminal 2', longitude: -16.914975, latitude: 32.643076, elevation: 0 },
 ];
 
 // Define all available boat model paths

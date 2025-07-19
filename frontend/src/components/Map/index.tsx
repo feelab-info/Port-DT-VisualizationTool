@@ -18,6 +18,7 @@ import {
   INITIAL_VIEW_STATE, 
   MAX_VESSELS, 
   PORT_VIEW_STATE,
+  PORT_DESTINATIONS,
   VESSEL_DOCKING_POSITIONS 
 } from './constants';
 
@@ -48,8 +49,6 @@ export default function MapVisualization() {
   const [currentPathIndex, setCurrentPathIndex] = useState(0);
   
   // These state variables are used internally by the animation system
-  // pathProgress tracks the animation progress and is used in the useEffect
-  const [pathProgress, setPathProgress] = useState(0);
   const [isDocked, setIsDocked] = useState(false);
   const [dockingStartTime, setDockingStartTime] = useState(0);
   const [boatPaths] = useState(BOAT_PATHS);
@@ -61,13 +60,9 @@ export default function MapVisualization() {
   // Add state for vessel simulations
   const [simulationsData, setSimulationsData] = useState<DetailedSimulationsResponse | null>(null);
   const [stationaryVessels, setStationaryVessels] = useState<StationaryVessel[]>([]);
-  const [selectedVessel, setSelectedVessel] = useState<{
-    id: string;
-    name: string;
-    position: [number, number, number];
+  const [selectedVessel, setSelectedVessel] = useState<(StationaryVessel & {
     simulation?: SimulationDetail;
-    dockName?: string;
-  } | null>(null);
+  }) | null>(null);
 
   // Use viewState to track the current map view
   // Start with the initial wide view of the island
@@ -241,14 +236,26 @@ export default function MapVisualization() {
     };
   }, [availableModels]);
 
-  // Animation effect for power lines
+  // Animation loop for smooth energy flow
   useEffect(() => {
-    const interval = setInterval(() => {
-      setAnimationTime(prev => (prev + 0.02) % 1); // Cycle between 0 and 1
-    }, 50); // Update every 50ms for smooth animation
+    let animationFrameId: number;
     
-    return () => clearInterval(interval);
-  }, []);
+    const animate = () => {
+      setAnimationTime(Date.now() * 0.001); // Convert to seconds for smoother animation
+      animationFrameId = requestAnimationFrame(animate);
+    };
+    
+    // Start animation loop only after initial zoom is completed
+    if (initialZoomCompleted) {
+      animationFrameId = requestAnimationFrame(animate);
+    }
+    
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [initialZoomCompleted]);
 
   // Boat animation logic
   useEffect(() => {
@@ -269,7 +276,6 @@ export default function MapVisualization() {
           setIsDocked(false);
           const nextPathIndex = (currentPathIndex + 1) % BOAT_PATHS.length;
           setCurrentPathIndex(nextPathIndex);
-          setPathProgress(0);
           startTime = timestamp; // Reset animation timer
         } else {
           // Still docked, continue animation loop
@@ -280,7 +286,6 @@ export default function MapVisualization() {
       
       // Calculate progress along the path (0 to 1)
       const progress = Math.min(1, elapsed / ANIMATION_DURATION);
-      setPathProgress(progress);
       
       const currentPath = BOAT_PATHS[currentPathIndex];
       const points = currentPath.points;
@@ -346,7 +351,6 @@ export default function MapVisualization() {
           // Move to next path
           const nextPathIndex = (currentPathIndex + 1) % BOAT_PATHS.length;
           setCurrentPathIndex(nextPathIndex);
-          setPathProgress(0);
           startTime = timestamp; // Reset animation timer
           animationFrameId = requestAnimationFrame(animateBoat);
         }
@@ -394,9 +398,9 @@ export default function MapVisualization() {
       handleVesselClick
     );
     
-    // Create highlight layers for selected vessel
+    // Create highlight layers for selected vessel - properly handle null case
     const highlightLayers = createHighlightLayers(
-      selectedVessel as StationaryVessel,
+      selectedVessel, // Remove the type assertion to let the function handle null properly
       animationTime
     );
     
@@ -408,25 +412,35 @@ export default function MapVisualization() {
     return [
       powerLayers.columns, 
       powerLayers.markers, 
-      powerLayers.labels, 
+      powerLayers.infrastructureMarkers,
+      powerLayers.centerMarker,
       powerLayers.powerLines, 
       powerLayers.particles, 
-      powerLayers.centerMarker, 
-      powerLayers.centerLabel,
+      powerLayers.labels, 
+      powerLayers.infrastructureLabels,
       ...highlightLayers,
       ...vesselLayers,
       boatLayer,
     ];
   };
 
+  // Add cleanup effect to prevent errors when component unmounts
+  useEffect(() => {
+    return () => {
+      // Clear selected vessel when component unmounts to prevent null access errors
+      setSelectedVessel(null);
+      setStationaryVessels([]);
+      setSimulationsData(null);
+      setEnergyData([]);
+      // Reset animation state
+      setAnimationTime(0);
+      setInitialZoomCompleted(false);
+    };
+  }, []);
+
   return (
     <div className="relative w-full h-full">
-      {/* Dev info - hidden in production */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="absolute bottom-2 left-2 z-10 bg-black bg-opacity-70 text-white text-xs p-1 rounded">
-          Path: {currentPathIndex}, Progress: {(pathProgress * 100).toFixed(1)}%, Docked: {isDocked ? 'Yes' : 'No'}
-        </div>
-      )}
+
 
       <Map
         ref={mapRef}
@@ -450,32 +464,155 @@ export default function MapVisualization() {
       <SlidingSidebar 
         position="right" 
         mapRef={mapRef.current}
-        title="Port Energy Analytics"
+        title="Main Dock Energy Grid"
       >
-        {simulationsData && simulationsData.success && (
-          <div className="p-4">
-            <h3 className="text-lg font-semibold mb-2">Vessels in Port</h3>
-            <p className="text-sm text-gray-600 mb-3">
-              Currently showing {stationaryVessels.length} of {simulationsData.simulations.length} vessel{simulationsData.simulations.length !== 1 ? 's' : ''} at port
-              {simulationsData.simulations.length > VESSEL_DOCKING_POSITIONS.length && (
-                <span className="block text-amber-600 mt-1">
-                  (Port can only accommodate {VESSEL_DOCKING_POSITIONS.length} vessels at once)
-                </span>
-              )}
+        {/* Energy Grid Information */}
+        <div className="p-4 space-y-4">
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
+            <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-300 mb-2">Energy Monitoring Status</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              Real-time monitoring of the main dock energy grid with three-phase power analysis
             </p>
-            <ul className="space-y-2">
-              {stationaryVessels.map((vessel) => (
-                <li key={vessel.id} className="p-3 bg-blue-50 rounded border border-blue-100">
-                  <p className="font-medium">{vessel.name}</p>
-                  <p className="text-sm text-gray-600">Docked at: {vessel.dockName || 'Port'}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Model: {vessel.model ? vessel.model.split('/').pop()?.replace('.gltf', '') || 'Unknown' : 'Default'}
-                  </p>
-                </li>
-              ))}
-            </ul>
+            
+            {/* Latest Energy Data */}
+            {energyData.length > 0 && (() => {
+              const latestData = energyData[energyData.length - 1];
+              const totalPower = (latestData.L1?.P || 0) + (latestData.L2?.P || 0) + (latestData.L3?.P || 0);
+              
+              return (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-600">
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Total Power</div>
+                      <div className="text-lg font-bold text-gray-900 dark:text-gray-100">{Math.round(totalPower)} W</div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-600">
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Total Consumption</div>
+                      <div className="text-lg font-bold text-gray-900 dark:text-gray-100">{Math.round(latestData.measure_cons)} W</div>
+                    </div>
+                  </div>
+                  
+                  {/* Three Phase Breakdown */}
+                  <div className="bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-600">
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Three-Phase Analysis</div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 bg-red-500 rounded mr-2"></div>
+                          <span className="text-xs text-gray-600 dark:text-gray-400">L1 Phase</span>
+                        </div>
+                        <div className="text-sm font-semibold">{Math.round(latestData.L1?.P || 0)} W</div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
+                          <span className="text-xs text-gray-600 dark:text-gray-400">L2 Phase</span>
+                        </div>
+                        <div className="text-sm font-semibold">{Math.round(latestData.L2?.P || 0)} W</div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
+                          <span className="text-xs text-gray-600 dark:text-gray-400">L3 Phase</span>
+                        </div>
+                        <div className="text-sm font-semibold">{Math.round(latestData.L3?.P || 0)} W</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Grid Status */}
+                  <div className="bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-600">
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Grid Status</div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Frequency:</span>
+                        <div className="font-semibold">{(latestData.L1_frequency || 0).toFixed(1)} Hz</div>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Load Balance:</span>
+                        <div className="font-semibold text-green-600 dark:text-green-400">
+                          {Math.abs(Math.max(latestData.L1?.P || 0, latestData.L2?.P || 0, latestData.L3?.P || 0) - 
+                            Math.min(latestData.L1?.P || 0, latestData.L2?.P || 0, latestData.L3?.P || 0)) < 500 ? 'Balanced' : 'Unbalanced'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    Last updated: {new Date(latestData.timestamp).toLocaleTimeString()}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
-        )}
+          
+          {/* Vessels Section */}
+          {simulationsData && simulationsData.success && (
+            <div className="bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 p-4 rounded-lg border border-amber-200 dark:border-amber-700">
+              <h3 className="text-lg font-semibold text-amber-800 dark:text-amber-300 mb-2">Vessels at Port</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                Currently showing {stationaryVessels.length} of {simulationsData.simulations.length} vessel{simulationsData.simulations.length !== 1 ? 's' : ''} at port
+                {simulationsData.simulations.length > VESSEL_DOCKING_POSITIONS.length && (
+                  <span className="block text-amber-600 dark:text-amber-400 mt-1">
+                    (Port can only accommodate {VESSEL_DOCKING_POSITIONS.length} vessels at once)
+                  </span>
+                )}
+              </p>
+              <ul className="space-y-2">
+                {stationaryVessels.map((vessel) => (
+                  <li key={vessel.id} className="p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600">
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{vessel.name}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Docked at: {vessel.dockName || 'Port'}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Model: {vessel.model ? vessel.model.split('/').pop()?.replace('.gltf', '') || 'Unknown' : 'Default'}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {/* Visualization Legend */}
+          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Energy Distribution Network</h4>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center">
+                <div className="w-4 h-4 bg-yellow-400 rounded mr-2"></div>
+                <span className="text-gray-600 dark:text-gray-400">Power Distribution Center</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-4 h-4 bg-blue-500 rounded mr-2"></div>
+                <span className="text-gray-600 dark:text-gray-400">Main Dock Energy Grid</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-orange-400 rounded mr-3"></div>
+                <span className="text-gray-600 dark:text-gray-400">Port Crane System</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-green-400 rounded mr-3"></div>
+                <span className="text-gray-600 dark:text-gray-400">Shore Power Connection</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-yellow-300 rounded mr-3"></div>
+                <span className="text-gray-600 dark:text-gray-400">Port Lighting Grid</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-blue-400 rounded mr-3"></div>
+                <span className="text-gray-600 dark:text-gray-400">Administrative Buildings</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-purple-400 rounded mr-3"></div>
+                <span className="text-gray-600 dark:text-gray-400">Fuel Station Systems</span>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-gray-300 dark:border-gray-600">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Energy flows from the distribution center to {PORT_DESTINATIONS.length} different port systems. 
+                Particle speed and intensity indicate power consumption levels.
+              </p>
+            </div>
+          </div>
+        </div>
       </SlidingSidebar>
 
       {/* Vessel Details Popover */}
