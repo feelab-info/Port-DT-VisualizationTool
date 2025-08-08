@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { EnergyData } from '@/services/EnergyDataService';
 
@@ -167,6 +167,57 @@ export default function DeviceSelection({
             </button>
           </div>
         </div>
+
+        {/* Progress Bar when searching */}
+        <SearchProgressBar active={isSearching} />
+      </div>
+    </div>
+  );
+}
+
+function SearchProgressBar({ active }: { active: boolean }) {
+  const [progress, setProgress] = useState<number>(0);
+  const [visible, setVisible] = useState<boolean>(false);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (active) {
+      setVisible(true);
+      setProgress(0);
+      interval = setInterval(() => {
+        setProgress((prev) => {
+          // Ease towards 90% while active
+          if (prev >= 90) return prev;
+          const increment = Math.max(0.5, 3 * Math.random());
+          return Math.min(90, prev + increment);
+        });
+      }, 150);
+    } else if (!active && visible) {
+      // Complete and then hide
+      setProgress(100);
+      const timeout = setTimeout(() => {
+        setVisible(false);
+        setProgress(0);
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [active, visible]);
+
+  if (!visible) return null;
+
+  return (
+    <div className="mt-4">
+      <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+        <div
+          className="h-2 bg-blue-600 dark:bg-blue-500 transition-all duration-150"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        Fetching historical data...
       </div>
     </div>
   );

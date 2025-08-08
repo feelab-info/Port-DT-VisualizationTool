@@ -103,19 +103,32 @@ export function useEnergyData() {
   // Update filtered data based on device selection
   const updateFilteredData = (data: EnergyData[], deviceId: string | null) => {
     if (!deviceId) {
-      // Show all data from today if no device is selected
-      const today = new Date(selectedDate);
-      today.setHours(0, 0, 0, 0);
-      
+      // Show all data from today if no device is selected, sorted newest-first
+      const dayStart = new Date(selectedDate);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
       const todayData = data.filter(item => {
         const itemDate = new Date(item.timestamp);
-        return itemDate >= today;
-      });
-      
+        return itemDate >= dayStart && itemDate < dayEnd;
+      }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
       setFilteredData(todayData);
     } else {
-      // Filter by selected device
-      const deviceData = data.filter(item => item.device === deviceId);
+      // Filter by selected device in the selected day, sort newest-first
+      const dayStart = new Date(selectedDate);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      const deviceData = data
+        .filter(item => item.device === deviceId)
+        .filter(item => {
+          const itemDate = new Date(item.timestamp);
+          return itemDate >= dayStart && itemDate < dayEnd;
+        })
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       
       if (deviceData.length === 0) {
         // This indicates a device ID mismatch between selection and data
@@ -163,7 +176,7 @@ export function useEnergyData() {
       const nextDay = new Date(selectedDay);
       nextDay.setDate(nextDay.getDate() + 1);
       
-      let newFilteredData;
+      let newFilteredData: EnergyData[];
       if (selectedDevice) {
         // Filter by device and date
         newFilteredData = allData.filter(item => {
@@ -178,7 +191,8 @@ export function useEnergyData() {
         });
       }
       
-      setFilteredData(newFilteredData);
+      // Always sort newest-first for consistency
+      setFilteredData(newFilteredData.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
     }
   };
 
@@ -216,12 +230,13 @@ export function useEnergyData() {
       console.log('Received historical data:', fetchedHistoricalData?.length || 0, 'records');
       
       if (fetchedHistoricalData && fetchedHistoricalData.length > 0) {
-        // Store the full historical dataset
-        setHistoricalData(fetchedHistoricalData);
+        // Store the full historical dataset (newest-first)
+        const sortedHistorical = [...fetchedHistoricalData]
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setHistoricalData(sortedHistorical);
         
-        // The backend already filtered the data correctly based on our request
-        // No need to filter again on the frontend
-        setFilteredData(fetchedHistoricalData);
+        // Provide all records for the day; component will paginate for rendering
+        setFilteredData(sortedHistorical);
         
         console.log(`Set ${fetchedHistoricalData.length} historical records for display`);
         

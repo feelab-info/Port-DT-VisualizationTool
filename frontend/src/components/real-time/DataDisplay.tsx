@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { EnergyData } from '@/services/EnergyDataService';
 import EnergyCharts from './EnergyCharts';
 
@@ -61,8 +61,19 @@ export default function DataDisplay({
   }, 0);
   const avgPower = filteredData.length > 0 ? totalPower / filteredData.length : 0;
 
-  // Generate table rows for all filtered data
-  const tableRows = filteredData.map((item, index) => (
+  // Pagination for large historical datasets
+  const PAGE_SIZE_OPTIONS = [100, 250, 500, 1000];
+  const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[1]);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / pageSize));
+
+  const visibleRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredData.slice(start, end);
+  }, [filteredData, currentPage, pageSize]);
+
+  const tableRows = visibleRows.map((item, index) => (
     <tr key={item._id} className={`${index % 2 === 0 ? 'bg-gray-50 dark:bg-gray-700/50' : 'bg-white dark:bg-gray-800'} hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors duration-150`}>
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -105,6 +116,81 @@ export default function DataDisplay({
 
   const dataTable = (
     <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-600">
+      {/* Pagination Controls */}
+      {filteredData.length > 0 && (
+        <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-0 md:justify-between px-4 py-3 text-sm border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/30">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-700 dark:text-gray-200">Rows per page:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                const newSize = parseInt(e.target.value, 10);
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+              className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100"
+            >
+              {PAGE_SIZE_OPTIONS.map(size => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2 text-gray-700 dark:text-gray-200">
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className={`px-2 py-1 rounded border ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-600'} border-gray-300 dark:border-gray-600`}
+              aria-label="First page"
+            >«</button>
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className={`px-2 py-1 rounded border ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-600'} border-gray-300 dark:border-gray-600`}
+              aria-label="Previous page"
+            >‹</button>
+            <span>Page {currentPage} of {totalPages}</span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className={`px-2 py-1 rounded border ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-600'} border-gray-300 dark:border-gray-600`}
+              aria-label="Next page"
+            >›</button>
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+              className={`px-2 py-1 rounded border ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-600'} border-gray-300 dark:border-gray-600`}
+              aria-label="Last page"
+            >»</button>
+          </div>
+          {/* Export Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleExportCsv(visibleRows, `energy-data_${selectedDate}_page-${currentPage}.csv`)}
+              className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              Export CSV (page)
+            </button>
+            <button
+              onClick={() => handleExportCsv(filteredData, `energy-data_${selectedDate}_all.csv`)}
+              className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              Export CSV (all)
+            </button>
+            <button
+              onClick={() => handleExportPdf(visibleRows, `energy-report_${selectedDate}_page-${currentPage}.pdf`, selectedDevice, deviceList)}
+              className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              Export PDF (page)
+            </button>
+            <button
+              onClick={() => handleExportPdf(filteredData, `energy-report_${selectedDate}_all.pdf`, selectedDevice, deviceList)}
+              className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              Export PDF (all)
+            </button>
+          </div>
+        </div>
+      )}
       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
         <thead className="bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-700 dark:to-slate-700">
           <tr>
@@ -250,4 +336,109 @@ export default function DataDisplay({
       )}
     </div>
   );
+}
+
+function handleExportCsv(rows: EnergyData[], filename: string) {
+  if (!rows || rows.length === 0) {
+    return;
+  }
+  const headers = [
+    'timestamp', 'device', 'deviceName', 'L1_P', 'L2_P', 'L3_P', 'L1_V', 'L2_V', 'L3_V', 'L1_I', 'L2_I', 'L3_I', 'L1_PF', 'L2_PF', 'L3_PF', 'measure_cons', 'producer'
+  ];
+  const escape = (val: unknown) => {
+    if (val === undefined || val === null) return '';
+    const s = String(val);
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  };
+  const lines = [headers.join(',')];
+  for (const r of rows) {
+    const line = [
+      r.timestamp,
+      r.device,
+      r.deviceName || '',
+      r.L1?.P ?? '', r.L2?.P ?? '', r.L3?.P ?? '',
+      r.L1?.V ?? '', r.L2?.V ?? '', r.L3?.V ?? '',
+      r.L1?.I ?? '', r.L2?.I ?? '', r.L3?.I ?? '',
+      r.L1?.PF ?? '', r.L2?.PF ?? '', r.L3?.PF ?? '',
+      r.measure_cons ?? '',
+      r.producer ?? ''
+    ].map(escape).join(',');
+    lines.push(line);
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+async function handleExportPdf(
+  rows: EnergyData[],
+  filename: string,
+  selectedDevice: string | null,
+  deviceList: { id: string; name: string }[]
+) {
+  if (!rows || rows.length === 0) return;
+  const [{ default: jsPDF }, autoTableModule] = await Promise.all<[
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    any
+  ]>([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const autoTable = (autoTableModule as any).default || (autoTableModule as any);
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+
+  const deviceName = selectedDevice
+    ? (deviceList.find(d => d.id === selectedDevice)?.name || selectedDevice)
+    : null;
+  const title = deviceName ? `Energy Report - ${deviceName}` : 'Energy Report - All Devices';
+  doc.setFontSize(16);
+  doc.text(title, 40, 40);
+  doc.setFontSize(10);
+  const generatedAt = new Date().toLocaleString();
+  doc.text(`Generated at: ${generatedAt}`, 40, 58);
+  doc.text(`Records: ${rows.length.toLocaleString()}`, 40, 72);
+
+  const headers = [
+    'Timestamp', 'Device', 'Total P (W)', 'L1 P', 'L2 P', 'L3 P', 'L1 V', 'L2 V', 'L3 V', 'L1 I', 'L2 I', 'L3 I', 'L1 PF', 'L2 PF', 'L3 PF'
+  ];
+  const body = rows.map(r => [
+    new Date(r.timestamp).toLocaleString(),
+    r.deviceName || deviceList.find(d => d.id === r.device)?.name || r.device,
+    Math.round((r.L1?.P || 0) + (r.L2?.P || 0) + (r.L3?.P || 0)),
+    Math.round(r.L1?.P || 0), Math.round(r.L2?.P || 0), Math.round(r.L3?.P || 0),
+    Math.round(r.L1?.V || 0), Math.round(r.L2?.V || 0), Math.round(r.L3?.V || 0),
+    Math.round(r.L1?.I || 0), Math.round(r.L2?.I || 0), Math.round(r.L3?.I || 0),
+    (r.L1?.PF ?? ''), (r.L2?.PF ?? ''), (r.L3?.PF ?? '')
+  ]);
+
+  autoTable(doc, {
+    startY: 90,
+    head: [headers],
+    body,
+    styles: { fontSize: 8, cellPadding: 4 },
+    headStyles: { fillColor: [37, 99, 235] },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    margin: { left: 40, right: 40 },
+    didDrawPage: (data: { pageNumber: number }) => {
+      const pageCount = doc.getNumberOfPages();
+      const pageSize = doc.internal.pageSize;
+      const pageWidth = pageSize.getWidth();
+      doc.setFontSize(9);
+      doc.text(`Page ${data.pageNumber} of ${pageCount}`, pageWidth - 100, pageSize.getHeight() - 20);
+    },
+  });
+
+  doc.save(filename);
 }
