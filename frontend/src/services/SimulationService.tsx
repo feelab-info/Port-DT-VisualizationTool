@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventEmitter } from 'events';
+import { authService } from './AuthService';
 
 interface SimulationParams {
   // Define your simulation parameters here
@@ -44,10 +45,12 @@ class SimulationService extends EventEmitter {
   
   public async runSimulation(params: SimulationParams): Promise<SimulationResult> {
     try {
+      const token = authService.getToken();
       const response = await fetch(`${this.baseUrl}/api/simulation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify(params),
       });
@@ -68,7 +71,12 @@ class SimulationService extends EventEmitter {
   
   public async getSimulationResults(scenarioId: string): Promise<SimulationResult> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/simulation/${scenarioId}`);
+      const token = authService.getToken();
+      const response = await fetch(`${this.baseUrl}/api/simulation/${scenarioId}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -102,10 +110,12 @@ class SimulationService extends EventEmitter {
 
   public async submitRegisteredVessel(data: VesselData): Promise<any> {
     try {
+      const token = authService.getToken();
       const response = await fetch(`${this.baseUrl}/api/vessel/registered`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           vessel_name: data.vessel_name,
@@ -152,7 +162,12 @@ class SimulationService extends EventEmitter {
     try {
       // Try fetching from the backend first
       try {
-        const response = await fetch(`${this.baseUrl}/api/simulation/timesteps-results`);
+        const token = authService.getToken();
+        const response = await fetch(`${this.baseUrl}/api/simulation/timesteps-results`, {
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
         if (response.ok) {
           const data = await response.json();
           return data;
@@ -177,7 +192,12 @@ class SimulationService extends EventEmitter {
 
   public async getKpiResults(): Promise<any> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/simulation/kpi-results`);
+      const token = authService.getToken();
+      const response = await fetch(`${this.baseUrl}/api/simulation/kpi-results`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
       if (response.ok) {
         return await response.json();
       }
@@ -190,10 +210,12 @@ class SimulationService extends EventEmitter {
 
   public async startSimulationService(): Promise<any> {
     try {
+      const token = authService.getToken();
       const response = await fetch(`${this.baseUrl}/api/simulation/start-service`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         }
       });
       
@@ -211,10 +233,12 @@ class SimulationService extends EventEmitter {
 
   public async toggleSimulationUpdates(paused: boolean): Promise<void> {
     try {
+      const token = authService.getToken();
       const response = await fetch(`${this.baseUrl}/api/simulation/toggle-updates`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ paused })
       });

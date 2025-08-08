@@ -7,7 +7,7 @@ import SimulationMonitor from '@/components/SimulationMonitor';
 export default function SimulationPage() {
 
   return (
-    <DashboardLayout>
+    <DashboardLayout showHealthNotification={false}>
       <div className="container mx-auto space-y-8">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Power Flow Simulation</h1>

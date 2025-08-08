@@ -1,12 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
-import { simulationService } from '../services/SimulationService';
+import vesselSimulationService, { SimulationDetail } from '@/services/VesselSimulationService';
 import VesselEnergyProfile from './VesselEnergyProfile';
 import { Ship, Clock, Users, Ruler, Zap, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface VesselInputProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onSubmit: (data: any) => void;
+  onSubmit: (data: SimulationDetail) => void;
 }
 
 export default function VesselInput({ onSubmit }: VesselInputProps) {
@@ -14,7 +12,7 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
   const [availableVessels, setAvailableVessels] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [vesselResult, setVesselResult] = useState<any>(null);
+  const [vesselResult, setVesselResult] = useState<SimulationDetail | null>(null);
   const [isLoadingVessels, setIsLoadingVessels] = useState(true);
   
   const [formData, setFormData] = useState({
@@ -34,7 +32,7 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
   const loadAvailableVessels = async () => {
     try {
       setIsLoadingVessels(true);
-      const vessels = await simulationService.getAvailableVessels();
+      const vessels = await vesselSimulationService.getAvailableVessels();
       setAvailableVessels(vessels);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to load vessels');
@@ -49,25 +47,25 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
     setError(null);
     
     try {
-      // Convert string values to numbers for the custom vessel
-      const processedData = mode === 'registered' 
-        ? {
-            vessel_name: formData.vessel_name,
-            arrival_time: formData.arrival_time,
-            departure_time: formData.departure_time
-          }
-        : {
-            name: formData.name,
-            gross_tonnage: formData.gross_tonnage ? parseFloat(formData.gross_tonnage) : 0,
-            length: formData.length ? parseFloat(formData.length) : 0,
-            hotel_energy: formData.hotel_energy ? parseFloat(formData.hotel_energy) : 0,
-            arrival_time: formData.arrival_time,
-            departure_time: formData.departure_time
-          };
-      
-      const result = mode === 'registered' 
-        ? await simulationService.submitRegisteredVessel(processedData)
-        : await simulationService.submitCustomVessel(processedData);
+      let result;
+      if (mode === 'registered') {
+        const payload = {
+          vessel_name: formData.vessel_name,
+          arrival_time: formData.arrival_time,
+          departure_time: formData.departure_time,
+        };
+        result = await vesselSimulationService.submitRegisteredVessel(payload);
+      } else {
+        const payload = {
+          name: formData.name,
+          gross_tonnage: formData.gross_tonnage ? parseFloat(formData.gross_tonnage) : 0,
+          length: formData.length ? parseFloat(formData.length) : 0,
+          hotel_energy: formData.hotel_energy ? parseFloat(formData.hotel_energy) : 0,
+          arrival_time: formData.arrival_time,
+          departure_time: formData.departure_time,
+        };
+        result = await vesselSimulationService.submitCustomVessel(payload);
+      }
       
       setVesselResult(result);
       onSubmit(result);

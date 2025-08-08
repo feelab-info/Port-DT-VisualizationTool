@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
 import axios from 'axios';
+import { authService } from './AuthService';
 
 export interface VesselData {
   vesselId?: string;
@@ -64,15 +65,25 @@ class VesselSimulationService extends EventEmitter {
   }
 
   /**
-   * Get a list of available vessel types/templates
+   * Get a list of available vessel names
    */
-  public async getAvailableVessels(): Promise<VesselData[]> {
+  public async getAvailableVessels(): Promise<string[]> {
     try {
-      const response = await axios.get(`${this.baseUrl}/api/vessel/available`);
-      return response.data;
+      const token = authService.getToken();
+      const response = await axios.get(`${this.baseUrl}/api/vessel/available`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      const data = response.data;
+      if (data && Array.isArray(data.vessels)) {
+        return data.vessels as string[];
+      }
+      if (Array.isArray(data)) {
+        return data as string[];
+      }
+      console.warn('Unexpected response format from available vessels API:', data);
+      return [];
     } catch (error) {
       console.error('Error fetching available vessels:', error);
-      // Return empty array instead of throwing error to prevent UI disruption
       return [];
     }
   }
@@ -82,10 +93,60 @@ class VesselSimulationService extends EventEmitter {
    */
   public async predictVesselEnergy(vesselData: VesselData): Promise<VesselSimulationResult> {
     try {
-      const response = await axios.post(`${this.baseUrl}/api/vessel/registered`, vesselData);
+      const token = authService.getToken();
+      const response = await axios.post(`${this.baseUrl}/api/vessel/registered`, vesselData, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       return response.data;
     } catch (error) {
       console.error('Error predicting vessel energy:', error);
+      if (axios.isAxiosError(error)) {
+        throw new Error(error.response?.data?.error || error.message);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Submit a registered vessel prediction using snake_case payload expected by backend
+   */
+  public async submitRegisteredVessel(payload: {
+    vessel_name: string;
+    arrival_time: string;
+    departure_time: string;
+  }): Promise<SimulationDetail> {
+    try {
+      const token = authService.getToken();
+      const response = await axios.post(`${this.baseUrl}/api/vessel/registered`, payload, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      return response.data as SimulationDetail;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(error.response?.data?.error || error.message);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Submit a custom vessel prediction via backend
+   */
+  public async submitCustomVessel(payload: {
+    name: string;
+    gross_tonnage: number;
+    length: number;
+    hotel_energy: number;
+    arrival_time: string;
+    departure_time: string;
+  }): Promise<SimulationDetail> {
+    try {
+      const token = authService.getToken();
+      const response = await axios.post(`${this.baseUrl}/api/vessel/custom`, payload, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      return response.data as SimulationDetail;
+    } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new Error(error.response?.data?.error || error.message);
       }
@@ -98,7 +159,10 @@ class VesselSimulationService extends EventEmitter {
    */
   public async getVesselSimulations(): Promise<VesselSimulationResult[]> {
     try {
-      const response = await axios.get(`${this.baseUrl}/api/vessel/simulations`);
+      const token = authService.getToken();
+      const response = await axios.get(`${this.baseUrl}/api/vessel/simulations`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       const data = response.data;
       
       // Check if the response has a simulations array property
@@ -133,7 +197,10 @@ class VesselSimulationService extends EventEmitter {
       // Try date-specific endpoint if a date is provided
       if (date) {
         try {
-          const response = await axios.get(`${this.baseUrl}/api/vessel/simulations/${date}`);
+          const token = authService.getToken();
+          const response = await axios.get(`${this.baseUrl}/api/vessel/simulations/${date}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          });
           return response.data;
         } catch (error) {
           console.warn('Error with date-specific endpoint:', error);
@@ -142,14 +209,20 @@ class VesselSimulationService extends EventEmitter {
       
       // Try the general endpoint
       try {
-        const response = await axios.get(`${this.baseUrl}/api/vessel/simulations`);
+        const token = authService.getToken();
+        const response = await axios.get(`${this.baseUrl}/api/vessel/simulations`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         return response.data;
       } catch (error) {
         console.warn('Error with general endpoint:', error);
       }
       
       // Try current-simulations as last resort
-      const response = await axios.get(`${this.baseUrl}/api/vessel/current-simulations`);
+      const token = authService.getToken();
+      const response = await axios.get(`${this.baseUrl}/api/vessel/current-simulations`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       return response.data;
     } catch (error) {
       console.error('Error fetching detailed simulations:', error);

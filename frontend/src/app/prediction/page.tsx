@@ -1,21 +1,13 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import VesselInput from '@/components/VesselInput';
 import Link from 'next/link';
-import vesselSimulationService, { 
-  VesselSimulationResult, 
-  VesselData, 
-  DetailedSimulationsResponse,
-  SimulationDetail 
-} from '@/services/VesselSimulationService';
+import vesselSimulationService, { SimulationDetail, DetailedSimulationsResponse } from '@/services/VesselSimulationService';
+import { authService } from '@/services/AuthService';
 
 export default function PredictionPage() {
-  const [vesselResult, setVesselResult] = useState<VesselSimulationResult | null>(null);
-  const [simulationResults, setSimulationResults] = useState<VesselSimulationResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [simulationsData, setSimulationsData] = useState<DetailedSimulationsResponse | null>(null);
@@ -23,24 +15,16 @@ export default function PredictionPage() {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    // Fetch initial vessel simulation data using the service
-    const fetchVesselSimulations = async () => {
-      try {
-        setIsLoading(true);
-        const data = await vesselSimulationService.getVesselSimulations();
-        setSimulationResults(data);
-      } catch (error) {
-        console.error('Error fetching vessel simulations:', error);
-        setError(`Error fetching data: ${(error as Error).message}`);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     // Fetch detailed energy profiles
     const fetchDetailedSimulations = async () => {
       setDetailedSimulationError(null);
       try {
+        const token = authService.getToken();
+        if (!token) {
+          setSimulationsData(null);
+          setDetailedSimulationError('Please log in to view vessel simulations.');
+          return;
+        }
         const data = await vesselSimulationService.getDetailedSimulations(selectedDate);
         setSimulationsData(data);
       } catch (error) {
@@ -49,12 +33,10 @@ export default function PredictionPage() {
       }
     };
     
-    fetchVesselSimulations();
     fetchDetailedSimulations();
     
     // Set up a polling interval to refresh data periodically if needed
     const intervalId = setInterval(() => {
-      fetchVesselSimulations();
       fetchDetailedSimulations();
     }, 3000000); // Refresh every 3000 seconds
     
@@ -64,15 +46,11 @@ export default function PredictionPage() {
     };
   }, [selectedDate]); // Add selectedDate as a dependency
 
-  const handleVesselSubmit = async (data: VesselData) => {
+  const handleVesselSubmit = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      setVesselResult(null); // Clear previous result
-      
-      // Use the service to predict energy
-      const result = await vesselSimulationService.predictVesselEnergy(data);
-      setVesselResult(result);
+      // Result rendering is handled within the child or the historical section below
       
       
     } catch (error) {
@@ -115,7 +93,7 @@ export default function PredictionPage() {
   };
 
   return (
-    <DashboardLayout>
+    <DashboardLayout showHealthNotification={false}>
       <div className="container mx-auto space-y-8">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Ship Energy Prediction</h1>
@@ -141,31 +119,7 @@ export default function PredictionPage() {
           </div>
         )}
         
-        {vesselResult && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-            <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
-              <h3 className="text-lg font-medium text-green-800 dark:text-green-300 mb-2">Prediction Results</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Vessel Name</p>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">{vesselResult.vesselName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Estimated Energy Consumption</p>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">{vesselResult.energyConsumption || 'N/A'} kWh</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Arrival Time</p>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">{vesselResult.arrivalTime ? new Date(vesselResult.arrivalTime).toLocaleString() : 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Departure Time</p>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">{vesselResult.departureTime ? new Date(vesselResult.departureTime).toLocaleString() : 'N/A'}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* We no longer render the simple summary card; detailed profiles section below covers display */}
       
         {/* Date Selection Section */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
