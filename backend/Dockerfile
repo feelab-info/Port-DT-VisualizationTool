@@ -41,9 +41,9 @@ USER nodejs
 # Expose port
 EXPOSE 5001
 
-# Health check (check if server is responding)
+# Health check (check if server health endpoint is responding)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:5001/ || exit 1
+  CMD curl -f http://localhost:5001/health || exit 1
 
 # Start the application
 CMD ["npm", "start"] 

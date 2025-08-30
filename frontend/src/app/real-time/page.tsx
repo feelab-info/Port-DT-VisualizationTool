@@ -33,7 +33,7 @@ export default function RealTimeDataPage() {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto space-y-8">
+      <div className="container mx-auto space-y-8 mt-3">
         {/* Simplified Header Section */}
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">

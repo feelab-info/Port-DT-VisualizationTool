@@ -82,7 +82,7 @@ export function VesselDetailPageClient({ id }: { id: string }) {
 
   return (
     <DashboardLayout showHealthNotification={false}>
-      <div className="container mx-auto space-y-8">
+      <div className="container mx-auto space-y-8 mt-3">
         {/* Simplified Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-2">
           <div>

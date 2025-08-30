@@ -37,7 +37,7 @@ export default function Home() {
 
   return (
     <DashboardLayout>
-      <div className="mb-6">
+      <div className="mb-6 mt-3">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Dashboard</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-2">Welcome to the Port Digital Twin platform</p>
       </div>

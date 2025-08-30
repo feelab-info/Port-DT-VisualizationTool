@@ -7,6 +7,10 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Accept build-time backend URL for Next.js public env
+ARG NEXT_PUBLIC_BACKEND_URL
+ENV NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
+
 # Install dependencies including dev dependencies for building
 RUN npm ci && npm cache clean --force
 
@@ -29,7 +33,7 @@ RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nextjs -u 1001
 
 # Copy built application from builder stage
-COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 

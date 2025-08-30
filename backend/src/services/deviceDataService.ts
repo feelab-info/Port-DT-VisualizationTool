@@ -52,12 +52,16 @@ export async function collectDeviceData(): Promise<any[]> {
       return [];
     }
     
-    // Create one aggregation query that gets latest documents for all target devices at once
+    // Optimized approach: Get latest readings for each device with time constraint
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const latestReadings = await eGaugeCollection.aggregate([
-      // Match only our target devices
-      { $match: { device: { $in: targetDeviceIds } } },
+      // Match only recent documents for our target devices to reduce data size
+      { $match: { 
+          device: { $in: targetDeviceIds },
+          timestamp: { $gte: oneDayAgo } // Only look at last 24 hours
+      }},
       
-      // Sort within each device group
+      // Sort within each device group (limited dataset now)
       { $sort: { device: 1, timestamp: -1 } },
       
       // Group by device and get only the first (most recent) document
@@ -67,10 +71,10 @@ export async function collectDeviceData(): Promise<any[]> {
       }},
       
       // Replace the root to get the original document structure
-      { $replaceRoot: { newRoot: "$latestDoc" } },
+      { $replaceRoot: { newRoot: "$latestDoc" } }
       
-      // Allow disk use for this aggregation to avoid memory issues
-    ], { allowDiskUse: true }).toArray();
+      // Removed allowDiskUse since we're working with much smaller dataset
+    ]).toArray();
     
     console.log(`Retrieved ${latestReadings.length} device readings out of ${targetDeviceIds.length} targets`);
     
