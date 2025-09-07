@@ -1,0 +1,35 @@
+# Environment files
+.env
+.env.local
+.env.production
+
+# Docker volumes and logs
+logs/
+nginx/logs/
+nginx/ssl/
+dc_power_flow/logs/
+dc_power_flow/output/
+vessel_modelling/logs/
+vessel_modelling/output/
+
+# macOS files
+.DS_Store
+._*
+
+# Node modules
+node_modules/
+.next/
+dist/
+
+# Database files
+*.db
+*.sqlite
+
+# SSL certificates and keys
+*.pem
+*.key
+*.crt
+
+# Temporary files
+*.tmp
+*.temp

@@ -1,0 +1,23 @@
+Port Digital Twin Deployment Package
+===================================
+Generated: Mon Sep  1 16:34:44 WEST 2025
+From: diogoreisrodrigues@MacBook-Air-de-Diogo-2.local
+Git Commit: f89d8d17b12fa3c8e3ce7caca6e5dda3a562eda3
+
+Files included:
+- Complete application source code
+- Nginx reverse proxy configuration
+- Docker Compose configuration
+- SSL setup and management scripts
+- Production deployment scripts
+- Server setup automation
+- One-click deployment script
+- Comprehensive deployment documentation
+
+Next steps:
+1. Transfer this package to your production server
+2. Follow the instructions in PRODUCTION_DEPLOYMENT.md
+3. Configure DNS for portdt.prsma.com
+4. Run the deployment scripts
+
+For support, refer to PRODUCTION_DEPLOYMENT.md
