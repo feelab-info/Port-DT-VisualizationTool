@@ -20,6 +20,8 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+.DS_Store
+.DS_Store?
 
 # Virtual environments
 venv/
