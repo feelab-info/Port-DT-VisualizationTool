@@ -156,4 +156,46 @@ export async function getExcelDeviceData(req: Request, res: Response): Promise<v
       details: error.message
     });
   }
+}
+
+/**
+ * Get all available devices with their friendly names
+ */
+export async function getAllDevices(req: Request, res: Response): Promise<void> {
+  try {
+    // Return all available devices D1-D31 with their friendly names
+    const devices = [];
+    for (let i = 1; i <= 31; i++) {
+      devices.push({
+        id: `D${i}`,
+        name: `Device D${i}`,
+        friendlyName: `Device D${i}`
+      });
+    }
+    
+    // Add other known devices
+    devices.push({
+      id: 'F9',
+      name: 'Device F9',
+      friendlyName: 'Device F9'
+    });
+    
+    devices.push({
+      id: 'Entrada de energia',
+      name: 'Entrada de energia',
+      friendlyName: 'Entrada de energia'
+    });
+    
+    res.json({
+      status: 'success',
+      devices: devices
+    });
+  } catch (error: any) {
+    console.error('Error fetching all devices:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch all devices',
+      details: error.message
+    });
+  }
 } 

@@ -11,6 +11,7 @@ export default function RealTimeDataPage() {
   const {
     filteredData,
     deviceList,
+    allDeviceList,
     selectedDevice,
     selectedDate,
     isHistoricalView,
@@ -51,6 +52,7 @@ export default function RealTimeDataPage() {
         
         <DeviceSelection
           deviceList={deviceList}
+          allDeviceList={allDeviceList}
           selectedDevice={selectedDevice}
           selectedDate={selectedDate}
           isSearching={isSearching}

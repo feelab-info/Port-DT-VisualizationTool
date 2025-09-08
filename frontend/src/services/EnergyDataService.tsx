@@ -217,6 +217,48 @@ class EnergyDataService extends EventEmitter {
    * @param date The date in ISO format (YYYY-MM-DD)
    * @returns Promise with the historical data
    */
+  /**
+   * Fetch all available devices from the backend
+   */
+  public async fetchAllDevices(): Promise<{id: string, name: string}[]> {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001'}/api/simulation/devices`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch devices: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      if (data.status === 'success' && data.devices) {
+        return data.devices.map((device: any) => ({
+          id: device.id,
+          name: device.friendlyName || device.name
+        }));
+      } else {
+        throw new Error('Invalid response format');
+      }
+    } catch (error) {
+      console.error('Error fetching all devices:', error);
+      // Return fallback devices if API call fails
+      const fallbackDevices = [];
+      for (let i = 1; i <= 31; i++) {
+        fallbackDevices.push({
+          id: `D${i}`,
+          name: `Device D${i}`
+        });
+      }
+      fallbackDevices.push({ id: 'F9', name: 'Device F9' });
+      fallbackDevices.push({ id: 'Entrada de energia', name: 'Entrada de energia' });
+      return fallbackDevices;
+    }
+  }
+
   public async fetchHistoricalData(deviceId: string, date: string): Promise<EnergyData[]> {
     console.log('EnergyDataService: Starting fetchHistoricalData request', { deviceId, date });
     

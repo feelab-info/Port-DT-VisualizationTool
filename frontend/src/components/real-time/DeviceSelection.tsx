@@ -4,6 +4,7 @@ import { EnergyData } from '@/services/EnergyDataService';
 
 interface DeviceSelectionProps {
   deviceList: {id: string, name: string}[];
+  allDeviceList: {id: string, name: string}[];
   selectedDevice: string | null;
   selectedDate: string;
   isSearching: boolean;
@@ -14,6 +15,7 @@ interface DeviceSelectionProps {
 
 export default function DeviceSelection({
   deviceList,
+  allDeviceList,
   selectedDevice,
   selectedDate,
   isSearching,
@@ -23,9 +25,12 @@ export default function DeviceSelection({
 }: DeviceSelectionProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
-  // Use only real devices from the data - no fallback devices
-  const availableDevices: {id: string, name: string}[] = deviceList;
-  const hasData = deviceList.length > 0;
+  // Use all devices from the system, not just those with active data
+  const availableDevices: {id: string, name: string, hasData?: boolean}[] = allDeviceList.map(device => ({
+    ...device,
+    hasData: deviceList.some(activeDevice => activeDevice.id === device.id)
+  }));
+  const hasDevicesAvailable = availableDevices.length > 0;
 
   // Create device display names based on hash patterns
   const getDeviceDisplayName = (device: {id: string, name: string}) => {
@@ -75,7 +80,7 @@ export default function DeviceSelection({
                 type="button"
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="w-full px-4 py-2 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-gray-100"
-                disabled={!hasData}
+                disabled={!hasDevicesAvailable}
               >
                 <span className={!selectedDevice ? 'text-gray-500 dark:text-gray-400' : ''}>
                   {getSelectedDeviceName()}
@@ -85,7 +90,7 @@ export default function DeviceSelection({
                 </svg>
               </button>
 
-              {isDropdownOpen && hasData && (
+              {isDropdownOpen && hasDevicesAvailable && (
                 <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                   {/* Clear Selection Option */}
                   <button
@@ -101,28 +106,31 @@ export default function DeviceSelection({
                   </button>
                   
                   {/* Device List */}
-                  {availableDevices.map((device: {id: string, name: string}) => (
+                  {availableDevices.map((device: {id: string, name: string, hasData?: boolean}) => (
                     <button
                       key={device.id}
                       onClick={() => {
                         handleDeviceSelect(device.id);
                         setIsDropdownOpen(false);
                       }}
-                      className={`w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 ${
+                      className={`w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-between ${
                         selectedDevice === device.id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-400' : 'text-gray-900 dark:text-gray-100'
                       }`}
-                      title={`Device ID: ${device.id}`} // Show full ID on hover
+                      title={`Device ID: ${device.id}${device.hasData ? ' (has active data)' : ' (no current data)'}`}
                     >
-                      {getDeviceDisplayName(device)}
+                      <span>{getDeviceDisplayName(device)}</span>
+                      {device.hasData && (
+                        <span className="w-2 h-2 bg-green-500 rounded-full ml-2" title="Has active data"></span>
+                      )}
                     </button>
                   ))}
                 </div>
               )}
             </div>
             
-            {!hasData && (
+            {!hasDevicesAvailable && (
               <p className="mt-2 text-sm text-yellow-600 dark:text-yellow-400">
-                No devices available. Please ensure the backend connection is working.
+                Loading devices... Please wait.
               </p>
             )}
           </div>

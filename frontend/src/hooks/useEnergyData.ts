@@ -8,6 +8,7 @@ export function useEnergyData() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const [deviceList, setDeviceList] = useState<{id: string, name: string}[]>([]);
+  const [allDeviceList, setAllDeviceList] = useState<{id: string, name: string}[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [isHistoricalView, setIsHistoricalView] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -289,6 +290,31 @@ export function useEnergyData() {
     updateFilteredData(latestData, selectedDevice);
   };
 
+  // Load all devices on initialization
+  useEffect(() => {
+    const loadAllDevices = async () => {
+      try {
+        const allDevices = await energyDataService.fetchAllDevices();
+        setAllDeviceList(allDevices);
+      } catch (error) {
+        console.error('Failed to load all devices:', error);
+        // Set fallback devices if loading fails
+        const fallbackDevices = [];
+        for (let i = 1; i <= 31; i++) {
+          fallbackDevices.push({
+            id: `D${i}`,
+            name: `Device D${i}`
+          });
+        }
+        fallbackDevices.push({ id: 'F9', name: 'Device F9' });
+        fallbackDevices.push({ id: 'Entrada de energia', name: 'Entrada de energia' });
+        setAllDeviceList(fallbackDevices);
+      }
+    };
+    
+    loadAllDevices();
+  }, []);
+
   useEffect(() => {
     const handleDataUpdate = (newData: EnergyData[]) => {
       // Only update data if we're not in historical view
@@ -393,6 +419,7 @@ export function useEnergyData() {
     allData,
     filteredData,
     deviceList,
+    allDeviceList,
     selectedDevice,
     selectedDate,
     isHistoricalView,
