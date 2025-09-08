@@ -60,8 +60,11 @@ export async function getAvailableVessels(req: Request, res: Response): Promise<
  */
 export async function getVesselSimulations(req: Request, res: Response): Promise<void> {
   try {
-
-    const date = req.query.date as string;
+    
+    const date = "2025-04-28" as string;
+    /**
+    * const date = req.query.date as string;
+    */
     let vesselApiUrl = `${VESSEL_API_URL}/api/simulations`;
     
     if (date) {

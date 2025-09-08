@@ -23,13 +23,9 @@ export default function DeviceSelection({
 }: DeviceSelectionProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
-  // Use all devices from the predefined device list for historical queries
+  // Use only real devices from the data - no fallback devices
   const availableDevices: {id: string, name: string}[] = deviceList;
-  const hasDevices = deviceList.length > 0;
-  
-  // For historical queries, we should always allow device selection
-  // even if the backend device list hasn't loaded yet
-  const isDropdownEnabled = hasDevices;
+  const hasData = deviceList.length > 0;
 
   // Create device display names based on hash patterns
   const getDeviceDisplayName = (device: {id: string, name: string}) => {
@@ -79,7 +75,7 @@ export default function DeviceSelection({
                 type="button"
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="w-full px-4 py-2 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-gray-100"
-                disabled={!isDropdownEnabled}
+                disabled={!hasData}
               >
                 <span className={!selectedDevice ? 'text-gray-500 dark:text-gray-400' : ''}>
                   {getSelectedDeviceName()}
@@ -89,7 +85,7 @@ export default function DeviceSelection({
                 </svg>
               </button>
 
-              {isDropdownOpen && isDropdownEnabled && (
+              {isDropdownOpen && hasData && (
                 <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                   {/* Clear Selection Option */}
                   <button
@@ -124,9 +120,9 @@ export default function DeviceSelection({
               )}
             </div>
             
-            {!hasDevices && (
-              <p className="mt-2 text-sm text-blue-600 dark:text-blue-400">
-                Loading device list... {deviceList.length === 0 ? 'Fetching predefined devices from server.' : `${deviceList.length} devices loaded.`}
+            {!hasData && (
+              <p className="mt-2 text-sm text-yellow-600 dark:text-yellow-400">
+                No devices available. Please ensure the backend connection is working.
               </p>
             )}
           </div>

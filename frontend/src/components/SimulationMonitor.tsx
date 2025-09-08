@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer,
+import { io, Socket } from 'socket.io-client';
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, 
+  Tooltip, Legend, ResponsiveContainer, 
   Area, AreaChart
 } from 'recharts';
 import { simulationService } from '@/services/SimulationService';
-import { simulationWebSocketService, SimulationData as WebSocketSimulationData } from '@/services/SimulationWebSocketService';
 
 interface BusData {
   vm_pu: number;
@@ -16,7 +16,6 @@ interface BusData {
   q_mvar: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface SimulationData {
   timestamp: number;
   res_bus: BusData[];
@@ -67,7 +66,9 @@ export default function SimulationMonitor() {
   const [busIdFilter, setBusIdFilter] = useState<number | ''>('');
   const [timestepFilter, setTimestepFilter] = useState<string>('');
   
-  // Websocket service is now handled by simulationWebSocketService
+  // Reference to the socket connection
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [socket, setSocket] = useState<Socket | null>(null);
   
   // Fetch timesteps results
   const fetchTimestepsResults = async () => {
@@ -90,110 +91,74 @@ export default function SimulationMonitor() {
   };
   
   useEffect(() => {
-    // Set up websocket event handlers
-    const handleWebSocketConnected = () => {
+    // Connect to the backend Socket.IO server
+    const socketConnection = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001');
+    setSocket(socketConnection);
+    
+    // Handle connection status
+    socketConnection.on('connect', () => {
       setConnectionStatus('connected');
       setError(null);
-      console.log('Simulation websocket connected');
-    };
-
-    const handleWebSocketDisconnected = () => {
+    });
+    
+    socketConnection.on('disconnect', () => {
       setConnectionStatus('disconnected');
-      console.log('Simulation websocket disconnected');
-    };
-
-    const handleWebSocketError = (error: string) => {
+    });
+    
+    socketConnection.on('connect_error', (err) => {
+      console.error('Connection error:', err);
       setConnectionStatus('disconnected');
-      setError(`Connection error: ${error}`);
-      console.error('Simulation websocket error:', error);
-    };
-
-    const handleSimulationUpdate = (update: {
-      data: WebSocketSimulationData['results'];
-      lastUpdate: string;
-      status: WebSocketSimulationData['simulationStatus'];
-    }) => {
-      if (!isPaused) {
-        console.log('Received simulation update:', update.data.length, 'results');
-
-        // Convert websocket data format to component format
-        const formattedData: TimestepData[] = update.data.map(result => ({
-          timestamp: result.timestamp,
-          bus_id: result.bus_id,
-          voltage: result.voltage,
-          power: result.power,
-          load: result.load,
-          converter_1_power: result.converter_1_power,
-          converter_1_loading: result.converter_1_loading,
-          converter_2_power: result.converter_2_power,
-          converter_2_loading: result.converter_2_loading,
-          converter_3_power: result.converter_3_power,
-          converter_3_loading: result.converter_3_loading,
-        }));
-
-        setTimestepsData(formattedData);
-        setLastUpdate(new Date(update.lastUpdate).toLocaleString());
-        setIsRunning(update.status === 'running');
-      }
-    };
-
-    // Subscribe to websocket events
-    simulationWebSocketService.on('connected', handleWebSocketConnected);
-    simulationWebSocketService.on('disconnected', handleWebSocketDisconnected);
-    simulationWebSocketService.on('error', handleWebSocketError);
-    simulationWebSocketService.on('simulation-update', handleSimulationUpdate);
-
-    // Get initial data
-    const initialData = simulationWebSocketService.getSimulationData();
-    const initialStatus = simulationWebSocketService.getSimulationStatus();
-    const initialUpdate = simulationWebSocketService.getLastUpdate();
-
-    if (initialData.length > 0) {
-      // Convert initial data format
-      const formattedData: TimestepData[] = initialData.map(result => ({
-        timestamp: result.timestamp,
-        bus_id: result.bus_id,
-        voltage: result.voltage,
-        power: result.power,
-        load: result.load,
-        converter_1_power: result.converter_1_power,
-        converter_1_loading: result.converter_1_loading,
-        converter_2_power: result.converter_2_power,
-        converter_2_loading: result.converter_2_loading,
-        converter_3_power: result.converter_3_power,
-        converter_3_loading: result.converter_3_loading,
-      }));
-      setTimestepsData(formattedData);
-    }
-
-    setIsRunning(initialStatus === 'running');
-    setLastUpdate(initialUpdate ? new Date(initialUpdate).toLocaleString() : 'No updates yet');
-    setConnectionStatus(simulationWebSocketService.isConnected() ? 'connected' : 'disconnected');
-
-    // Fetch fallback data if websocket doesn't have data
-    if (!timestepsData || timestepsData.length === 0) {
-      fetchTimestepsResults();
-    }
-
+      setError(`Connection error: ${err.message}`);
+    });
+    
+    
+    fetchTimestepsResults(); // Fetch timesteps data
     fetchKpiResults(); // Fetch KPI data (for future)
-
+    
+    // Listen for real-time updates
+    socketConnection.on('simulation_update', (data: SimulationData) => {
+      // Only update if not paused
+      if (!isPaused) {
+        setLastUpdate(new Date(data.timestamp * 1000).toLocaleTimeString());
+        
+        // Refresh timesteps data when simulation updates
+        fetchTimestepsResults();
+      }
+      setIsRunning(true);
+    });
+    
+    // Listen for simulation stopped event
+    socketConnection.on('simulation_stopped', () => {
+      setIsRunning(false);
+      console.log('Simulation has been stopped by the server');
+    });
+    
     // Clean up on unmount
     return () => {
-      simulationWebSocketService.off('connected', handleWebSocketConnected);
-      simulationWebSocketService.off('disconnected', handleWebSocketDisconnected);
-      simulationWebSocketService.off('error', handleWebSocketError);
-      simulationWebSocketService.off('simulation-update', handleSimulationUpdate);
+      socketConnection.off('simulation_update');
+      socketConnection.off('simulation_stopped');
+      socketConnection.off('connect');
+      socketConnection.off('disconnect');
+      socketConnection.off('connect_error');
+      socketConnection.disconnect();
     };
   }, [isPaused]);
   
 
   
   // Function to toggle pausing updates
-  const togglePauseUpdates = () => {
+  const togglePauseUpdates = async () => {
     const newPausedState = !isPaused;
     setIsPaused(newPausedState);
-    simulationWebSocketService.toggleSimulationUpdates(newPausedState);
-    console.log(`${newPausedState ? 'Paused' : 'Resumed'} receiving updates from simulation`);
+    
+    try {
+      await simulationService.toggleSimulationUpdates(newPausedState);
+      console.log(`${newPausedState ? 'Paused' : 'Resumed'} receiving updates from simulation`);
+    } catch (error) {
+      console.error('Error toggling simulation updates:', error);
+      // Revert the state if the server request failed
+      setIsPaused(!newPausedState);
+    }
   };
 
   // Apply filters to timesteps data

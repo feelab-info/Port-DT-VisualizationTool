@@ -83,7 +83,7 @@ export default function PortEnergyOverview() {
     ).length;
 
     return {
-      totalDevices: deviceList.length,
+      totalDevices: 33,
       currentTotalPower: Math.round(totalPower),
       averagePowerFactor: Math.round(averagePowerFactor * 100) / 100,
       totalConsumption: Math.round(totalConsumption),

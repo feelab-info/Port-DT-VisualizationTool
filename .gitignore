@@ -1,35 +1,82 @@
-# Environment files
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment files (NEVER commit these - contain secrets!)
 .env
 .env.local
 .env.production
+.env.development
+.env.test
+*.env
 
-# Docker volumes and logs
-logs/
-nginx/logs/
-nginx/ssl/
-dc_power_flow/logs/
-dc_power_flow/output/
-vessel_modelling/logs/
-vessel_modelling/output/
-
-# macOS files
-.DS_Store
-._*
-
-# Node modules
-node_modules/
+# Build outputs
 .next/
 dist/
+build/
 
-# Database files
+# Logs
+*.log
+logs/
+*/logs/
+
+# Database
 *.db
 *.sqlite
 
-# SSL certificates and keys
-*.pem
-*.key
-*.crt
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
 # Temporary files
+tmp/
+temp/
 *.tmp
 *.temp
+
+# SSL certificates (sensitive)
+nginx/ssl/
+*/ssl/
+
+# Deployment packages (large files)
+*.tar.gz
+*.zip
+port-digital-twin-deploy/
+
+# Docker volumes and data
+data/
+*/data/
+
+# Python cache
+__pycache__/
+*/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+*/venv/
+
+# Runtime files
+*.pid
+
+# Backup files
+*.bak
+*.backup
+
+# Local development overrides
+docker-compose.override.yml
+docker-compose.local.yml
+docker-compose.yml

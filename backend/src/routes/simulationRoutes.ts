@@ -1,14 +1,13 @@
 import { Express } from 'express';
-import {
-  runSimulation,
-  getSimulationResults,
+import { 
+  runSimulation, 
+  getSimulationResults, 
   getLatestResults,
   getSizingResults,
   getTimestepsResults,
   startSimulationService,
   updateDeviceData,
-  getExcelDeviceData,
-  triggerSimulation
+  getExcelDeviceData
 } from '../controllers/simulationController';
 import { authenticateToken } from '../middleware/authMiddleware';
 
@@ -24,7 +23,6 @@ export function simulationRoutes(app: Express): void {
   app.get('/api/simulation/sizing-results', authenticateToken, getSizingResults);
   app.get('/api/simulation/timesteps-results', authenticateToken, getTimestepsResults);
   app.post('/api/simulation/start-service', authenticateToken, startSimulationService);
-  app.post('/api/simulation/trigger', authenticateToken, triggerSimulation);
   
   // Device data update routes - also protected
   app.post('/api/simulation/update-device-data', authenticateToken, updateDeviceData);

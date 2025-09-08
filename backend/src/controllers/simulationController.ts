@@ -156,25 +156,4 @@ export async function getExcelDeviceData(req: Request, res: Response): Promise<v
       details: error.message
     });
   }
-}
-
-/**
- * Manually trigger a simulation with fast mode option
- */
-export async function triggerSimulation(req: Request, res: Response): Promise<void> {
-  try {
-    const { fastMode = false } = req.body;
-
-    // Use the new run-once endpoint for immediate execution
-    const response = await axios.post(`${DC_POWER_FLOW_API}/run-once`);
-
-    res.json(response.data);
-  } catch (error: any) {
-    console.error('Error triggering simulation:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to trigger simulation',
-      details: error.message
-    });
-  }
 } 

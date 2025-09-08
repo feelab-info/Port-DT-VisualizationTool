@@ -2,15 +2,12 @@ import { Server, Socket } from 'socket.io';
 import { connectToMongo } from './databaseService';
 import { ObjectId } from 'mongodb';
 import { getDeviceMappings } from './deviceDataService';
-import { startSimulationMonitoring } from './simulationMonitorService';
 
 /**
  * Initialize Socket.IO event handlers
  * @param io Socket.IO server instance
  */
 export function initSocketHandlers(io: Server): void {
-  // Start simulation monitoring service
-  startSimulationMonitoring(io);
   io.on('connection', (socket: Socket) => {
     console.log('Client connected');
 

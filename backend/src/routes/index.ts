@@ -2,7 +2,6 @@ import { Express } from 'express';
 import { simulationRoutes } from './simulationRoutes';
 import { vesselRoutes } from './vesselRoutes';
 import { authRoutes } from './authRoutes';
-import { deviceRoutes } from './deviceRoutes';
 
 /**
  * Set up all application routes
@@ -15,5 +14,4 @@ export function setupRoutes(app: Express): void {
   // Apply route modules to app
   simulationRoutes(app);
   vesselRoutes(app);
-  deviceRoutes(app);
 } 

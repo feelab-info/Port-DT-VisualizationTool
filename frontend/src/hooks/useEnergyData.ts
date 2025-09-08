@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { energyDataService, EnergyData } from '@/services/EnergyDataService';
-import axios from 'axios';
 
 export function useEnergyData() {
   const [allData, setAllData] = useState<EnergyData[]>([]);
@@ -16,119 +15,34 @@ export function useEnergyData() {
   const [hasBackgroundUpdates, setHasBackgroundUpdates] = useState(false);
   const [historicalData, setHistoricalData] = useState<EnergyData[]>([]);
 
-  // Fetch predefined device list from backend
-  const fetchPredefinedDevices = async (): Promise<{id: string, name: string}[]> => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        console.warn('No authentication token found, will retry later');
-        return [];
-      }
-
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001';
-      console.log('Fetching devices from:', `${backendUrl}/api/devices`);
-      
-      const response = await axios.get(`${backendUrl}/api/devices`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 10000 // 10 second timeout
-      });
-
-      if (response.data.success && response.data.devices) {
-        console.log('✅ Fetched', response.data.devices.length, 'predefined devices from backend');
-        return response.data.devices;
-      } else {
-        console.warn('⚠️ Invalid response from devices endpoint:', response.data);
-        return [];
-      }
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401) {
-          console.warn('🔐 Authentication failed - token may be invalid');
-        } else if (error.response?.status === 404) {
-          console.warn('🔍 Devices endpoint not found');
-        } else {
-          console.error('🌐 Network error fetching devices:', error.message);
-        }
-      } else {
-        console.error('❌ Unexpected error fetching devices:', error);
-      }
-      return [];
-    }
-  };
-
-  // Initialize device list with predefined devices from backend
-  const initializePredefinedDevices = async () => {
-    try {
-      console.log('Attempting to fetch predefined devices...');
-      const predefinedDevices = await fetchPredefinedDevices();
-      if (predefinedDevices.length > 0) {
-        setDeviceList(predefinedDevices);
-        console.log('✅ Successfully initialized device list with', predefinedDevices.length, 'predefined devices');
-      } else {
-        console.warn('⚠️ No predefined devices received from backend');
-        // Set a basic fallback device list for historical queries
-        const fallbackDevices = [
-          { id: 'all', name: 'All Devices' },
-          ...Array.from({ length: 31 }, (_, i) => ({ 
-            id: `D${i + 1}`, 
-            name: `D${i + 1}` 
-          })),
-          { id: 'F9', name: 'F9' },
-          { id: 'Entrada_de_Energia', name: 'Entrada de Energia' }
-        ];
-        setDeviceList(fallbackDevices);
-        console.log('📋 Using fallback device list with', fallbackDevices.length, 'devices');
-      }
-    } catch (error) {
-      console.error('❌ Error initializing predefined devices:', error);
-      // Still provide fallback devices even on error
-      const fallbackDevices = [
-        { id: 'all', name: 'All Devices' },
-        ...Array.from({ length: 31 }, (_, i) => ({ 
-          id: `D${i + 1}`, 
-          name: `D${i + 1}` 
-        })),
-        { id: 'F9', name: 'F9' },
-        { id: 'Entrada_de_Energia', name: 'Entrada de Energia' }
-      ];
-      setDeviceList(fallbackDevices);
-      console.log('🔄 Using fallback device list due to error');
-    }
-  };
-
-  // Update comprehensive device list - merge with predefined devices
+  // Update comprehensive device list - add new devices but never remove them
   const updateAllKnownDevices = (newDevices: {id: string, name: string}[]) => {
     setDeviceList(prevDevices => {
       const deviceMap = new Map(prevDevices.map(d => [d.id, d]));
       
       // Add any new devices we haven't seen before
-      // Prioritize existing device names (from predefined list) over data-extracted names
       newDevices.forEach(device => {
         if (!deviceMap.has(device.id)) {
           deviceMap.set(device.id, device);
         }
-        // If device exists but has a generic name, keep the predefined friendly name
       });
       
-      // Return sorted array with friendly names
+      // Return sorted array
       return Array.from(deviceMap.values()).sort((a, b) => {
-        // Sort by friendly name for D1-D31
-        if (a.name.startsWith('D') && b.name.startsWith('D')) {
-          const numA = parseInt(a.name.substring(1));
-          const numB = parseInt(b.name.substring(1));
+        // Sort D1-D31 numerically
+        if (a.id.startsWith('D') && b.id.startsWith('D')) {
+          const numA = parseInt(a.id.substring(1));
+          const numB = parseInt(b.id.substring(1));
           if (!isNaN(numA) && !isNaN(numB)) {
             return numA - numB;
           }
         }
         
         // Special case for F9 and Entrada de energia
-        if (a.name === 'F9') return 1;
-        if (b.name === 'F9') return -1;
-        if (a.name === 'Entrada de Energia') return 1;
-        if (b.name === 'Entrada de Energia') return -1;
+        if (a.id === 'F9' && b.id.startsWith('D')) return 1;
+        if (b.id === 'F9' && a.id.startsWith('D')) return -1;
+        if (a.id === 'Entrada de energia') return 1;
+        if (b.id === 'Entrada de energia') return -1;
         
         // Default alphabetical sort
         return a.name.localeCompare(b.name);
@@ -429,18 +343,15 @@ export function useEnergyData() {
       setIsLoading(false);
     };
     
-    // Initialize predefined devices first
-    initializePredefinedDevices();
-
     // Set initial state
     try {
       const currentData = energyDataService.getData();
       setAllData(currentData);
       
-      // Extract unique devices from current data
+      // Extract unique devices
       const devices = extractUniqueDevices(currentData);
       
-      // Merge with predefined device list (predefined devices take priority)
+      // Set comprehensive device list
       updateAllKnownDevices(devices);
 
       // Set filtered data only if not in historical view
