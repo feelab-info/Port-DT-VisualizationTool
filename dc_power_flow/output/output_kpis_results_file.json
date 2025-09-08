@@ -1,0 +1,61 @@
+{
+    "Efficiency": {
+        "Efficiency Ratio": 91.4218627807331,
+        "Total Consumed Energy (MWh)": 2.738811046840805,
+        "Total Generated Energy (MWh)": 2.995794401400014,
+        "Total Losses in Cables (MWh)": 0.005582784550126947,
+        "Total Losses in Converters (MWh)": 0.2521485213149433
+    },
+    "Economic": {
+        "Total CAPEX (KEUR)": 40705.155,
+        "Total OPEX (KEUR)": 24444.062,
+        "Converters CAPEX (KEUR)": 40705.0,
+        "Cables CAPEX (KEUR)": 0.15500000000000005,
+        "Converter Details": {},
+        "Cable Details": {},
+        "Converters OPEX (KEUR)": 24444.0,
+        "Cables OPEX (KEUR)": 0.06200000000000004
+    },
+    "Environmental": {
+        "Total Weight (kg)": 20515.0,
+        "Total Lifecycle Emissions (kg CO2)": 102265.0,
+        "Converter Weights": {
+            "Conv_1": 20000.0,
+            "Conv_2": 10,
+            "Conv_3": 350.0
+        },
+        "Cable Weights": {
+            "line 1 - 2": 5.0,
+            "line 2 - 4": 5.0,
+            "line 2 - 5": 5.0,
+            "line 2 - 6": 5.0,
+            "line 2 - 7": 5.0,
+            "line 2 - 8": 5.0,
+            "line 2 - 9": 5.0,
+            "line 2 - 10": 5.0,
+            "line 2 - 11": 5.0,
+            "line 2 - 12": 5.0,
+            "line 2 - 13": 5.0,
+            "line 2 - 14": 5.0,
+            "line 2 - 15": 5.0,
+            "line 2 - 16": 5.0,
+            "line 1 - 17": 5.0,
+            "line 17 - 19": 5.0,
+            "line 17 - 20": 5.0,
+            "line 17 - 21": 5.0,
+            "line 17 - 22": 5.0,
+            "line 17 - 23": 5.0,
+            "line 17 - 24": 5.0,
+            "line 17 - 25": 5.0,
+            "line 17 - 26": 5.0,
+            "line 17 - 27": 5.0,
+            "line 17 - 28": 5.0,
+            "line 17 - 29": 5.0,
+            "line 17 - 30": 5.0,
+            "line 17 - 31": 5.0,
+            "line 17 - 32": 5.0,
+            "line 17 - 33": 5.0,
+            "line 17 - 34": 5.0
+        }
+    }
+}

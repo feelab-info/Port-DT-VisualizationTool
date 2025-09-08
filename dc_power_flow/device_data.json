@@ -1,0 +1,157 @@
+[
+  {
+    "device_id": "42cbb1f4188e92d557a2fbbee8b9b43e10303b753abcd2a",
+    "friendly_name": "D1",
+    "value": 4.017224489795918
+  },
+  {
+    "device_id": "920563467b8d08abe624ea2055b1ce20d9990aae24c8249",
+    "friendly_name": "D2",
+    "value": 0.32163265306122446
+  },
+  {
+    "device_id": "1c8fc4175c2f338c9af1d1cef1263ac431dd40ccc190701",
+    "friendly_name": "D3",
+    "value": 0.04502941176470588
+  },
+  {
+    "device_id": "a58570a95f7701a6947a13ea02ac6ab370648809cb476a1",
+    "friendly_name": "D4",
+    "value": 0.349304347826087
+  },
+  {
+    "device_id": "d8504b7b00fc88cb8e33d46c1bec29eaf6d9607be09f487",
+    "friendly_name": "D5",
+    "value": 0.039142857142857146
+  },
+  {
+    "device_id": "ca85e7ef9fac2a1b1e93ae3e313e333ecaa88e0d9fd30b1",
+    "friendly_name": "D6",
+    "value": 0.015676470588235295
+  },
+  {
+    "device_id": "c6300ce3e40562c24fea97d34d4bf81eeec78f684c15862",
+    "friendly_name": "D7",
+    "value": 0.4978245614035088
+  },
+  {
+    "device_id": "764bd9eadd2b20d8dbb12add7935542bdef62ebd6ef52c1",
+    "friendly_name": "D8",
+    "value": 0.18612280701754386
+  },
+  {
+    "device_id": "ba92b135f2699c9515b9d0978b5eccd847f0590629d2bc1",
+    "friendly_name": "D9",
+    "value": 0.03394736842105263
+  },
+  {
+    "device_id": "15281110d02e83c0c5482a6cab631359314e0d8743d4d16",
+    "friendly_name": "D10",
+    "value": 0.22235087719298244
+  },
+  {
+    "device_id": "37553b8b74596d404837f77e4bab026278d3c8b9c98efde",
+    "friendly_name": "D11",
+    "value": 2.7927118644067797
+  },
+  {
+    "device_id": "ab999ce5e6c2c0584b67c98c8c069f1116eae3fce165ecb",
+    "friendly_name": "D12",
+    "value": 1.8553684210526316
+  },
+  {
+    "device_id": "a12effa06dab6cda0b84b24558d9dff122a1e8ecbdd0f33",
+    "friendly_name": "D13",
+    "value": 7.261666666666667
+  },
+  {
+    "device_id": "e48fac30d192f5641545c4a17696de2f0064ac1152cf32a",
+    "friendly_name": "D14",
+    "value": 50.8969649122807
+  },
+  {
+    "device_id": "be741ad98c96fe3f4ebe51def5e5fab58d5308f76219835",
+    "friendly_name": "D15",
+    "value": 0.025389830508474577
+  },
+  {
+    "device_id": "c45c6915cd0f954fa947c6ef43d5d02e2b22b8948d3aedc",
+    "friendly_name": "D16",
+    "value": 0.5538793103448275
+  },
+  {
+    "device_id": "7606b7c2039430260e66bb5fd249f4a51f7381a0c37bf1b",
+    "friendly_name": "D17",
+    "value": 0.07615517241379309
+  },
+  {
+    "device_id": "21892276db04aeb8978c135abd8db1f848906e2751e9ac4",
+    "friendly_name": "D18",
+    "value": 0.4383793103448276
+  },
+  {
+    "device_id": "b8f3fd0839965ae505e87924a2b8d9a815e8030404c095a",
+    "friendly_name": "D19",
+    "value": 0.1015689655172414
+  },
+  {
+    "device_id": "63521916b117b842b20a575abc11b79ac26b88bac8e0907",
+    "friendly_name": "D20",
+    "value": 0.030189655172413794
+  },
+  {
+    "device_id": "5d9c00cd1876e84e552a3e4326f07a6bfd157d92a453f95",
+    "friendly_name": "D21",
+    "value": 0.12713793103448276
+  },
+  {
+    "device_id": "4efd35a7620611921670b1efdbb3e1cb93897220fb815be",
+    "friendly_name": "D22",
+    "value": 0.0830344827586207
+  },
+  {
+    "device_id": "6208525a49342facd5283db1b7d3268402864ebf14d93cc",
+    "friendly_name": "D23",
+    "value": 0.3889322033898305
+  },
+  {
+    "device_id": "87e4c8110ec00fafd4b3e092247a61881a059bc7d7bce31",
+    "friendly_name": "D24",
+    "value": 1.1657966101694914
+  },
+  {
+    "device_id": "e72f2c4131a561e60167fb463d0a379bde2cf57dc555b06",
+    "friendly_name": "D25",
+    "value": 1.4809661016949152
+  },
+  {
+    "device_id": "cb79a0704a15d2bf6ac3fe503cc719922538c0104286e1a",
+    "friendly_name": "D26",
+    "value": 1.1006610169491526
+  },
+  {
+    "device_id": "a1001c40c6beb6a872cca6c33a1e9505d1100bead7141fd",
+    "friendly_name": "D27",
+    "value": 0.0691016949152542
+  },
+  {
+    "device_id": "ba90d98536a3816da5023c7f82ac6fdcf6ae3b0d9125fbd",
+    "friendly_name": "D28",
+    "value": 0.025389830508474574
+  },
+  {
+    "device_id": "5d9438f135b3af4dcec01247dda71174e2cb221f252e4a7",
+    "friendly_name": "D29",
+    "value": 0.013915254237288135
+  },
+  {
+    "device_id": "db91344fce2f7d9fa00490bb150c5e54d5486f776472033",
+    "friendly_name": "D31",
+    "value": 4.032457627118644
+  },
+  {
+    "device_id": "a541efa088b8b03542e36b121735df68fc7e92bc1cf1b19",
+    "friendly_name": "D30",
+    "value": 0.18055357142857145
+  }
+]

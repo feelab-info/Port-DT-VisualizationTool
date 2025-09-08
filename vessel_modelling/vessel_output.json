@@ -1,0 +1,855 @@
+{
+    "vessel": "efregr",
+    "gross_tonnage": 50000.0,
+    "length": 200.0,
+    "hotel_energy": 1500.0,
+    "arrival_time": "07:58:58",
+    "departure_time": "22:03:00",
+    "energy_profile_data": [
+        {
+            "Timestamp": "2025-08-08 07:58:58",
+            "Chillers Power": 251.66666666666666,
+            "Hotel Power": 726.6666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 08:03:58",
+            "Chillers Power": 252.52777777777777,
+            "Hotel Power": 726.0555555555557
+        },
+        {
+            "Timestamp": "2025-08-08 08:08:58",
+            "Chillers Power": 253.56111111111107,
+            "Hotel Power": 725.3222222222223
+        },
+        {
+            "Timestamp": "2025-08-08 08:13:58",
+            "Chillers Power": 254.59444444444443,
+            "Hotel Power": 724.588888888889
+        },
+        {
+            "Timestamp": "2025-08-08 08:18:58",
+            "Chillers Power": 255.45555555555555,
+            "Hotel Power": 723.9777777777776
+        },
+        {
+            "Timestamp": "2025-08-08 08:23:58",
+            "Chillers Power": 256.4888888888889,
+            "Hotel Power": 723.2444444444443
+        },
+        {
+            "Timestamp": "2025-08-08 08:28:58",
+            "Chillers Power": 257.52222222222224,
+            "Hotel Power": 722.511111111111
+        },
+        {
+            "Timestamp": "2025-08-08 08:33:58",
+            "Chillers Power": 258.55555555555554,
+            "Hotel Power": 721.7777777777776
+        },
+        {
+            "Timestamp": "2025-08-08 08:38:58",
+            "Chillers Power": 259.41666666666663,
+            "Hotel Power": 721.1666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 08:43:58",
+            "Chillers Power": 260.45,
+            "Hotel Power": 720.4333333333334
+        },
+        {
+            "Timestamp": "2025-08-08 08:48:58",
+            "Chillers Power": 261.48333333333335,
+            "Hotel Power": 719.6999999999999
+        },
+        {
+            "Timestamp": "2025-08-08 08:53:58",
+            "Chillers Power": 263.34999999999997,
+            "Hotel Power": 720.75
+        },
+        {
+            "Timestamp": "2025-08-08 08:58:58",
+            "Chillers Power": 265.59999999999997,
+            "Hotel Power": 723.111111111111
+        },
+        {
+            "Timestamp": "2025-08-08 09:03:58",
+            "Chillers Power": 268.29999999999995,
+            "Hotel Power": 725.9444444444443
+        },
+        {
+            "Timestamp": "2025-08-08 09:08:58",
+            "Chillers Power": 271.0,
+            "Hotel Power": 728.7777777777776
+        },
+        {
+            "Timestamp": "2025-08-08 09:13:58",
+            "Chillers Power": 273.7,
+            "Hotel Power": 731.611111111111
+        },
+        {
+            "Timestamp": "2025-08-08 09:18:58",
+            "Chillers Power": 275.95,
+            "Hotel Power": 733.9722222222223
+        },
+        {
+            "Timestamp": "2025-08-08 09:23:58",
+            "Chillers Power": 278.65,
+            "Hotel Power": 736.8055555555557
+        },
+        {
+            "Timestamp": "2025-08-08 09:28:58",
+            "Chillers Power": 281.34999999999997,
+            "Hotel Power": 739.6388888888889
+        },
+        {
+            "Timestamp": "2025-08-08 09:33:58",
+            "Chillers Power": 284.04999999999995,
+            "Hotel Power": 742.4722222222223
+        },
+        {
+            "Timestamp": "2025-08-08 09:38:58",
+            "Chillers Power": 286.29999999999995,
+            "Hotel Power": 744.8333333333333
+        },
+        {
+            "Timestamp": "2025-08-08 09:43:58",
+            "Chillers Power": 289.0,
+            "Hotel Power": 747.6666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 09:48:58",
+            "Chillers Power": 289.46666666666664,
+            "Hotel Power": 749.8
+        },
+        {
+            "Timestamp": "2025-08-08 09:53:58",
+            "Chillers Power": 289.9333333333333,
+            "Hotel Power": 751.9333333333334
+        },
+        {
+            "Timestamp": "2025-08-08 09:58:58",
+            "Chillers Power": 290.3222222222222,
+            "Hotel Power": 753.711111111111
+        },
+        {
+            "Timestamp": "2025-08-08 10:03:58",
+            "Chillers Power": 290.7888888888889,
+            "Hotel Power": 755.8444444444442
+        },
+        {
+            "Timestamp": "2025-08-08 10:08:58",
+            "Chillers Power": 291.25555555555553,
+            "Hotel Power": 757.9777777777776
+        },
+        {
+            "Timestamp": "2025-08-08 10:13:58",
+            "Chillers Power": 291.7222222222222,
+            "Hotel Power": 760.111111111111
+        },
+        {
+            "Timestamp": "2025-08-08 10:18:58",
+            "Chillers Power": 292.1111111111111,
+            "Hotel Power": 761.8888888888889
+        },
+        {
+            "Timestamp": "2025-08-08 10:23:58",
+            "Chillers Power": 292.5777777777778,
+            "Hotel Power": 764.0222222222224
+        },
+        {
+            "Timestamp": "2025-08-08 10:28:58",
+            "Chillers Power": 293.0444444444444,
+            "Hotel Power": 766.1555555555557
+        },
+        {
+            "Timestamp": "2025-08-08 10:33:58",
+            "Chillers Power": 293.51111111111106,
+            "Hotel Power": 768.2888888888889
+        },
+        {
+            "Timestamp": "2025-08-08 10:38:58",
+            "Chillers Power": 294.06666666666666,
+            "Hotel Power": 769.0666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 10:43:58",
+            "Chillers Power": 294.8666666666667,
+            "Hotel Power": 769.1999999999999
+        },
+        {
+            "Timestamp": "2025-08-08 10:48:58",
+            "Chillers Power": 295.66666666666663,
+            "Hotel Power": 769.3333333333333
+        },
+        {
+            "Timestamp": "2025-08-08 10:53:58",
+            "Chillers Power": 296.46666666666664,
+            "Hotel Power": 769.4666666666667
+        },
+        {
+            "Timestamp": "2025-08-08 10:58:58",
+            "Chillers Power": 297.1333333333333,
+            "Hotel Power": 769.5777777777777
+        },
+        {
+            "Timestamp": "2025-08-08 11:03:58",
+            "Chillers Power": 297.9333333333333,
+            "Hotel Power": 769.711111111111
+        },
+        {
+            "Timestamp": "2025-08-08 11:08:58",
+            "Chillers Power": 298.73333333333335,
+            "Hotel Power": 769.8444444444442
+        },
+        {
+            "Timestamp": "2025-08-08 11:13:58",
+            "Chillers Power": 299.5333333333333,
+            "Hotel Power": 769.9777777777776
+        },
+        {
+            "Timestamp": "2025-08-08 11:18:58",
+            "Chillers Power": 300.2,
+            "Hotel Power": 770.088888888889
+        },
+        {
+            "Timestamp": "2025-08-08 11:23:58",
+            "Chillers Power": 301.0,
+            "Hotel Power": 770.2222222222223
+        },
+        {
+            "Timestamp": "2025-08-08 11:28:58",
+            "Chillers Power": 301.66666666666663,
+            "Hotel Power": 770.2444444444443
+        },
+        {
+            "Timestamp": "2025-08-08 11:33:58",
+            "Chillers Power": 301.66666666666663,
+            "Hotel Power": 769.711111111111
+        },
+        {
+            "Timestamp": "2025-08-08 11:38:58",
+            "Chillers Power": 301.66666666666663,
+            "Hotel Power": 769.2666666666667
+        },
+        {
+            "Timestamp": "2025-08-08 11:43:58",
+            "Chillers Power": 301.66666666666663,
+            "Hotel Power": 768.7333333333332
+        },
+        {
+            "Timestamp": "2025-08-08 11:48:58",
+            "Chillers Power": 301.66666666666663,
+            "Hotel Power": 768.1999999999999
+        },
+        {
+            "Timestamp": "2025-08-08 11:53:58",
+            "Chillers Power": 301.66666666666663,
+            "Hotel Power": 767.6666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 11:58:58",
+            "Chillers Power": 301.66666666666663,
+            "Hotel Power": 767.2222222222223
+        },
+        {
+            "Timestamp": "2025-08-08 12:03:58",
+            "Chillers Power": 301.66666666666663,
+            "Hotel Power": 766.688888888889
+        },
+        {
+            "Timestamp": "2025-08-08 12:08:58",
+            "Chillers Power": 301.66666666666663,
+            "Hotel Power": 766.1555555555557
+        },
+        {
+            "Timestamp": "2025-08-08 12:13:58",
+            "Chillers Power": 301.66666666666663,
+            "Hotel Power": 765.6222222222223
+        },
+        {
+            "Timestamp": "2025-08-08 12:18:58",
+            "Chillers Power": 301.66666666666663,
+            "Hotel Power": 765.1777777777776
+        },
+        {
+            "Timestamp": "2025-08-08 12:23:58",
+            "Chillers Power": 302.06666666666666,
+            "Hotel Power": 765.5333333333333
+        },
+        {
+            "Timestamp": "2025-08-08 12:28:58",
+            "Chillers Power": 302.66666666666663,
+            "Hotel Power": 766.3333333333333
+        },
+        {
+            "Timestamp": "2025-08-08 12:33:58",
+            "Chillers Power": 303.26666666666665,
+            "Hotel Power": 767.1333333333333
+        },
+        {
+            "Timestamp": "2025-08-08 12:38:58",
+            "Chillers Power": 303.76666666666665,
+            "Hotel Power": 767.8
+        },
+        {
+            "Timestamp": "2025-08-08 12:43:58",
+            "Chillers Power": 304.3666666666667,
+            "Hotel Power": 768.6
+        },
+        {
+            "Timestamp": "2025-08-08 12:48:58",
+            "Chillers Power": 304.96666666666664,
+            "Hotel Power": 769.3999999999999
+        },
+        {
+            "Timestamp": "2025-08-08 12:53:58",
+            "Chillers Power": 305.56666666666666,
+            "Hotel Power": 770.1999999999999
+        },
+        {
+            "Timestamp": "2025-08-08 12:58:58",
+            "Chillers Power": 306.06666666666666,
+            "Hotel Power": 770.8666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 13:03:58",
+            "Chillers Power": 306.66666666666663,
+            "Hotel Power": 771.6666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 13:08:58",
+            "Chillers Power": 307.26666666666665,
+            "Hotel Power": 772.4666666666667
+        },
+        {
+            "Timestamp": "2025-08-08 13:13:58",
+            "Chillers Power": 307.9,
+            "Hotel Power": 772.8222222222223
+        },
+        {
+            "Timestamp": "2025-08-08 13:18:58",
+            "Chillers Power": 308.48333333333335,
+            "Hotel Power": 772.3777777777777
+        },
+        {
+            "Timestamp": "2025-08-08 13:23:58",
+            "Chillers Power": 309.1833333333333,
+            "Hotel Power": 771.8444444444442
+        },
+        {
+            "Timestamp": "2025-08-08 13:28:58",
+            "Chillers Power": 309.8833333333333,
+            "Hotel Power": 771.3111111111109
+        },
+        {
+            "Timestamp": "2025-08-08 13:33:58",
+            "Chillers Power": 310.5833333333333,
+            "Hotel Power": 770.7777777777776
+        },
+        {
+            "Timestamp": "2025-08-08 13:38:58",
+            "Chillers Power": 311.16666666666663,
+            "Hotel Power": 770.3333333333333
+        },
+        {
+            "Timestamp": "2025-08-08 13:43:58",
+            "Chillers Power": 311.8666666666667,
+            "Hotel Power": 769.8
+        },
+        {
+            "Timestamp": "2025-08-08 13:48:58",
+            "Chillers Power": 312.56666666666666,
+            "Hotel Power": 769.2666666666667
+        },
+        {
+            "Timestamp": "2025-08-08 13:53:58",
+            "Chillers Power": 313.26666666666665,
+            "Hotel Power": 768.7333333333332
+        },
+        {
+            "Timestamp": "2025-08-08 13:58:58",
+            "Chillers Power": 313.84999999999997,
+            "Hotel Power": 768.2888888888889
+        },
+        {
+            "Timestamp": "2025-08-08 14:03:58",
+            "Chillers Power": 314.54999999999995,
+            "Hotel Power": 767.7555555555556
+        },
+        {
+            "Timestamp": "2025-08-08 14:08:58",
+            "Chillers Power": 312.27777777777777,
+            "Hotel Power": 761.75
+        },
+        {
+            "Timestamp": "2025-08-08 14:13:58",
+            "Chillers Power": 309.4111111111111,
+            "Hotel Power": 754.6499999999999
+        },
+        {
+            "Timestamp": "2025-08-08 14:18:58",
+            "Chillers Power": 307.02222222222224,
+            "Hotel Power": 748.7333333333332
+        },
+        {
+            "Timestamp": "2025-08-08 14:23:58",
+            "Chillers Power": 304.15555555555557,
+            "Hotel Power": 741.6333333333333
+        },
+        {
+            "Timestamp": "2025-08-08 14:28:58",
+            "Chillers Power": 301.2888888888889,
+            "Hotel Power": 734.5333333333333
+        },
+        {
+            "Timestamp": "2025-08-08 14:33:58",
+            "Chillers Power": 298.4222222222222,
+            "Hotel Power": 727.4333333333334
+        },
+        {
+            "Timestamp": "2025-08-08 14:38:58",
+            "Chillers Power": 296.0333333333333,
+            "Hotel Power": 721.5166666666667
+        },
+        {
+            "Timestamp": "2025-08-08 14:43:58",
+            "Chillers Power": 293.16666666666663,
+            "Hotel Power": 714.4166666666666
+        },
+        {
+            "Timestamp": "2025-08-08 14:48:58",
+            "Chillers Power": 290.29999999999995,
+            "Hotel Power": 707.3166666666666
+        },
+        {
+            "Timestamp": "2025-08-08 14:53:58",
+            "Chillers Power": 287.4333333333333,
+            "Hotel Power": 700.2166666666667
+        },
+        {
+            "Timestamp": "2025-08-08 14:58:58",
+            "Chillers Power": 285.88888888888886,
+            "Hotel Power": 697.711111111111
+        },
+        {
+            "Timestamp": "2025-08-08 15:03:58",
+            "Chillers Power": 285.55555555555554,
+            "Hotel Power": 700.8444444444442
+        },
+        {
+            "Timestamp": "2025-08-08 15:08:58",
+            "Chillers Power": 285.2222222222222,
+            "Hotel Power": 703.9777777777776
+        },
+        {
+            "Timestamp": "2025-08-08 15:13:58",
+            "Chillers Power": 284.88888888888886,
+            "Hotel Power": 707.111111111111
+        },
+        {
+            "Timestamp": "2025-08-08 15:18:58",
+            "Chillers Power": 284.6111111111111,
+            "Hotel Power": 709.7222222222223
+        },
+        {
+            "Timestamp": "2025-08-08 15:23:58",
+            "Chillers Power": 284.27777777777777,
+            "Hotel Power": 712.8555555555556
+        },
+        {
+            "Timestamp": "2025-08-08 15:28:58",
+            "Chillers Power": 283.94444444444446,
+            "Hotel Power": 715.988888888889
+        },
+        {
+            "Timestamp": "2025-08-08 15:33:58",
+            "Chillers Power": 283.6111111111111,
+            "Hotel Power": 719.1222222222223
+        },
+        {
+            "Timestamp": "2025-08-08 15:38:58",
+            "Chillers Power": 283.3333333333333,
+            "Hotel Power": 721.7333333333332
+        },
+        {
+            "Timestamp": "2025-08-08 15:43:58",
+            "Chillers Power": 283.0,
+            "Hotel Power": 724.8666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 15:48:58",
+            "Chillers Power": 282.66666666666663,
+            "Hotel Power": 728.0
+        },
+        {
+            "Timestamp": "2025-08-08 15:53:58",
+            "Chillers Power": 283.6333333333333,
+            "Hotel Power": 728.3333333333333
+        },
+        {
+            "Timestamp": "2025-08-08 15:58:58",
+            "Chillers Power": 284.43888888888887,
+            "Hotel Power": 728.611111111111
+        },
+        {
+            "Timestamp": "2025-08-08 16:03:58",
+            "Chillers Power": 285.40555555555557,
+            "Hotel Power": 728.9444444444443
+        },
+        {
+            "Timestamp": "2025-08-08 16:08:58",
+            "Chillers Power": 286.3722222222222,
+            "Hotel Power": 729.2777777777776
+        },
+        {
+            "Timestamp": "2025-08-08 16:13:58",
+            "Chillers Power": 287.33888888888885,
+            "Hotel Power": 729.611111111111
+        },
+        {
+            "Timestamp": "2025-08-08 16:18:58",
+            "Chillers Power": 288.1444444444444,
+            "Hotel Power": 729.8888888888889
+        },
+        {
+            "Timestamp": "2025-08-08 16:23:58",
+            "Chillers Power": 289.1111111111111,
+            "Hotel Power": 730.2222222222223
+        },
+        {
+            "Timestamp": "2025-08-08 16:28:58",
+            "Chillers Power": 290.0777777777778,
+            "Hotel Power": 730.5555555555557
+        },
+        {
+            "Timestamp": "2025-08-08 16:33:58",
+            "Chillers Power": 291.0444444444444,
+            "Hotel Power": 730.8888888888889
+        },
+        {
+            "Timestamp": "2025-08-08 16:38:58",
+            "Chillers Power": 291.84999999999997,
+            "Hotel Power": 731.1666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 16:43:58",
+            "Chillers Power": 292.9333333333333,
+            "Hotel Power": 732.7333333333332
+        },
+        {
+            "Timestamp": "2025-08-08 16:48:58",
+            "Chillers Power": 294.1333333333333,
+            "Hotel Power": 735.5333333333333
+        },
+        {
+            "Timestamp": "2025-08-08 16:53:58",
+            "Chillers Power": 295.3333333333333,
+            "Hotel Power": 738.3333333333333
+        },
+        {
+            "Timestamp": "2025-08-08 16:58:58",
+            "Chillers Power": 296.3333333333333,
+            "Hotel Power": 740.6666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 17:03:58",
+            "Chillers Power": 297.5333333333333,
+            "Hotel Power": 743.4666666666667
+        },
+        {
+            "Timestamp": "2025-08-08 17:08:58",
+            "Chillers Power": 298.73333333333335,
+            "Hotel Power": 746.2666666666667
+        },
+        {
+            "Timestamp": "2025-08-08 17:13:58",
+            "Chillers Power": 299.9333333333333,
+            "Hotel Power": 749.0666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 17:18:58",
+            "Chillers Power": 300.9333333333333,
+            "Hotel Power": 751.3999999999999
+        },
+        {
+            "Timestamp": "2025-08-08 17:23:58",
+            "Chillers Power": 302.1333333333333,
+            "Hotel Power": 754.1999999999999
+        },
+        {
+            "Timestamp": "2025-08-08 17:28:58",
+            "Chillers Power": 303.3333333333333,
+            "Hotel Power": 757.0
+        },
+        {
+            "Timestamp": "2025-08-08 17:33:58",
+            "Chillers Power": 304.3611111111111,
+            "Hotel Power": 759.261111111111
+        },
+        {
+            "Timestamp": "2025-08-08 17:38:58",
+            "Chillers Power": 304.5,
+            "Hotel Power": 758.8999999999999
+        },
+        {
+            "Timestamp": "2025-08-08 17:43:58",
+            "Chillers Power": 304.66666666666663,
+            "Hotel Power": 758.4666666666667
+        },
+        {
+            "Timestamp": "2025-08-08 17:48:58",
+            "Chillers Power": 304.8333333333333,
+            "Hotel Power": 758.0333333333333
+        },
+        {
+            "Timestamp": "2025-08-08 17:53:58",
+            "Chillers Power": 305.0,
+            "Hotel Power": 757.6
+        },
+        {
+            "Timestamp": "2025-08-08 17:58:58",
+            "Chillers Power": 305.13888888888886,
+            "Hotel Power": 757.238888888889
+        },
+        {
+            "Timestamp": "2025-08-08 18:03:58",
+            "Chillers Power": 305.30555555555554,
+            "Hotel Power": 756.8055555555557
+        },
+        {
+            "Timestamp": "2025-08-08 18:08:58",
+            "Chillers Power": 305.4722222222222,
+            "Hotel Power": 756.3722222222223
+        },
+        {
+            "Timestamp": "2025-08-08 18:13:58",
+            "Chillers Power": 305.63888888888886,
+            "Hotel Power": 755.938888888889
+        },
+        {
+            "Timestamp": "2025-08-08 18:18:58",
+            "Chillers Power": 305.77777777777777,
+            "Hotel Power": 755.5777777777777
+        },
+        {
+            "Timestamp": "2025-08-08 18:23:58",
+            "Chillers Power": 305.94444444444446,
+            "Hotel Power": 755.1444444444443
+        },
+        {
+            "Timestamp": "2025-08-08 18:28:58",
+            "Chillers Power": 305.68888888888887,
+            "Hotel Power": 755.3999999999999
+        },
+        {
+            "Timestamp": "2025-08-08 18:33:58",
+            "Chillers Power": 305.2222222222222,
+            "Hotel Power": 756.0
+        },
+        {
+            "Timestamp": "2025-08-08 18:38:58",
+            "Chillers Power": 304.8333333333333,
+            "Hotel Power": 756.5
+        },
+        {
+            "Timestamp": "2025-08-08 18:43:58",
+            "Chillers Power": 304.3666666666667,
+            "Hotel Power": 757.1
+        },
+        {
+            "Timestamp": "2025-08-08 18:48:58",
+            "Chillers Power": 303.9,
+            "Hotel Power": 757.6999999999999
+        },
+        {
+            "Timestamp": "2025-08-08 18:53:58",
+            "Chillers Power": 303.4333333333333,
+            "Hotel Power": 758.3
+        },
+        {
+            "Timestamp": "2025-08-08 18:58:58",
+            "Chillers Power": 303.0444444444444,
+            "Hotel Power": 758.8
+        },
+        {
+            "Timestamp": "2025-08-08 19:03:58",
+            "Chillers Power": 302.5777777777778,
+            "Hotel Power": 759.3999999999999
+        },
+        {
+            "Timestamp": "2025-08-08 19:08:58",
+            "Chillers Power": 302.1111111111111,
+            "Hotel Power": 760.0
+        },
+        {
+            "Timestamp": "2025-08-08 19:13:58",
+            "Chillers Power": 301.6444444444444,
+            "Hotel Power": 760.6
+        },
+        {
+            "Timestamp": "2025-08-08 19:18:58",
+            "Chillers Power": 301.2944444444444,
+            "Hotel Power": 761.2944444444444
+        },
+        {
+            "Timestamp": "2025-08-08 19:23:58",
+            "Chillers Power": 301.0611111111111,
+            "Hotel Power": 763.0611111111109
+        },
+        {
+            "Timestamp": "2025-08-08 19:28:58",
+            "Chillers Power": 300.8277777777778,
+            "Hotel Power": 764.8277777777777
+        },
+        {
+            "Timestamp": "2025-08-08 19:33:58",
+            "Chillers Power": 300.59444444444443,
+            "Hotel Power": 766.5944444444442
+        },
+        {
+            "Timestamp": "2025-08-08 19:38:58",
+            "Chillers Power": 300.4,
+            "Hotel Power": 768.0666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 19:43:58",
+            "Chillers Power": 300.16666666666663,
+            "Hotel Power": 769.8333333333333
+        },
+        {
+            "Timestamp": "2025-08-08 19:48:58",
+            "Chillers Power": 299.9333333333333,
+            "Hotel Power": 771.6
+        },
+        {
+            "Timestamp": "2025-08-08 19:53:58",
+            "Chillers Power": 299.7,
+            "Hotel Power": 773.3666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 19:58:58",
+            "Chillers Power": 299.50555555555553,
+            "Hotel Power": 774.838888888889
+        },
+        {
+            "Timestamp": "2025-08-08 20:03:58",
+            "Chillers Power": 299.27222222222224,
+            "Hotel Power": 776.6055555555556
+        },
+        {
+            "Timestamp": "2025-08-08 20:08:58",
+            "Chillers Power": 299.0388888888889,
+            "Hotel Power": 778.3722222222223
+        },
+        {
+            "Timestamp": "2025-08-08 20:13:58",
+            "Chillers Power": 298.88888888888886,
+            "Hotel Power": 772.1666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 20:18:58",
+            "Chillers Power": 298.77777777777777,
+            "Hotel Power": 765.6666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 20:23:58",
+            "Chillers Power": 298.6444444444444,
+            "Hotel Power": 757.8666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 20:28:58",
+            "Chillers Power": 298.51111111111106,
+            "Hotel Power": 750.0666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 20:33:58",
+            "Chillers Power": 298.37777777777774,
+            "Hotel Power": 742.2666666666667
+        },
+        {
+            "Timestamp": "2025-08-08 20:38:58",
+            "Chillers Power": 298.26666666666665,
+            "Hotel Power": 735.7666666666667
+        },
+        {
+            "Timestamp": "2025-08-08 20:43:58",
+            "Chillers Power": 298.1333333333333,
+            "Hotel Power": 727.9666666666667
+        },
+        {
+            "Timestamp": "2025-08-08 20:48:58",
+            "Chillers Power": 298.0,
+            "Hotel Power": 720.1666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 20:53:58",
+            "Chillers Power": 297.8666666666667,
+            "Hotel Power": 712.3666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 20:58:58",
+            "Chillers Power": 297.75555555555553,
+            "Hotel Power": 705.8666666666666
+        },
+        {
+            "Timestamp": "2025-08-08 21:03:58",
+            "Chillers Power": 297.7,
+            "Hotel Power": 700.6777777777776
+        },
+        {
+            "Timestamp": "2025-08-08 21:08:58",
+            "Chillers Power": 297.79999999999995,
+            "Hotel Power": 700.711111111111
+        },
+        {
+            "Timestamp": "2025-08-08 21:13:58",
+            "Chillers Power": 297.9,
+            "Hotel Power": 700.7444444444443
+        },
+        {
+            "Timestamp": "2025-08-08 21:18:58",
+            "Chillers Power": 297.98333333333335,
+            "Hotel Power": 700.7722222222224
+        },
+        {
+            "Timestamp": "2025-08-08 21:23:58",
+            "Chillers Power": 298.0833333333333,
+            "Hotel Power": 700.8055555555557
+        },
+        {
+            "Timestamp": "2025-08-08 21:28:58",
+            "Chillers Power": 298.1833333333333,
+            "Hotel Power": 700.838888888889
+        },
+        {
+            "Timestamp": "2025-08-08 21:33:58",
+            "Chillers Power": 298.2833333333333,
+            "Hotel Power": 700.8722222222223
+        },
+        {
+            "Timestamp": "2025-08-08 21:38:58",
+            "Chillers Power": 298.3666666666667,
+            "Hotel Power": 700.8999999999999
+        },
+        {
+            "Timestamp": "2025-08-08 21:43:58",
+            "Chillers Power": 298.46666666666664,
+            "Hotel Power": 700.9333333333334
+        },
+        {
+            "Timestamp": "2025-08-08 21:48:58",
+            "Chillers Power": 298.56666666666666,
+            "Hotel Power": 700.9666666666667
+        },
+        {
+            "Timestamp": "2025-08-08 21:53:58",
+            "Chillers Power": 298.66666666666663,
+            "Hotel Power": 701.0
+        },
+        {
+            "Timestamp": "2025-08-08 21:58:58",
+            "Chillers Power": 298.66666666666663,
+            "Hotel Power": 701.0
+        }
+    ]
+}

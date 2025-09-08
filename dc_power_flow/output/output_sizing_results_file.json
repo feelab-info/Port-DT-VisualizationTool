@@ -1,0 +1,213 @@
+{
+    "Line Sizing": [
+        {
+            "Line Index": 0,
+            "From Bus": 1,
+            "To Bus": 2,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 1,
+            "From Bus": 2,
+            "To Bus": 4,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 2,
+            "From Bus": 2,
+            "To Bus": 5,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 3,
+            "From Bus": 2,
+            "To Bus": 6,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 4,
+            "From Bus": 2,
+            "To Bus": 7,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 5,
+            "From Bus": 2,
+            "To Bus": 8,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 6,
+            "From Bus": 2,
+            "To Bus": 9,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 7,
+            "From Bus": 2,
+            "To Bus": 10,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 8,
+            "From Bus": 2,
+            "To Bus": 11,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 9,
+            "From Bus": 2,
+            "To Bus": 12,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 10,
+            "From Bus": 2,
+            "To Bus": 13,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 11,
+            "From Bus": 2,
+            "To Bus": 14,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 12,
+            "From Bus": 2,
+            "To Bus": 15,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 13,
+            "From Bus": 2,
+            "To Bus": 16,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 14,
+            "From Bus": 1,
+            "To Bus": 17,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 15,
+            "From Bus": 17,
+            "To Bus": 19,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 16,
+            "From Bus": 17,
+            "To Bus": 20,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 17,
+            "From Bus": 17,
+            "To Bus": 21,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 18,
+            "From Bus": 17,
+            "To Bus": 22,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 19,
+            "From Bus": 17,
+            "To Bus": 23,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 20,
+            "From Bus": 17,
+            "To Bus": 24,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 21,
+            "From Bus": 17,
+            "To Bus": 25,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 22,
+            "From Bus": 17,
+            "To Bus": 26,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 23,
+            "From Bus": 17,
+            "To Bus": 27,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 24,
+            "From Bus": 17,
+            "To Bus": 28,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 25,
+            "From Bus": 17,
+            "To Bus": 29,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 26,
+            "From Bus": 17,
+            "To Bus": 30,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 27,
+            "From Bus": 17,
+            "To Bus": 31,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 28,
+            "From Bus": 17,
+            "To Bus": 32,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 29,
+            "From Bus": 17,
+            "To Bus": 33,
+            "Section (mm\u00b2)": NaN
+        },
+        {
+            "Line Index": 30,
+            "From Bus": 17,
+            "To Bus": 34,
+            "Section (mm\u00b2)": NaN
+        }
+    ],
+    "Converter Sizing": [
+        {
+            "Converter Index": 0,
+            "Converter Name": "Conv_1",
+            "From Bus": 0,
+            "To Bus": 1,
+            "Nominal Power Installed (kW)": 20000.0
+        },
+        {
+            "Converter Index": 1,
+            "Converter Name": "Conv_2",
+            "From Bus": 2,
+            "To Bus": 3,
+            "Nominal Power Installed (kW)": 20.0
+        },
+        {
+            "Converter Index": 2,
+            "Converter Name": "Conv_3",
+            "From Bus": 17,
+            "To Bus": 18,
+            "Nominal Power Installed (kW)": 350.0
+        }
+    ]
+}

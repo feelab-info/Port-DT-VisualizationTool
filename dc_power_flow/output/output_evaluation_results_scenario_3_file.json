@@ -1,0 +1,210 @@
+{
+    "bus": [
+        {
+            "name": "Bus 0",
+            "vn_kv": 0.237,
+            "type": "b",
+            "zone": null,
+            "in_service": true
+        },
+        {
+            "name": "Bus 1",
+            "vn_kv": 0.237,
+            "type": "b",
+            "zone": null,
+            "in_service": true
+        },
+        {
+            "name": "Bus 2",
+            "vn_kv": 0.237,
+            "type": "b",
+            "zone": null,
+            "in_service": true
+        }
+    ],
+    "line": [
+        {
+            "name": null,
+            "std_type": null,
+            "from_bus": 1,
+            "to_bus": 2,
+            "length_km": 0.015,
+            "r_ohm_per_km": 5.0,
+            "x_ohm_per_km": 1e-20,
+            "c_nf_per_km": 0.0,
+            "g_us_per_km": 0.0,
+            "max_i_ka": 1000.0,
+            "df": 1.0,
+            "parallel": 1,
+            "type": null,
+            "in_service": true,
+            "cable_rank": NaN,
+            "section": NaN,
+            "distance": 0.0
+        }
+    ],
+    "load": [
+        {
+            "name": "Load of net 1",
+            "bus": 0,
+            "p_mw": 0.0020408855050349796,
+            "q_mvar": 0.0,
+            "const_z_percent": 0.0,
+            "const_i_percent": 0.0,
+            "sn_mva": NaN,
+            "scaling": 1.7320508075688772,
+            "in_service": true,
+            "type": "wye",
+            "p_nom_mw": NaN,
+            "power_profile": NaN,
+            "default_power_profile": NaN
+        },
+        {
+            "name": "load 2",
+            "bus": 2,
+            "p_mw": 0.00189,
+            "q_mvar": 0.0,
+            "const_z_percent": 0.0,
+            "const_i_percent": 0.0,
+            "sn_mva": NaN,
+            "scaling": 1.7320508075688772,
+            "in_service": true,
+            "type": "wye",
+            "p_nom_mw": 0.00189,
+            "power_profile": 1.0,
+            "default_power_profile": null
+        }
+    ],
+    "sgen": [],
+    "storage": [],
+    "converter": [
+        {
+            "name": "Conv_1",
+            "from_bus": 0,
+            "to_bus": 1,
+            "type": "AC/DC Converter Non-Isolated",
+            "P": 0.011,
+            "efficiency": [
+                [
+                    1.1,
+                    0.9159999999999999
+                ],
+                [
+                    3.3,
+                    0.955
+                ],
+                [
+                    6.6,
+                    0.96
+                ],
+                [
+                    11.0,
+                    0.965
+                ]
+            ],
+            "stand_by_loss": 0,
+            "efficiency curve": "[10;91.6], [30; 95.5], [60; 96], [100; 96.5]",
+            "droop_curve": [
+                [
+                    1.025,
+                    0.0
+                ],
+                [
+                    1.0,
+                    1.0
+                ],
+                [
+                    1.0,
+                    1.0
+                ],
+                [
+                    1.0,
+                    1.0
+                ],
+                [
+                    1.0,
+                    1.0
+                ],
+                [
+                    0.975,
+                    1.0
+                ]
+            ],
+            "conv_rank": null,
+            "converter_catalogue": null
+        }
+    ],
+    "ext_grid": [
+        {
+            "name": null,
+            "bus": 0,
+            "vm_pu": 1.0,
+            "va_degree": 0.0,
+            "slack_weight": 1.0,
+            "in_service": true
+        }
+    ],
+    "res_bus": [
+        {
+            "vm_pu": 1.0,
+            "va_degree": 0.0,
+            "p_mw": 0.0020408855050349796,
+            "q_mvar": 0.0
+        },
+        {
+            "vm_pu": 1.0,
+            "va_degree": 0.0,
+            "p_mw": -0.0018983343268284248,
+            "q_mvar": -1.6668653656849572e-26
+        },
+        {
+            "vm_pu": 0.9956096629471974,
+            "va_degree": -5.030956099164069e-22,
+            "p_mw": 0.0018900000000000002,
+            "q_mvar": 0.0
+        }
+    ],
+    "res_line": [
+        {
+            "p_from_mw": 0.0018983341661899327,
+            "q_from_mvar": 1.6668335194742155e-26,
+            "p_to_mw": -0.001889999839361508,
+            "q_to_mvar": 3.1846210741816632e-31,
+            "pl_mw": 9.62365167581052e-06,
+            "ql_mvar": 1.9247303351621486e-26,
+            "i_from_ka": 0.008009848802489167,
+            "i_to_ka": 0.008009848802489167,
+            "i_ka": 0.008009848802489167,
+            "vm_from_pu": 1.0,
+            "va_from_degree": 0.0,
+            "vm_to_pu": 0.9956096629471974,
+            "va_to_degree": -5.030956099164069e-22,
+            "loading_percent": 0.0008009848802489168
+        }
+    ],
+    "res_load": [
+        {
+            "p_mw": 0.0020408855050349796,
+            "q_mvar": 0.0
+        },
+        {
+            "p_mw": 0.0018900000000000002,
+            "q_mvar": 0.0
+        }
+    ],
+    "res_sgen": [],
+    "res_storage": [],
+    "res_converter": [
+        {
+            "p_mw": 0.0020408855050349796,
+            "loading (%)": 17.257584789349316,
+            "pl_mw": 0.00014255117820655486
+        }
+    ],
+    "res_ext_grid": [
+        {
+            "p_mw": 0.0020408855050349796,
+            "q_mvar": 0.0
+        }
+    ]
+}
