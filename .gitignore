@@ -79,4 +79,6 @@ venv/
 # Local development overrides
 docker-compose.override.yml
 docker-compose.local.yml
+
+# Docker compose with sensitive data (keep local only)
 docker-compose.yml
