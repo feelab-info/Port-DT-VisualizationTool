@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { authService } from '@/services/AuthService';
 import { Mail, User, AlertCircle, Loader2, ArrowLeft, Lock } from 'lucide-react';
+import Image from 'next/image';
 
 interface RegistrationFormProps {
   onSuccess: (email: string) => void;
@@ -107,6 +108,18 @@ export default function RegistrationForm({ onSuccess, onBackToLogin, initialEmai
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
+        {/* Shift2DC Logo */}
+        <div className="flex justify-center mb-6">
+          <Image
+            src="/img/shift2dc_logo.png"
+            alt="Shift2DC"
+            width={200}
+            height={60}
+            className="h-auto max-w-full"
+            priority
+          />
+        </div>
+        
         <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
           Register Your Account
         </h2>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/services/AuthService';
-import { Anchor, Mail, User, AlertCircle, Loader2, Lock } from 'lucide-react';
+import { Mail, User, AlertCircle, Loader2, Lock } from 'lucide-react';
 import Image from 'next/image';
 import RegistrationForm from './RegistrationForm';
 import EmailVerificationForm from './EmailVerificationForm';
@@ -170,11 +170,19 @@ export default function LoginForm() {
           <div className="space-y-6">
             {/* Header */}
             <div className="text-center">
-              <div className="flex justify-center mb-4">
-                <div className="bg-blue-600 dark:bg-blue-500 p-3 rounded-full">
-                  <Anchor className="h-8 w-8 text-white" />
-                </div>
+              {/* Shift2DC Logo */}
+              <div className="flex justify-center mb-6">
+                <Image
+                  src="/img/shift2dc_logo.png"
+                  alt="Shift2DC"
+                  width={200}
+                  height={60}
+                  className="h-auto max-w-full"
+                  priority
+                />
               </div>
+              
+              
               <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                 Welcome Back
               </h2>

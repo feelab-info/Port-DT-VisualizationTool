@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Home, Map, Activity, Database, Anchor, BarChart2, Sun, Moon, LogOut } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
@@ -134,9 +135,21 @@ export default function Sidebar() {
           })}
         </ul>
       </nav>
+
+      {/* Shift2DC Logo */}
+      <div className="flex items-center justify-center mb-4">
+          <Image
+            src="/img/shift2dc_logo.png"
+            alt="Shift2DC"
+            width={180}
+            height={50}
+            className="h-auto max-w-full opacity-90"
+          />
+      </div>
       
       {/* Bottom controls with logout and theme toggle */}
       <div className="mt-auto pt-4 border-t border-gray-700 dark:border-gray-600">
+        
         
         <div className="flex gap-2">
           <button 

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { authService } from '@/services/AuthService';
 import { AlertCircle, Loader2, ArrowLeft, RefreshCw, CheckCircle } from 'lucide-react';
+import Image from 'next/image';
 
 interface EmailVerificationFormProps {
   email: string;
@@ -143,6 +144,18 @@ export default function EmailVerificationForm({ email, onSuccess, onBackToRegist
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
+        {/* Shift2DC Logo */}
+        <div className="flex justify-center mb-6">
+          <Image
+            src="/img/shift2dc_logo.png"
+            alt="Shift2DC"
+            width={200}
+            height={60}
+            className="h-auto max-w-full"
+            priority
+          />
+        </div>
+        
         <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center mb-4">
           <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 7.89a2 2 0 002.83 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
