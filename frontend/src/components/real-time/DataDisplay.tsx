@@ -163,31 +163,54 @@ export default function DataDisplay({
             >»</button>
           </div>
           {/* Export Actions */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleExportCsv(visibleRows, `energy-data_${selectedDate}_page-${currentPage}.csv`)}
-              className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              Export CSV (page)
-            </button>
-            <button
-              onClick={() => handleExportCsv(filteredData, `energy-data_${selectedDate}_all.csv`)}
-              className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              Export CSV (all)
-            </button>
-            <button
-              onClick={() => handleExportPdf(visibleRows, `energy-report_${selectedDate}_page-${currentPage}.pdf`, selectedDevice, deviceList)}
-              className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              Export PDF (page)
-            </button>
-            <button
-              onClick={() => handleExportPdf(filteredData, `energy-report_${selectedDate}_all.pdf`, selectedDevice, deviceList)}
-              className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              Export PDF (all)
-            </button>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Export:</span>
+            
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => handleExportCsv(visibleRows, `energy-data_${selectedDate}_page-${currentPage}.csv`)}
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-emerald-300 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors font-medium shadow-sm hover:shadow-md"
+                title="Export current page as CSV"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>CSV Page</span>
+              </button>
+              
+              <button
+                onClick={() => handleExportCsv(filteredData, `energy-data_${selectedDate}_all.csv`)}
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-emerald-300 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors font-medium shadow-sm hover:shadow-md"
+                title="Export all data as CSV"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span>CSV All</span>
+              </button>
+              
+              <button
+                onClick={() => handleExportPdf(visibleRows, `energy-report_${selectedDate}_page-${currentPage}.pdf`, selectedDevice, deviceList)}
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors font-medium shadow-sm hover:shadow-md"
+                title="Export current page as PDF report"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>PDF Page</span>
+              </button>
+              
+              <button
+                onClick={() => handleExportPdf(filteredData, `energy-report_${selectedDate}_all.pdf`, selectedDevice, deviceList)}
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors font-medium shadow-sm hover:shadow-md"
+                title="Export all data as PDF report"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                <span>PDF All</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -79,7 +79,7 @@ export default function Sidebar() {
       
       {/* Clean User profile without logout button */}
       {user && (
-        <div className="mb-6 p-4 bg-gray-700 dark:bg-gray-600 rounded-lg border border-gray-600 dark:border-gray-500">
+        <div className="mb-6 p-4 bg-gray-700 dark:bg-gray-700 rounded-lg border border-gray-600 dark:border-gray-600">
           <div className="flex items-start gap-3">
             <div className="relative">
               <div className="bg-blue-600 dark:bg-blue-500 p-2.5 rounded-full flex items-center justify-center min-w-[2.75rem] h-11 shadow-md">
@@ -136,21 +136,30 @@ export default function Sidebar() {
         </ul>
       </nav>
 
-      {/* Shift2DC Logo */}
-      <div className="flex items-center justify-center mb-4">
-          <Image
-            src="/img/shift2dc_logo.png"
-            alt="Shift2DC"
-            width={180}
-            height={50}
-            className="h-auto max-w-full opacity-90"
-          />
+      {/* Shift2DC Logo with Subtle Electric Effect */}
+      <div className="mb-6 px-2">
+        <div className="relative group">
+          {/* Main container */}
+          <div className="relative p-4 bg-gray-700 dark:bg-gray-700 rounded-lg border border-gray-600 dark:border-gray-600 overflow-hidden">
+            {/* Logo */}
+            <div className="relative flex items-center justify-center">
+              <Image
+                src="/img/shift2dc_logo.png"
+                alt="Shift2DC"
+                width={160}
+                height={45}
+                className="h-auto max-w-full opacity-95 filter brightness-110 transition-all duration-300 group-hover:brightness-115"
+              />
+            </div>
+            
+            {/* Single subtle spark effect */}
+            <div className="absolute top-2 right-3 w-1 h-1 rounded-full opacity-40 animate-ping" style={{backgroundColor: '#93be47', animationDuration: '3s'}}></div>
+          </div>
+        </div>
       </div>
       
       {/* Bottom controls with logout and theme toggle */}
       <div className="mt-auto pt-4 border-t border-gray-700 dark:border-gray-600">
-        
-        
         <div className="flex gap-2">
           <button 
             onClick={toggleTheme}
