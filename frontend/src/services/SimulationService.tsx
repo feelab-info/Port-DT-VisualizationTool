@@ -160,30 +160,51 @@ class SimulationService extends EventEmitter {
 
   public async getTimestepsResults(): Promise<TimestepData[]> {
     try {
-      // Try fetching from the backend first
+      const token = authService.getToken();
+      
+      // Check if user is authenticated before making the request
+      if (!token) {
+        throw new Error('Authentication required. Please login to access simulation results.');
+      }
+      
+      // Try fetching from the backend first (this is the preferred way)
       try {
-        const token = authService.getToken();
+        console.log('Attempting to fetch timesteps results from backend...');
         const response = await fetch(`${this.baseUrl}/api/simulation/timesteps-results`, {
           headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
           },
         });
+        
         if (response.ok) {
           const data = await response.json();
+          console.log('Successfully fetched timesteps results from backend');
           return data;
+        } else {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('Backend endpoint failed with status:', response.status, errorData);
+          throw new Error(`Backend failed: ${response.status} - ${errorData.error || 'Unknown error'}`);
         }
-      } catch (error) {
-        console.warn('Backend endpoint failed, trying direct API access:', error);
+      } catch (backendError) {
+        console.warn('Backend endpoint failed, trying direct API access:', backendError);
+        
+        // If backend fails, try direct access to the DC power flow API as fallback
+        try {
+          console.log('Attempting direct access to DC power flow API...');
+          const directResponse = await fetch(`${this.dcPowerFlowUrl}/get-timesteps-results`);
+          if (directResponse.ok) {
+            const directData = await directResponse.json();
+            console.log('Successfully fetched timesteps results directly from DC power flow API');
+            return directData;
+          } else {
+            throw new Error(`Direct API failed: ${directResponse.status}`);
+          }
+        } catch (directError) {
+          console.error('Direct API access also failed:', directError);
+          throw new Error(`Both backend and direct API access failed. Backend: ${backendError instanceof Error ? backendError.message : 'Unknown error'}, Direct: ${directError instanceof Error ? directError.message : 'Unknown error'}`);
+        }
       }
-      
-      // If backend fails, try direct access to the DC power flow API
-      const directResponse = await fetch(`${this.dcPowerFlowUrl}/get-timesteps-results`);
-      if (directResponse.ok) {
-        const directData = await directResponse.json();
-        return directData;
-      }
-      
-      throw new Error('Failed to fetch timesteps results from both sources');
     } catch (error) {
       this.emit('error', error instanceof Error ? error.message : 'An unknown error occurred');
       throw error;

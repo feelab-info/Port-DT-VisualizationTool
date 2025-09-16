@@ -138,24 +138,29 @@ export default function Sidebar() {
 
       {/* Shift2DC Logo with Subtle Electric Effect */}
       <div className="mb-6 px-2">
-        <div className="relative group">
-          {/* Main container */}
-          <div className="relative p-4 bg-gray-700 dark:bg-gray-700 rounded-lg border border-gray-600 dark:border-gray-600 overflow-hidden">
-            {/* Logo */}
-            <div className="relative flex items-center justify-center">
-              <Image
-                src="/img/shift2dc_logo.png"
-                alt="Shift2DC"
-                width={160}
-                height={45}
-                className="h-auto max-w-full opacity-95 filter brightness-110 transition-all duration-300 group-hover:brightness-115"
-              />
+        <Link href="/shift2dc" className="block">
+          <div className="relative group cursor-pointer">
+            {/* Main container */}
+            <div className="relative p-4 bg-gray-700 dark:bg-gray-700 rounded-lg border border-gray-600 dark:border-gray-600 overflow-hidden transition-all duration-300 hover:bg-gray-600 dark:hover:bg-gray-600 hover:border-blue-500">
+              {/* Logo */}
+              <div className="relative flex items-center justify-center">
+                <Image
+                  src="/img/shift2dc_logo.png"
+                  alt="Shift2DC"
+                  width={160}
+                  height={45}
+                  className="h-auto max-w-full opacity-95 filter brightness-110 transition-all duration-300 group-hover:brightness-125"
+                />
+              </div>
+              
+              {/* Single subtle spark effect */}
+              <div className="absolute top-2 right-3 w-1 h-1 rounded-full opacity-40 animate-ping" style={{backgroundColor: '#93be47', animationDuration: '3s'}}></div>
+              
+              {/* Hover effect overlay */}
+              <div className="absolute inset-0 bg-blue-500 opacity-0 group-hover:opacity-5 transition-opacity duration-300 rounded-lg"></div>
             </div>
-            
-            {/* Single subtle spark effect */}
-            <div className="absolute top-2 right-3 w-1 h-1 rounded-full opacity-40 animate-ping" style={{backgroundColor: '#93be47', animationDuration: '3s'}}></div>
           </div>
-        </div>
+        </Link>
       </div>
       
       {/* Bottom controls with logout and theme toggle */}
