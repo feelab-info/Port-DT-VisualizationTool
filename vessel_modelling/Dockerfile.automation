@@ -26,7 +26,7 @@ RUN useradd --create-home --shell /bin/bash app
 RUN chown -R app:app /app
 
 # Create cron job to run vessel_automation.py at 02:00 daily
-RUN echo "0 2 * * * app cd /app && python vessel_automation.py >> /app/logs/automation.log 2>&1" | crontab -
+RUN echo "0 2 * * * cd /app && /usr/local/bin/python vessel_automation.py >> /app/logs/automation.log 2>&1" | crontab -u app -
 
 # Health check (check if cron service is running)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

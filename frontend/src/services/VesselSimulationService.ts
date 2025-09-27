@@ -194,38 +194,28 @@ class VesselSimulationService extends EventEmitter {
    */
   public async getDetailedSimulations(date?: string): Promise<DetailedSimulationsResponse> {
     try {
+      const token = authService.getToken();
+      
       // Try date-specific endpoint if a date is provided
       if (date) {
         try {
-          const token = authService.getToken();
           const response = await axios.get(`${this.baseUrl}/api/vessel/simulations/${date}`, {
             headers: token ? { Authorization: `Bearer ${token}` } : undefined,
           });
           return response.data;
         } catch (error) {
-          console.warn('Error with date-specific endpoint:', error);
+          if (axios.isAxiosError(error)) {
+            console.warn('❌ Status:', error.response?.status, 'Message:', error.response?.data);
+          }
         }
       }
       
-      // Try the general endpoint
-      try {
-        const token = authService.getToken();
-        const response = await axios.get(`${this.baseUrl}/api/vessel/simulations`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-        return response.data;
-      } catch (error) {
-        console.warn('Error with general endpoint:', error);
-      }
-      
-      // Try current-simulations as last resort
-      const token = authService.getToken();
+      // Skip the general endpoint as it returns old data - go straight to current-simulations
       const response = await axios.get(`${this.baseUrl}/api/vessel/current-simulations`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       return response.data;
     } catch (error) {
-      console.error('Error fetching detailed simulations:', error);
       if (axios.isAxiosError(error)) {
         const errorMessage = error.response?.data?.error || error.message;
         throw new Error(`All simulation endpoints failed. Last error: ${errorMessage}`);

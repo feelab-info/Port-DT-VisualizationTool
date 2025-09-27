@@ -40,7 +40,7 @@ CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 FOLDER_PATH = "./Data/CruisesSlices_Resampled"
 
 # Add this near the top of the file, after the imports
-DEFAULT_SIMULATION_DATE = "2025-04-28"  # You can change this to any date you want
+DEFAULT_SIMULATION_DATE = datetime.date.today().strftime('%Y-%m-%d')  # Use current date
 
 @app.route('/health', methods=['GET'])
 def health_check():
