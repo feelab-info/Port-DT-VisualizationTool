@@ -81,8 +81,13 @@ export function initSocketHandlers(io: Server): void {
         
         console.log('Query:', JSON.stringify(query, null, 2));
         
-        // Query for the specific device and date
-        const historicalData = await eGaugeCollection.find(query).toArray();
+        // Query for the specific device and date with optimization
+        // Add limit and use lean query (only fetch needed fields if possible)
+        const historicalData = await eGaugeCollection
+          .find(query)
+          .sort({ timestamp: 1 }) // Sort by timestamp ascending for chronological order
+          .limit(10000) // Prevent fetching too much data at once
+          .toArray();
         
         console.log(`Found ${historicalData.length} historical records`);
         
@@ -130,7 +135,8 @@ export function initSocketHandlers(io: Server): void {
         // Parse the start date
         const queryStartDate = new Date(startDate);
         
-        // Query for documents from today
+        // Query for documents from today - optimized
+        // Note: hint removed temporarily - will auto-use index if it exists
         const todayDocs = await eGaugeCollection
           .find({ timestamp: { $gte: queryStartDate } })
           .sort({ timestamp: -1 })  // Sort by timestamp descending

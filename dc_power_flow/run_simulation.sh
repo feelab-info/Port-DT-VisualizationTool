@@ -46,24 +46,21 @@ echo "PYTHONPATH: $PYTHONPATH"
 
 # Get absolute paths
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-VENV_PATH="$SCRIPT_DIR/venv"
-PYTHON_PATH="$VENV_PATH/bin/python"
+PYTHON_PATH="python"  # Use system Python in Docker container
 MAIN_SCRIPT="$SCRIPT_DIR/main.py"
 CONFIG_FILE="$SCRIPT_DIR/temp_config.json"
 
 echo "=== PATH DEBUG INFO ==="
 echo "Script directory (absolute): $SCRIPT_DIR"
-echo "Virtual environment: $VENV_PATH"
 echo "Python executable: $PYTHON_PATH"
 echo "Main script: $MAIN_SCRIPT"
 echo "Config file: $CONFIG_FILE"
 
 # Check if files exist
 echo "=== FILE EXISTENCE CHECK ==="
-[ -f "$PYTHON_PATH" ] && echo "✓ Python executable exists" || echo "✗ Python executable NOT found"
+command -v "$PYTHON_PATH" >/dev/null 2>&1 && echo "✓ Python executable exists" || echo "✗ Python executable NOT found"
 [ -f "$MAIN_SCRIPT" ] && echo "✓ Main script exists" || echo "✗ Main script NOT found"
 [ -f "$CONFIG_FILE" ] && echo "✓ Config file exists" || echo "✗ Config file NOT found"
-[ -d "$VENV_PATH" ] && echo "✓ Virtual environment directory exists" || echo "✗ Virtual environment directory NOT found"
 
 # Function to run the simulation
 run_simulation() {
@@ -73,21 +70,14 @@ run_simulation() {
     cd "$SCRIPT_DIR"
     echo "Changed to directory: $(pwd)"
     
-    # Check if virtual environment activation works
-    if [ -f "$VENV_PATH/bin/activate" ]; then
-        echo "Activating virtual environment..."
-        source "$VENV_PATH/bin/activate"
-        echo "Virtual environment activated"
-        echo "Python version: $(python --version)"
-        echo "Python path: $(which python)"
-    else
-        echo "ERROR: Virtual environment activation script not found!"
-        return 1
-    fi
+    # Use system Python (no virtual environment needed in Docker)
+    echo "Using system Python in Docker container..."
+    echo "Python version: $($PYTHON_PATH --version)"
+    echo "Python path: $(which $PYTHON_PATH)"
     
     # Verify Python can import required modules
     echo "=== PYTHON MODULE CHECK ==="
-    python -c "
+    $PYTHON_PATH -c "
 import sys
 print(f'Python executable: {sys.executable}')
 print(f'Python version: {sys.version}')
@@ -105,6 +95,12 @@ try:
     print('✓ numpy imported successfully')
 except ImportError as e:
     print(f'✗ numpy import failed: {e}')
+
+try:
+    import pandapower as pp
+    print('✓ pandapower imported successfully')
+except ImportError as e:
+    print(f'✗ pandapower import failed: {e}')
 
 try:
     import json
@@ -129,7 +125,7 @@ except ImportError as e:
     export PYTHONDONTWRITEBYTECODE=1
     
     # Run with timeout to prevent hanging
-    timeout 300 "$PYTHON_PATH" "$MAIN_SCRIPT" --config "$CONFIG_FILE"
+    timeout 300 $PYTHON_PATH "$MAIN_SCRIPT" --config "$CONFIG_FILE"
     local exit_code=$?
     
     echo "=== SIMULATION COMPLETED ==="
@@ -170,6 +166,6 @@ while true; do
         echo "Simulation failed, will retry in next cycle"
     fi
     
-    echo "Waiting 60 seconds before next simulation..."
-    sleep 60
+    echo "Waiting 30 seconds before next simulation..."
+    sleep 30
 done

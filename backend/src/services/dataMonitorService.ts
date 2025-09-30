@@ -1,5 +1,5 @@
 import { Server } from 'socket.io';
-import { connectToMongo, getMongoClient } from './databaseService';
+import { connectToMongo, getMongoClient, getCachedCollection } from './databaseService';
 import { ObjectId } from 'mongodb';
 import { setDeviceMappings } from './deviceDataService';
 
@@ -8,10 +8,12 @@ import { setDeviceMappings } from './deviceDataService';
  * @param io Socket.IO server instance
  */
 export async function watchMongoChanges(io: Server): Promise<void> {
-  const db = await connectToMongo();
-  const eGaugeCollection = db.collection('eGauge');
-  const client = getMongoClient();
-  const producersCollection = client.db('enerspectrumMetadata').collection('producers');
+  // Initialize connection
+  await connectToMongo();
+  
+  // Use cached collections for better performance
+  const eGaugeCollection = getCachedCollection('enerspectrumSamples', 'eGauge');
+  const producersCollection = getCachedCollection('enerspectrumMetadata', 'producers');
     
   // Initial load of device mappings - specifically targeting the producer with ID "672357cdcb0b0c7c0f7eb6b4"
   const deviceMappings: Record<string, { name: string; owner: string }> = {};
@@ -45,9 +47,11 @@ export async function watchMongoChanges(io: Server): Promise<void> {
   // Set up polling interval to check for new documents
   setInterval(async () => {
     try {
-      // Query for documents newer than last update
+      // Query for documents newer than last update - optimized
+      // Note: hint removed temporarily - will auto-use index if it exists
       const newDocs = await eGaugeCollection
         .find({ timestamp: { $gt: lastUpdate } })
+        .sort({ timestamp: 1 })  // Sort ascending to get oldest first
         .limit(33)  // Limit to 33 documents per update
         .toArray();
 

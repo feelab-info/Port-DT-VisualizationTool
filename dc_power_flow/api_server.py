@@ -297,16 +297,43 @@ def start_simulation_service():
 def stop_simulation_service():
     global simulation_process
     try:
-        # Kill all processes running the simulation script
-        subprocess.run(['pkill', '-f', 'run_simulation.sh'],
-                      stdout=subprocess.PIPE,
-                      stderr=subprocess.PIPE)
+        if simulation_process and simulation_process.poll() is None:
+            # Terminate the process group
+            try:
+                import os
+                import signal
+                os.killpg(os.getpgid(simulation_process.pid), signal.SIGTERM)
+                logger.info("Sent SIGTERM to simulation process group")
+                
+                # Wait a bit for graceful shutdown
+                simulation_process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                # Force kill if graceful shutdown fails
+                os.killpg(os.getpgid(simulation_process.pid), signal.SIGKILL)
+                logger.info("Force killed simulation process group")
+            except Exception as e:
+                logger.error(f"Error terminating simulation process: {e}")
         
-        # Also kill any remaining Python processes running main.py
-        subprocess.run(['pkill', '-f', 'python.*main.py'],
-                      stdout=subprocess.PIPE,
-                      stderr=subprocess.PIPE)
+        # Also try to kill any remaining processes using alternative methods
+        try:
+            # Use ps and kill instead of pkill
+            result = subprocess.run(['ps', 'aux'], capture_output=True, text=True)
+            if result.returncode == 0:
+                lines = result.stdout.split('\n')
+                for line in lines:
+                    if 'run_simulation.sh' in line or 'main.py' in line:
+                        parts = line.split()
+                        if len(parts) > 1:
+                            pid = parts[1]
+                            try:
+                                subprocess.run(['kill', pid], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                logger.info(f"Killed process {pid}")
+                            except Exception:
+                                pass
+        except Exception as e:
+            logger.warning(f"Could not clean up remaining processes: {e}")
         
+        simulation_process = None
         logger.info("Simulation service stopped")
         return True
     except Exception as e:
@@ -584,5 +611,13 @@ if __name__ == '__main__':
     port = 5002
 
     logger.info(f"Starting Flask-SocketIO server on port {port}...")
+    
+    # Auto-start the simulation service when the API server starts
+    logger.info("Auto-starting simulation service...")
+    if start_simulation_service():
+        logger.info("Simulation service auto-started successfully")
+    else:
+        logger.warning("Failed to auto-start simulation service - can be started manually via API")
+    
     # Run the Flask app with Socket.IO
     socketio.run(app, debug=False, port=port, host='0.0.0.0', allow_unsafe_werkzeug=True)

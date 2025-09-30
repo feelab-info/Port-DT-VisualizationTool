@@ -72,8 +72,6 @@ export async function collectDeviceData(): Promise<any[]> {
       
       // Replace the root to get the original document structure
       { $replaceRoot: { newRoot: "$latestDoc" } }
-      
-      // Removed allowDiskUse since we're working with much smaller dataset
     ]).toArray();
     
     console.log(`Retrieved ${latestReadings.length} device readings out of ${targetDeviceIds.length} targets`);
