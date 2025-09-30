@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/services/AuthService';
-import { Mail, User, AlertCircle, Loader2, Lock } from 'lucide-react';
+import { Mail, AlertCircle, Loader2, Lock } from 'lucide-react';
 import Image from 'next/image';
 import RegistrationForm from './RegistrationForm';
 import EmailVerificationForm from './EmailVerificationForm';
@@ -14,7 +14,6 @@ export default function LoginForm() {
   const [registrationEmail, setRegistrationEmail] = useState('');
   const [formData, setFormData] = useState({
     email: '',
-    name: '',
     password: '',
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -31,13 +30,6 @@ export default function LoginForm() {
       newErrors.email = 'Please enter a valid email address';
     } else if (!authService.validatePortEmail(formData.email)) {
       newErrors.email = 'Access restricted to Port of Funchal staff (@apram.pt emails) or authorized personnel';
-    }
-
-    // Name validation
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters long';
     }
 
     // Password validation
@@ -64,9 +56,9 @@ export default function LoginForm() {
     setIsLoading(true);
 
     try {
-      console.log('[LoginForm] Attempting login with:', { email: formData.email, name: formData.name });
+      console.log('[LoginForm] Attempting login with:', { email: formData.email });
       
-      const result = await login(formData.email.trim(), formData.name.trim(), formData.password.trim()).catch((error) => {
+      const result = await login(formData.email.trim(), formData.password.trim()).catch((error) => {
         console.error('[LoginForm] Login function threw error:', error);
         return { success: false, error: 'Login failed. Please try again.' };
       });
@@ -141,7 +133,6 @@ export default function LoginForm() {
     setCurrentStep('registration');
     setFormData({
       email: formData.email,
-      name: formData.name,
       password: '', // Clear password when registering
     });
   };
@@ -154,7 +145,6 @@ export default function LoginForm() {
             onSuccess={handleRegistrationSuccess}
             onBackToLogin={handleBackToLogin}
             initialEmail={formData.email}
-            initialName={formData.name}
           />
         );
       case 'verification':
@@ -233,35 +223,6 @@ export default function LoginForm() {
                 </div>
                 {errors.email && (
                   <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.email}</p>
-                )}
-              </div>
-
-              {/* Name Field */}
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    value={formData.name}
-                    onChange={handleChange}
-                    className={`block w-full pl-10 pr-3 py-3 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      errors.name
-                        ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
-                        : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700'
-                    } text-gray-900 dark:text-gray-100`}
-                    placeholder="Your full name"
-                    disabled={isLoading}
-                  />
-                </div>
-                {errors.name && (
-                  <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.name}</p>
                 )}
               </div>
 

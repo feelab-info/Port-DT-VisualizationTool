@@ -165,11 +165,10 @@ class AuthService {
   }
 
   // Registration function
-  async register(email: string, name: string, password: string): Promise<RegistrationResponse> {
+  async register(email: string, password: string): Promise<RegistrationResponse> {
     try {
       const response = await axios.post<RegistrationResponse>(`${API_BASE_URL}/api/auth/register`, {
         email,
-        name,
         password,
       });
 
@@ -246,12 +245,11 @@ class AuthService {
   }
 
   // Login function
-  async login(email: string, name: string, password: string): Promise<LoginResponse> {
+  async login(email: string, password: string): Promise<LoginResponse> {
     try {
-      console.log('[AuthService] Making login request:', { email, name });
+      console.log('[AuthService] Making login request:', { email });
       const response = await axios.post<LoginResponse>(`${API_BASE_URL}/api/auth/login`, {
         email,
-        name,
         password,
       });
 

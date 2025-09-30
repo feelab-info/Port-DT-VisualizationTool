@@ -23,29 +23,9 @@ export default function Sidebar() {
     logout();
   };
 
-  // Get initials from user name (improved to handle edge cases)
-  const getUserInitials = (name: string): string => {
-    const cleanName = name.trim();
-    if (!cleanName) return 'U';
-    
-    return cleanName
-      .split(' ')
-      .filter(word => word.length > 0)
-      .map(word => word.charAt(0))
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
-
-  // Get display name with better formatting
-  const getDisplayName = (name: string): string => {
-    const parts = name.trim().split(' ').filter(part => part.length > 0);
-    if (parts.length === 0) return 'User';
-    if (parts.length === 1) return parts[0];
-    if (parts.length === 2) return `${parts[0]} ${parts[1].charAt(0)}.`;
-    
-    // For 3+ parts, show first name + last initial
-    return `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`;
+  // Get initials for Port Authority
+  const getUserInitials = (): string => {
+    return 'PA';
   };
 
   // Smart email truncation that preserves domain
@@ -84,7 +64,7 @@ export default function Sidebar() {
             <div className="relative">
               <div className="bg-blue-600 dark:bg-blue-500 p-2.5 rounded-full flex items-center justify-center min-w-[2.75rem] h-11 shadow-md">
                 <span className="text-white font-bold text-sm">
-                  {getUserInitials(user.name)}
+                  {getUserInitials()}
                 </span>
               </div>
               {/* Online status indicator */}
@@ -93,9 +73,9 @@ export default function Sidebar() {
             <div className="flex-1 min-w-0">
               <p 
                 className="font-semibold text-sidebar-text truncate text-sm leading-tight mb-1" 
-                title={user.name}
+                title="Port Authority"
               >
-                {getDisplayName(user.name)}
+                Port Authority
               </p>
               <p 
                 className="text-xs text-gray-400 dark:text-gray-300 truncate leading-tight mb-1" 

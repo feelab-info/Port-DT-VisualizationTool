@@ -4,13 +4,11 @@ import userService from '../services/userService';
 
 export interface LoginRequest {
   email: string;
-  name: string;
   password: string;
 }
 
 export interface RegistrationRequest {
   email: string;
-  name: string;
   password: string;
 }
 
@@ -24,11 +22,11 @@ export interface VerificationRequest {
  */
 export async function startRegistration(req: Request, res: Response): Promise<void> {
   try {
-    const { email, name, password }: RegistrationRequest = req.body;
+    const { email, password }: RegistrationRequest = req.body;
 
-    if (!email || !name || !password) {
+    if (!email || !password) {
       res.status(400).json({ 
-        error: 'Email, name, and password are required' 
+        error: 'Email and password are required' 
       });
       return;
     }
@@ -58,8 +56,8 @@ export async function startRegistration(req: Request, res: Response): Promise<vo
       return;
     }
 
-    // Start registration process with password
-    const result = await userService.startRegistration(email, name, password);
+    // Start registration process with password (use email as display name)
+    const result = await userService.startRegistration(email, 'Port Authority', password);
 
     if (result.success) {
       res.json({
@@ -220,11 +218,11 @@ export async function resendVerificationCode(req: Request, res: Response): Promi
  */
 export async function login(req: Request, res: Response): Promise<void> {
   try {
-    const { email, name, password }: LoginRequest = req.body;
+    const { email, password }: LoginRequest = req.body;
 
-    if (!email || !name || !password) {
+    if (!email || !password) {
       res.status(400).json({ 
-        error: 'Email, name, and password are required' 
+        error: 'Email and password are required' 
       });
       return;
     }
@@ -274,15 +272,18 @@ export async function login(req: Request, res: Response): Promise<void> {
     // Update last login time
     await userService.updateLastLogin(email);
 
+    // Get user name from database
+    const userName = user.name || 'Port Authority';
+
     // Generate JWT token
-    const token = generateToken(email, name);
+    const token = generateToken(email, userName);
 
     res.json({
       success: true,
       token,
       user: {
         email,
-        name
+        name: userName
       },
       message: 'Login successful'
     });
