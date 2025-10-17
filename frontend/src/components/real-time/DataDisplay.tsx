@@ -30,27 +30,15 @@ export default function DataDisplay({
     return Math.round(value).toString();
   };
 
-  // Format device ID to make it more readable
+  // Format device ID - preserve names from producer collection
   const formatDeviceId = (deviceId: string): string => {
-    // Special formatting for known device patterns
-    if (deviceId.startsWith('D') && !isNaN(Number(deviceId.substring(1)))) {
-      return `Device ${deviceId}`;
+    // Only truncate very long device IDs (hashes)
+    // Do NOT add "Device " prefix - use names from producer collection as-is
+    if (deviceId.length > 20) {
+      return deviceId.substring(0, 8) + '...';
     }
-    if (deviceId === 'F9') {
-      return 'Device F9';
-    }
-    if (deviceId === 'Entrada de energia') {
-      return 'Entrada de energia';
-    }
-    
-    // For hash-like device IDs, create a shortened display name
-    if (deviceId.length > 10) {
-      const shortHash = deviceId.substring(0, 8);
-      return `Device ${shortHash}`;
-    }
-    
-    // For other device IDs, use the first 8 characters
-    return deviceId.substring(0, 8) + '...';
+    // Return short IDs as-is (these are the names from producer collection)
+    return deviceId;
   };
 
   // Calculate total power for all filtered data - Fixed calculation

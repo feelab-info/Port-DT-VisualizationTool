@@ -1,7 +1,7 @@
 import { httpServer, io } from './app';
 import { connectToMongo } from './services/databaseService';
 import { watchMongoChanges } from './services/dataMonitorService';
-import { startDeviceDataUpdates } from './services/deviceDataService';
+import { startDeviceDataUpdates, loadDeviceMappings } from './services/deviceDataService';
 import emailService from './services/emailService';
 
 // Set up server port
@@ -12,6 +12,10 @@ async function startServer() {
   try {
     // Connect to database
     await connectToMongo();
+    
+    // Load device mappings BEFORE starting the server
+    console.log('Loading device mappings from producer collection...');
+    await loadDeviceMappings();
     
     // Test email configuration
     console.log('Testing email configuration...');

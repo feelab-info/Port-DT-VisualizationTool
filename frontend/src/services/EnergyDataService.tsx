@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { EventEmitter } from 'events';
 import deviceDataHealthMonitor from './DeviceDataHealthMonitor';
+import { Device } from '@/types/Device';
 
 export interface LineData {
   V: number;
@@ -220,13 +221,17 @@ class EnergyDataService extends EventEmitter {
   /**
    * Fetch all available devices from the backend
    */
-  public async fetchAllDevices(): Promise<{id: string, name: string}[]> {
+  public async fetchAllDevices(): Promise<Device[]> {
     try {
+      // Use the correct token key that AuthService uses
+      const token = typeof window !== 'undefined' ? localStorage.getItem('port_auth_token') : '';
+      console.log('🔑 Fetching devices with token:', token ? 'Token present' : 'NO TOKEN');
+      
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001'}/api/simulation/devices`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+          'Authorization': `Bearer ${token}`
         }
       });
       
@@ -236,31 +241,48 @@ class EnergyDataService extends EventEmitter {
       
       const data = await response.json();
       if (data.status === 'success' && data.devices) {
-        return data.devices.map((device: any) => ({
-          id: device.id,
-          name: device.friendlyName || device.name
+        const devices = data.devices.map((device: any) => ({
+          id: device.id, // Database device ID (hash) - THIS is what we query with
+          name: device.name || device.friendlyName, // Display name from producer collection
+          friendlyName: device.name || device.friendlyName,
+          databaseId: device.id // Same as id - the database hash
         }));
+        console.log('Fetched devices from backend:', devices.slice(0, 3));
+        return devices;
       } else {
         throw new Error('Invalid response format');
       }
     } catch (error) {
       console.error('Error fetching all devices:', error);
-      // Return fallback devices if API call fails
-      const fallbackDevices = [];
+      // Return fallback devices if API call fails - use IDs without "Device " prefix
+      const fallbackDevices: Device[] = [];
       for (let i = 1; i <= 31; i++) {
         fallbackDevices.push({
           id: `D${i}`,
-          name: `Device D${i}`
+          name: `D${i}`, // Use actual ID as name
+          friendlyName: `D${i}`,
+          databaseId: `D${i}`
         });
       }
-      fallbackDevices.push({ id: 'F9', name: 'Device F9' });
-      fallbackDevices.push({ id: 'Entrada de energia', name: 'Entrada de energia' });
+      fallbackDevices.push({ 
+        id: 'F9', 
+        name: 'F9',
+        friendlyName: 'F9',
+        databaseId: 'F9'
+      });
+      fallbackDevices.push({ 
+        id: 'Entrada de energia', 
+        name: 'Entrada de energia', 
+        friendlyName: 'Entrada de energia',
+        databaseId: 'Entrada de energia'
+      });
       return fallbackDevices;
     }
   }
 
   public async fetchHistoricalData(deviceId: string, date: string): Promise<EnergyData[]> {
     console.log('EnergyDataService: Starting fetchHistoricalData request', { deviceId, date });
+    console.log('EnergyDataService: Device ID type:', typeof deviceId, 'length:', deviceId.length);
     
     if (!this.socket || !this.socket.connected) {
       console.error('EnergyDataService: Socket not connected');

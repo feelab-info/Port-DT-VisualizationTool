@@ -14,6 +14,7 @@ let deviceMappings: Record<string, { name: string; owner: string }> = {};
  */
 export function setDeviceMappings(mappings: Record<string, { name: string; owner: string }>): void {
   deviceMappings = mappings;
+  console.log(`Device mappings set: ${Object.keys(deviceMappings).length} devices`);
 }
 
 /**
@@ -21,6 +22,69 @@ export function setDeviceMappings(mappings: Record<string, { name: string; owner
  */
 export function getDeviceMappings(): Record<string, { name: string; owner: string }> {
   return deviceMappings;
+}
+
+/**
+ * Load device mappings from producer collection
+ * This can be called to ensure mappings are loaded
+ */
+export async function loadDeviceMappings(): Promise<void> {
+  try {
+    // Make sure we're connected first
+    await connectToMongo();
+    
+    // Get the client and access the metadata database
+    const { getMongoClient } = require('./databaseService');
+    const client = getMongoClient();
+    const metadataDb = client.db('enerspectrumMetadata');
+    const producersCollection = metadataDb.collection('producers');
+    
+    const { ObjectId } = require('mongodb');
+    const producer = await producersCollection.findOne({ _id: new ObjectId("672357cdcb0b0c7c0f7eb6b4") });
+    
+    const newMappings: Record<string, { name: string; owner: string }> = {};
+    
+    if (producer && producer.devices && Array.isArray(producer.devices)) {
+      producer.devices.forEach((device: any) => {
+        newMappings[device.deviceId] = {
+          name: device.name || 'Unnamed Device',
+          owner: producer.username || producer.name || 'Unknown Owner'
+        };
+      });
+      
+      setDeviceMappings(newMappings);
+      console.log(`✅ Loaded ${Object.keys(newMappings).length} device mappings from producer collection`);
+      console.log('Sample device:', Object.entries(newMappings)[0]);
+    } else {
+      console.warn('⚠️ Producer not found or has no devices');
+    }
+  } catch (error) {
+    console.error('❌ Error loading device mappings:', error);
+  }
+}
+
+/**
+ * Find device database ID by friendly name
+ * @param friendlyName The display name of the device
+ * @returns The database device ID or null if not found
+ */
+export function findDeviceIdByName(friendlyName: string): string | null {
+  for (const [deviceId, deviceInfo] of Object.entries(deviceMappings)) {
+    if (deviceInfo.name === friendlyName) {
+      return deviceId;
+    }
+  }
+  return null;
+}
+
+/**
+ * Find device friendly name by database ID
+ * @param deviceId The database device ID
+ * @returns The friendly name or null if not found
+ */
+export function findDeviceNameById(deviceId: string): string | null {
+  const deviceInfo = deviceMappings[deviceId];
+  return deviceInfo ? deviceInfo.name : null;
 }
 
 /**
@@ -35,13 +99,11 @@ export async function collectDeviceData(): Promise<any[]> {
     const targetDeviceIds: string[] = [];
     const deviceNameMap: Record<string, string> = {}; // Map real ID -> friendly name (D1, etc.)
     
-    // Loop through deviceMappings to find our target devices
+    // Include ALL devices from mappings, not just those matching D1-D31 pattern
+    // This makes the system flexible - any device can be renamed to anything
     for (const [deviceId, deviceInfo] of Object.entries(deviceMappings)) {
-      // Check if the device name follows the pattern we want (D1-D31)
-      if (deviceInfo.name.match(/^D([1-9]|[1-2][0-9]|3[0-1])$/)) {
-        targetDeviceIds.push(deviceId);
-        deviceNameMap[deviceId] = deviceInfo.name;
-      }
+      targetDeviceIds.push(deviceId);
+      deviceNameMap[deviceId] = deviceInfo.name;
     }
     
     console.log(`Found ${targetDeviceIds.length} matching device IDs from device mappings`);
@@ -81,9 +143,18 @@ export async function collectDeviceData(): Promise<any[]> {
       // Get the friendly name (e.g., D1) from our mapping
       const deviceName = deviceNameMap[reading.device] || `Unknown-${reading.device.substring(0, 8)}`;
       
-      // Extract the device number from the friendly name
-      const deviceMatch = deviceName.match(/^D(\d+)$/);
-      const deviceNum = deviceMatch ? parseInt(deviceMatch[1]) : 0;
+      // Try to extract device number from the friendly name for bus_id
+      // First try the D pattern, then fall back to a sequential number
+      let deviceNum = 0;
+      const deviceMatch = deviceName.match(/^D(\d+)(\s.*)?$/);
+      if (deviceMatch) {
+        deviceNum = parseInt(deviceMatch[1]);
+      } else {
+        // For non-D devices, create a sequential bus_id starting from 100
+        // This ensures unique bus_ids for devices with any name
+        const deviceIndex = Object.keys(deviceMappings).indexOf(reading.device);
+        deviceNum = 100 + deviceIndex;
+      }
       
       // Calculate total power
       const activePower = calculateTotalPower(reading);

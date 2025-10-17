@@ -29,8 +29,8 @@ export function simulationRoutes(app: Express): void {
   app.post('/api/simulation/update-device-data', authenticateToken, updateDeviceData);
   app.get('/api/simulation/excel-device-data', authenticateToken, getExcelDeviceData);
   
-  // Device management routes
-  app.get('/api/simulation/devices', authenticateToken, getAllDevices);
+  // Device management routes (public - device names aren't sensitive)
+  app.get('/api/simulation/devices', getAllDevices);
   
   // Parameterized routes MUST come last to avoid catching specific routes
   app.get('/api/simulation/:scenarioId', authenticateToken, getSimulationResults);

@@ -54,7 +54,13 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
           arrival_time: formData.arrival_time,
           departure_time: formData.departure_time,
         };
+        console.log('🚢 Submitting registered vessel with payload:', payload);
         result = await vesselSimulationService.submitRegisteredVessel(payload);
+        console.log('🚢 Received result from backend:', result);
+        console.log('🚢 Result has energy_profile_data?', result?.data?.energy_profile_data ? 'YES' : 'NO');
+        if (result?.data?.energy_profile_data) {
+          console.log('🚢 Energy profile data length:', result.data.energy_profile_data.length);
+        }
       } else {
         const payload = {
           name: formData.name,
@@ -64,12 +70,19 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
           arrival_time: formData.arrival_time,
           departure_time: formData.departure_time,
         };
+        console.log('🚢 Submitting custom vessel with payload:', payload);
         result = await vesselSimulationService.submitCustomVessel(payload);
+        console.log('🚢 Received result from backend:', result);
+        console.log('🚢 Result has energy_profile_data?', result?.data?.energy_profile_data ? 'YES' : 'NO');
+        if (result?.data?.energy_profile_data) {
+          console.log('🚢 Energy profile data length:', result.data.energy_profile_data.length);
+        }
       }
       
       setVesselResult(result);
       onSubmit(result);
     } catch (error) {
+      console.error('🚢 Error submitting vessel:', error);
       setError(error instanceof Error ? error.message : 'Failed to submit vessel data');
     } finally {
       setLoading(false);

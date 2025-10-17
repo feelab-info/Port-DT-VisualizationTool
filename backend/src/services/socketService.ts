@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { connectToMongo } from './databaseService';
 import { ObjectId } from 'mongodb';
-import { getDeviceMappings } from './deviceDataService';
+import { getDeviceMappings, findDeviceIdByName } from './deviceDataService';
 
 /**
  * Initialize Socket.IO event handlers
@@ -49,34 +49,31 @@ export function initSocketHandlers(io: Server): void {
         
         // Add device filter if provided
         if (params.deviceId) {
-          // Get device mappings to convert friendly name to actual device ID
+          // The frontend should ALWAYS send the database device ID (hash)
+          // We should NOT attempt to convert it from a friendly name
           const deviceMappings = getDeviceMappings();
+          let actualDeviceId = params.deviceId;
           
-          // Find the actual device ID by matching the friendly name
-          let actualDeviceId = params.deviceId; // Default to the provided ID
-          
-          for (const [deviceId, deviceInfo] of Object.entries(deviceMappings)) {
-            if (deviceInfo.name === params.deviceId) {
-              actualDeviceId = deviceId;
-              console.log(`Converted friendly name "${params.deviceId}" to actual device ID: "${actualDeviceId}"`);
-              break;
-            }
-          }
-          
-          // If no conversion found, check if the provided ID is already an actual device ID
-          if (actualDeviceId === params.deviceId && !deviceMappings[params.deviceId]) {
-            console.log(`No device mapping found for "${params.deviceId}". Checking if it's an actual device ID...`);
-            // Check if this deviceId exists in the database
+          // Verify this device ID exists in our mappings
+          if (deviceMappings[params.deviceId]) {
+            // It's a valid database device ID from our mappings
+            actualDeviceId = params.deviceId;
+            const deviceName = deviceMappings[params.deviceId].name;
+            console.log(`Querying for device ID: "${actualDeviceId}" (Name: "${deviceName}")`);
+          } else {
+            // Not in mappings - check if it exists in database directly
+            console.log(`Device ID "${params.deviceId}" not found in producer mappings, checking database...`);
             const deviceExists = await eGaugeCollection.findOne({ device: params.deviceId });
             if (!deviceExists) {
-              console.log(`Device "${params.deviceId}" not found in database`);
+              console.log(`Device "${params.deviceId}" not found in database or mappings`);
               callback({ success: false, error: `Device "${params.deviceId}" not found` });
               return;
             }
+            actualDeviceId = params.deviceId;
+            console.log(`Using device ID directly from database: "${actualDeviceId}"`);
           }
           
           query.device = actualDeviceId;
-          console.log(`Querying for device: "${actualDeviceId}"`);
         }
         
         console.log('Query:', JSON.stringify(query, null, 2));

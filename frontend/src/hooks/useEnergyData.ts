@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { energyDataService, EnergyData } from '@/services/EnergyDataService';
+import { LegacyDevice } from '@/types/Device';
 
 export function useEnergyData() {
   const [allData, setAllData] = useState<EnergyData[]>([]);
@@ -7,8 +8,8 @@ export function useEnergyData() {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
-  const [deviceList, setDeviceList] = useState<{id: string, name: string}[]>([]);
-  const [allDeviceList, setAllDeviceList] = useState<{id: string, name: string}[]>([]);
+  const [deviceList, setDeviceList] = useState<LegacyDevice[]>([]);
+  const [allDeviceList, setAllDeviceList] = useState<LegacyDevice[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [isHistoricalView, setIsHistoricalView] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -17,7 +18,7 @@ export function useEnergyData() {
   const [historicalData, setHistoricalData] = useState<EnergyData[]>([]);
 
   // Update comprehensive device list - add new devices but never remove them
-  const updateAllKnownDevices = (newDevices: {id: string, name: string}[]) => {
+  const updateAllKnownDevices = (newDevices: LegacyDevice[]) => {
     setDeviceList(prevDevices => {
       const deviceMap = new Map(prevDevices.map(d => [d.id, d]));
       
@@ -28,81 +29,49 @@ export function useEnergyData() {
         }
       });
       
-      // Return sorted array
+      // Return sorted array by name
       return Array.from(deviceMap.values()).sort((a, b) => {
-        // Sort D1-D31 numerically
-        if (a.id.startsWith('D') && b.id.startsWith('D')) {
-          const numA = parseInt(a.id.substring(1));
-          const numB = parseInt(b.id.substring(1));
-          if (!isNaN(numA) && !isNaN(numB)) {
-            return numA - numB;
-          }
-        }
-        
-        // Special case for F9 and Entrada de energia
-        if (a.id === 'F9' && b.id.startsWith('D')) return 1;
-        if (b.id === 'F9' && a.id.startsWith('D')) return -1;
-        if (a.id === 'Entrada de energia') return 1;
-        if (b.id === 'Entrada de energia') return -1;
-        
-        // Default alphabetical sort
+        // Sort alphabetically by display name
         return a.name.localeCompare(b.name);
       });
     });
   };
 
   // Extract unique devices from data
-  const extractUniqueDevices = (data: EnergyData[]): {id: string, name: string}[] => {
+  const extractUniqueDevices = useCallback((data: EnergyData[]): LegacyDevice[] => {
     const deviceMap = new Map<string, string>();
     
     data.forEach(item => {
       if (!deviceMap.has(item.device)) {
-        deviceMap.set(item.device, item.deviceName || formatDeviceId(item.device));
+        // Use deviceName from enriched data if available, otherwise use device ID as-is
+        // DO NOT format the device ID - use the actual name from producer collection
+        deviceMap.set(item.device, item.deviceName || item.device);
       }
     });
     
     const extractedDevices = Array.from(deviceMap.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => {
-        // Sort D1-D31 numerically
-        if (a.id.startsWith('D') && b.id.startsWith('D')) {
-          const numA = parseInt(a.id.substring(1));
-          const numB = parseInt(b.id.substring(1));
-          if (!isNaN(numA) && !isNaN(numB)) {
-            return numA - numB;
-          }
-        }
-        
-        // Special case for F9 and Entrada de energia
-        if (a.id === 'F9' && b.id.startsWith('D')) return 1;
-        if (b.id === 'F9' && a.id.startsWith('D')) return -1;
-        if (a.id === 'Entrada de energia') return 1;
-        if (b.id === 'Entrada de energia') return -1;
-        
-        // Default alphabetical sort
+        // Sort by name alphabetically - let the natural names determine order
         return a.name.localeCompare(b.name);
       });
     
     return extractedDevices;
-  };
+  }, []);
   
-  // Format device ID to make it more readable
+  // Format device ID - show actual name from producer collection
+  // Only truncate very long device IDs (hashes) for display
   const formatDeviceId = (deviceId: string): string => {
-    // Special formatting for known device patterns
-    if (deviceId.startsWith('D') && !isNaN(Number(deviceId.substring(1)))) {
-      return `Device ${deviceId}`;
+    // If it's a long hash, truncate it
+    if (deviceId.length > 20) {
+      return deviceId.substring(0, 8) + '...';
     }
-    if (deviceId === 'F9') {
-      return 'Device F9';
-    }
-    if (deviceId === 'Entrada de energia') {
-      return 'Entrada de energia';
-    }
-    return deviceId.substring(0, 8) + '...';
+    // Otherwise, return as-is - this preserves names from producer collection
+    return deviceId;
   };
 
   // Update filtered data based on device selection
-  const updateFilteredData = (data: EnergyData[], deviceId: string | null) => {
+  const updateFilteredData = useCallback((data: EnergyData[], deviceId: string | null) => {
     if (!deviceId) {
       // Show all data from today if no device is selected, sorted newest-first
       const dayStart = new Date(selectedDate);
@@ -140,10 +109,13 @@ export function useEnergyData() {
       
       setFilteredData(deviceData);
     }
-  };
+  }, [selectedDate]);
 
   // Handle device selection
   const handleDeviceSelect = (deviceId: string | null) => {
+    console.log('🔍 handleDeviceSelect called with:', deviceId);
+    console.log('🔍 Device ID length:', deviceId?.length);
+    console.log('🔍 Is this a hash?', deviceId && deviceId.length > 20);
     setSelectedDevice(deviceId);
     
     // If in historical view, update filtering on historical data
@@ -222,6 +194,8 @@ export function useEnergyData() {
       
       if (selectedDevice) {
         // Fetch data for specific device and date
+        console.log('📡 Calling fetchHistoricalData with device:', selectedDevice);
+        console.log('📡 Device length:', selectedDevice.length);
         fetchedHistoricalData = await energyDataService.fetchHistoricalData(selectedDevice, selectedDate);
       } else {
         // Fetch data for all devices on the selected date
@@ -295,18 +269,26 @@ export function useEnergyData() {
     const loadAllDevices = async () => {
       try {
         const allDevices = await energyDataService.fetchAllDevices();
-        setAllDeviceList(allDevices);
+        // Convert Device[] to LegacyDevice[] for backward compatibility
+        const legacyDevices: LegacyDevice[] = allDevices.map(device => ({
+          id: device.id, // This is the database device ID (hash) - used for queries
+          name: device.name // This is the actual display name from producer collection
+        }));
+        setAllDeviceList(legacyDevices);
+        console.log(`✅ Loaded ${legacyDevices.length} devices from backend:`);
+        console.log('✅ Sample devices:', legacyDevices.slice(0, 3));
+        console.log('✅ D14 device:', legacyDevices.find(d => d.name.includes('D14')));
       } catch (error) {
         console.error('Failed to load all devices:', error);
-        // Set fallback devices if loading fails
-        const fallbackDevices = [];
+        // Set fallback devices if loading fails - use actual IDs without formatting
+        const fallbackDevices: LegacyDevice[] = [];
         for (let i = 1; i <= 31; i++) {
           fallbackDevices.push({
             id: `D${i}`,
-            name: `Device D${i}`
+            name: `D${i}` // Use actual ID as name in fallback
           });
         }
-        fallbackDevices.push({ id: 'F9', name: 'Device F9' });
+        fallbackDevices.push({ id: 'F9', name: 'F9' });
         fallbackDevices.push({ id: 'Entrada de energia', name: 'Entrada de energia' });
         setAllDeviceList(fallbackDevices);
       }
@@ -413,7 +395,7 @@ export function useEnergyData() {
       energyDataService.removeListener('connected', handleConnection);
       energyDataService.removeListener('error', handleError);
     };
-  }, [selectedDevice, isHistoricalView, selectedDate]);
+  }, [selectedDevice, isHistoricalView, selectedDate, extractUniqueDevices, updateFilteredData]);
 
   return {
     allData,

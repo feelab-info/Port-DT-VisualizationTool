@@ -43,7 +43,7 @@ README.md
 ~$*.xls
 
 # Large data files that shouldn't be in container
-Data/CruisesSlices_Resampled/
+# Data/CruisesSlices_Resampled/  # Commented out - we need this data for vessel predictions!
 !Data/Predicted_Hotel_Energy.xlsx
 
 # Output and cache files

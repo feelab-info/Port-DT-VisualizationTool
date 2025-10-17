@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import axios from 'axios';
-import { collectDeviceData, sendDeviceDataToSimulation } from '../services/deviceDataService';
+import { collectDeviceData, sendDeviceDataToSimulation, getDeviceMappings, loadDeviceMappings } from '../services/deviceDataService';
 
 // DC Power Flow Simulation API proxy
 const DC_POWER_FLOW_API = process.env.DC_POWER_FLOW_API || 'http://localhost:5002';
@@ -163,35 +163,64 @@ export async function getExcelDeviceData(req: Request, res: Response): Promise<v
  */
 export async function getAllDevices(req: Request, res: Response): Promise<void> {
   try {
-    // Return all available devices D1-D31 with their friendly names
+    // Get actual device mappings from producer collection
+    let deviceMappings = getDeviceMappings();
+    
+    // If mappings are empty, try to load them now
+    if (Object.keys(deviceMappings).length === 0) {
+      console.log('⚠️ Device mappings empty, loading now...');
+      await loadDeviceMappings();
+      deviceMappings = getDeviceMappings();
+    }
+    
     const devices = [];
-    for (let i = 1; i <= 31; i++) {
+    
+    // Extract ALL devices from actual mappings - no filtering by name pattern
+    // The device ID is the database hash, and the name is from producer collection
+    for (const [deviceId, deviceInfo] of Object.entries(deviceMappings)) {
       devices.push({
-        id: `D${i}`,
-        name: `Device D${i}`,
-        friendlyName: `Device D${i}`
+        id: deviceId, // Database device ID (hash) - THIS is what we query with
+        name: deviceInfo.name, // Actual display name from producer collection
+        friendlyName: deviceInfo.name,
+        databaseId: deviceId // Same as id - explicit for clarity
       });
     }
     
-    // Add other known devices
-    devices.push({
-      id: 'F9',
-      name: 'Device F9',
-      friendlyName: 'Device F9'
-    });
+    console.log(`✅ Returning ${devices.length} devices from producer collection`);
+    if (devices.length > 0) {
+      console.log('Sample device:', devices[0]);
+    }
     
-    devices.push({
-      id: 'Entrada de energia',
-      name: 'Entrada de energia',
-      friendlyName: 'Entrada de energia'
-    });
+    // If STILL no devices found in mappings, fall back to basic IDs
+    if (devices.length === 0) {
+      console.warn('⚠️ No devices found in producer collection mappings, using fallback devices');
+      for (let i = 1; i <= 31; i++) {
+        devices.push({
+          id: `D${i}`,
+          name: `d${i}`, // Use lowercase to match expected pattern
+          friendlyName: `d${i}`
+        });
+      }
+      
+      devices.push({
+        id: 'F9',
+        name: 'F9',
+        friendlyName: 'F9'
+      });
+      
+      devices.push({
+        id: 'Entrada de energia',
+        name: 'Entrada de energia',
+        friendlyName: 'Entrada de energia'
+      });
+    }
     
     res.json({
       status: 'success',
       devices: devices
     });
   } catch (error: any) {
-    console.error('Error fetching all devices:', error);
+    console.error('❌ Error fetching all devices:', error);
     res.status(500).json({
       status: 'error',
       message: 'Failed to fetch all devices',

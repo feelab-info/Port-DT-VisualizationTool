@@ -58,28 +58,37 @@ def process_registered_vessel():
         arrival_time = data.get('arrival_time')
         departure_time = data.get('departure_time')
         
+        logger.info(f"Processing registered vessel: {target_ship}, arrival: {arrival_time}, departure: {departure_time}")
+        
         if not all([target_ship, arrival_time, departure_time]):
             return jsonify({
                 "error": "Missing required parameters: vessel_name, arrival_time, or departure_time"
             }), 400
         
         # Find the closest registered ship and its scaling factor
+        logger.info(f"Finding closest ship for {target_ship}...")
         closest_ship, scaling_factor = plot_energy_consumption_for_ship(target_ship)
+        logger.info(f"Closest ship: {closest_ship}, scaling factor: {scaling_factor}")
         
         if not closest_ship:
+            logger.error(f"No closest ship found for {target_ship}")
             return jsonify({
                 "error": f"No closest ship found for {target_ship}"
             }), 404
         
         # Generate and save the energy profile
+        logger.info(f"Generating energy profile for {target_ship} using {closest_ship}...")
         json_output = plot_energy_graph_for_closest_ship(
             target_ship, closest_ship, FOLDER_PATH, arrival_time, departure_time, scaling_factor
         )
         
         if not json_output:
+            logger.error(f"plot_energy_graph_for_closest_ship returned None for {target_ship}")
             return jsonify({
                 "error": "Failed to generate energy data"
             }), 500
+        
+        logger.info(f"Successfully generated energy profile for {target_ship}")
         
         # Return the energy profile data
         return jsonify({
@@ -91,7 +100,7 @@ def process_registered_vessel():
         })
         
     except Exception as e:
-        logger.error(f"Error processing registered vessel: {str(e)}")
+        logger.error(f"Error processing registered vessel: {str(e)}", exc_info=True)
         return jsonify({
             "error": str(e)
         }), 500

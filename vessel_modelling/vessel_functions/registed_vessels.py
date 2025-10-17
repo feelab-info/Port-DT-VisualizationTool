@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 import json
+import logging
 
 from sklearn.preprocessing import StandardScaler
 from scipy.spatial.distance import cdist
@@ -10,6 +11,8 @@ from vessel_functions.utilities_functions import(
     find_best_slice_for_arrival_departure,
     resample_data
 )
+
+logger = logging.getLogger(__name__)
 
 
 def plot_energy_consumption_for_ship(target_ship_name):
@@ -59,11 +62,16 @@ def plot_energy_consumption_for_ship(target_ship_name):
 def plot_energy_graph_for_closest_ship(target_ship, closest_ship_name, folder_path, arrival_time, departure_time, scaling_factor):
     # Construct the path to the closest ship's folder
     closest_ship_folder_path = os.path.join(folder_path, closest_ship_name)
+    
+    logger.info(f"Looking for folder: {closest_ship_folder_path}")
+    logger.info(f"Folder exists: {os.path.exists(closest_ship_folder_path)}")
 
     if os.path.exists(closest_ship_folder_path):
         
         # Find the best slice of data based on the arrival and departure times
+        logger.info(f"Finding best slice with arrival={arrival_time}, departure={departure_time}")
         best_slice = find_best_slice_for_arrival_departure(arrival_time, departure_time, folder_path, closest_ship_name)
+        logger.info(f"Best slice found: {best_slice}")
 
         if best_slice:
             file_path = os.path.join(closest_ship_folder_path, best_slice)
@@ -107,10 +115,12 @@ def plot_energy_graph_for_closest_ship(target_ship, closest_ship_name, folder_pa
                 return json_output
 
             else:
-                print(f"Error: The file {best_slice} doesn't have required columns.")
+                logger.error(f"The file {best_slice} doesn't have required columns.")
+                logger.error(f"Available columns: {df.columns.tolist()}")
+                logger.error(f"Missing columns: {missing_columns}")
         else:
-            print(f"No suitable file found in the folder for {closest_ship_name}.")
+            logger.error(f"No suitable file found in the folder for {closest_ship_name}.")
     else:
-        print(f"Folder for {closest_ship_name} not found.")
+        logger.error(f"Folder for {closest_ship_name} not found at: {closest_ship_folder_path}")
     
-    return None, None
+    return None

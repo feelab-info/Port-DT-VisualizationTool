@@ -31,6 +31,14 @@ export default function DeviceSelection({
     hasData: deviceList.some(activeDevice => activeDevice.id === device.id)
   }));
   const hasDevicesAvailable = availableDevices.length > 0;
+  
+  // Debug logging
+  console.log('🔧 DeviceSelection received allDeviceList length:', allDeviceList.length);
+  if (allDeviceList.length > 0) {
+    console.log('🔧 First device in allDeviceList:', allDeviceList[0]);
+    const d14 = allDeviceList.find(d => d.name && d.name.includes('D14'));
+    console.log('🔧 D14 device from allDeviceList:', d14);
+  }
 
   // Create device display names based on hash patterns
   const getDeviceDisplayName = (device: {id: string, name: string}) => {
