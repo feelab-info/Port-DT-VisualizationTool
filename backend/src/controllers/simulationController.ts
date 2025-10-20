@@ -2,12 +2,8 @@ import { Request, Response } from 'express';
 import axios from 'axios';
 import { collectDeviceData, sendDeviceDataToSimulation, getDeviceMappings, loadDeviceMappings } from '../services/deviceDataService';
 
-// DC Power Flow Simulation API proxy
 const DC_POWER_FLOW_API = process.env.DC_POWER_FLOW_API || 'http://localhost:5002';
 
-/**
- * Run a simulation with provided parameters
- */
 export async function runSimulation(req: Request, res: Response): Promise<void> {
   try {
     const response = await axios.post(`${DC_POWER_FLOW_API}/run-simulation`, req.body);
@@ -21,82 +17,19 @@ export async function runSimulation(req: Request, res: Response): Promise<void> 
   }
 }
 
-/**
- * Get simulation results for a specific scenario
- */
-export async function getSimulationResults(req: Request, res: Response): Promise<void> {
-  try {
-    const { scenarioId } = req.params;
-    const response = await axios.get(`${DC_POWER_FLOW_API}/get-results/${scenarioId}`);
-    res.json(response.data);
-  } catch (error: any) {
-    console.error('Error fetching simulation results:', error);
-    res.status(error.response?.status || 500).json({
-      error: 'Failed to fetch simulation results',
-      details: error.response?.data || error.message
-    });
-  }
-}
-
-/**
- * Get the latest simulation results
- */
-export async function getLatestResults(req: Request, res: Response): Promise<void> {
-  try {
-    const response = await axios.get(`${DC_POWER_FLOW_API}/get-latest-results`);
-    res.json(response.data);
-  } catch (error: any) {
-    console.error('Error forwarding request to DC Power Flow API:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch simulation results',
-      details: error.message
-    });
-  }
-}
-
-/**
- * Get sizing results
- */
-export async function getSizingResults(req: Request, res: Response): Promise<void> {
-  try {
-    const response = await axios.get(`${DC_POWER_FLOW_API}/get-sizing-results`);
-    res.json(response.data);
-  } catch (error: any) {
-    console.error('Error fetching sizing results:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch sizing results',
-      details: error.message
-    });
-  }
-}
-
-/**
- * Get timesteps results
- */
 export async function getTimestepsResults(req: Request, res: Response): Promise<void> {
   try {
-    // Explicitly use the full URL to avoid path confusion
-    const fullUrl = `${DC_POWER_FLOW_API}/get-timesteps-results`;
-    console.log(`Attempting to fetch timesteps results from ${fullUrl}`);
-    const response = await axios.get(fullUrl);
-    console.log(`Successfully received timesteps results with status ${response.status}`);
+    const response = await axios.get(`${DC_POWER_FLOW_API}/get-timesteps-results`);
     res.json(response.data);
   } catch (error: any) {
-    console.error('Error fetching timesteps load flow results:', error);
-    if (error.response) {
-      console.error(`Response status: ${error.response.status}`);
-      console.error(`Response data:`, error.response.data);
-    }
+    console.error('Error fetching timesteps results:', error);
     res.status(500).json({ 
-      error: 'Failed to fetch timesteps load flow results',
+      error: 'Failed to fetch timesteps results',
       details: error.message
     });
   }
 }
 
-/**
- * Start the simulation service
- */
 export async function startSimulationService(req: Request, res: Response): Promise<void> {
   try {
     const response = await axios.post(`${DC_POWER_FLOW_API}/start-simulation-service`);
@@ -110,121 +43,51 @@ export async function startSimulationService(req: Request, res: Response): Promi
   }
 }
 
-/**
- * Manually trigger a device data update
- */
 export async function updateDeviceData(req: Request, res: Response): Promise<void> {
   try {
-    console.log('Manually triggering device data update for DC power flow simulation');
     const deviceData = await collectDeviceData();
-    
     if (deviceData.length > 0) {
       const success = await sendDeviceDataToSimulation(deviceData);
       res.json({
         status: success ? 'success' : 'failed',
-        message: `Updated ${deviceData.length} devices`,
-        data: deviceData
+        message: `Updated ${deviceData.length} devices`
       });
     } else {
-      res.status(400).json({
-        status: 'failed',
-        message: 'No device data available to send'
-      });
+      res.status(400).json({ status: 'failed', message: 'No device data available' });
     }
   } catch (error: any) {
-    console.error('Error manually updating device data:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to update device data',
-      details: error.message
-    });
+    console.error('Error updating device data:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to update device data' });
   }
 }
 
-/**
- * Get current Excel device data
- */
-export async function getExcelDeviceData(req: Request, res: Response): Promise<void> {
-  try {
-    const response = await axios.get(`${DC_POWER_FLOW_API}/get-excel-device-data`);
-    res.json(response.data);
-  } catch (error: any) {
-    console.error('Error fetching Excel device data:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to fetch Excel device data',
-      details: error.message
-    });
-  }
-}
-
-/**
- * Get all available devices with their friendly names
- */
 export async function getAllDevices(req: Request, res: Response): Promise<void> {
   try {
-    // Get actual device mappings from producer collection
     let deviceMappings = getDeviceMappings();
-    
-    // If mappings are empty, try to load them now
     if (Object.keys(deviceMappings).length === 0) {
-      console.log('⚠️ Device mappings empty, loading now...');
       await loadDeviceMappings();
       deviceMappings = getDeviceMappings();
     }
     
     const devices = [];
-    
-    // Extract ALL devices from actual mappings - no filtering by name pattern
-    // The device ID is the database hash, and the name is from producer collection
     for (const [deviceId, deviceInfo] of Object.entries(deviceMappings)) {
       devices.push({
-        id: deviceId, // Database device ID (hash) - THIS is what we query with
-        name: deviceInfo.name, // Actual display name from producer collection
+        id: deviceId,
+        name: deviceInfo.name,
         friendlyName: deviceInfo.name,
-        databaseId: deviceId // Same as id - explicit for clarity
+        databaseId: deviceId
       });
     }
     
-    console.log(`✅ Returning ${devices.length} devices from producer collection`);
-    if (devices.length > 0) {
-      console.log('Sample device:', devices[0]);
-    }
-    
-    // If STILL no devices found in mappings, fall back to basic IDs
     if (devices.length === 0) {
-      console.warn('⚠️ No devices found in producer collection mappings, using fallback devices');
       for (let i = 1; i <= 31; i++) {
-        devices.push({
-          id: `D${i}`,
-          name: `d${i}`, // Use lowercase to match expected pattern
-          friendlyName: `d${i}`
-        });
+        devices.push({ id: `D${i}`, name: `d${i}`, friendlyName: `d${i}` });
       }
-      
-      devices.push({
-        id: 'F9',
-        name: 'F9',
-        friendlyName: 'F9'
-      });
-      
-      devices.push({
-        id: 'Entrada de energia',
-        name: 'Entrada de energia',
-        friendlyName: 'Entrada de energia'
-      });
     }
     
-    res.json({
-      status: 'success',
-      devices: devices
-    });
+    res.json({ status: 'success', devices });
   } catch (error: any) {
-    console.error('❌ Error fetching all devices:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to fetch all devices',
-      details: error.message
-    });
+    console.error('Error fetching devices:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch devices' });
   }
 } 

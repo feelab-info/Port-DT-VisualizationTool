@@ -645,7 +645,7 @@ def adjust_cable_sizing(subnet: pp.pandapowerNet, cable_catalogue: pd.DataFrame,
 
     # Sort lines by distance (ascending) to process from upstream (closer to slack) to downstream
     for line_id in subnet.line.sort_values(by="distance", ascending=True).index:
-        if not np.isnan(subnet.line.loc[line_id, 'cable_rank']):
+        if not pd.isna(subnet.line.loc[line_id, 'cable_rank']):
             optimal = False
             while not optimal:
                 optimal = adjust_single_cable(subnet, line_id, cable_catalogue, min_v, cable_factor)
@@ -887,7 +887,8 @@ def perform_timestep_dc_load_flow(net, use_case, node_data):
     # Loop through each time step in the simulation
     for t in tqdm(range(number_of_timestep)):
         # Update network with time step t data
-        #update_network(net, t)
+        if number_of_timestep > 1:    
+            update_network(net, t)
 
         # Perform Load flow analysis with PDU droop control
         net = perform_dc_load_flow(net, use_case, node_data, PDU_droop_control=True)
@@ -918,10 +919,11 @@ def perform_dc_load_flow_with_droop(net: pp.pandapowerNet, use_case: dict, t, ti
         pp.pandapowerNet: The updated network with load flow results after droop correction.
     """
     # Initialize iterative process variables
-    error = 1  # Initial error value
-    nb_it = 0  # Iteration counter
-    tol = 1e-2  # Tolerance for convergence
-    max_it = 3  # Maximum number of iterations
+    error = 1       # Initial error value
+    nb_it = 0       # Iteration counter
+    tol = 1e-2      # Tolerance for convergence
+    max_it = 200    # Maximum number of iterations
+    alpha = 0.4     # Relaxation convex constant
 
     # Perform initial DC load flow with droop control enabled
     net = perform_dc_load_flow(net, use_case, node_data, PDU_droop_control=True)
@@ -934,7 +936,8 @@ def perform_dc_load_flow_with_droop(net: pp.pandapowerNet, use_case: dict, t, ti
     while (abs(error) > tol) and (nb_it < max_it):
 
         # Store previous iteration's bus voltages
-        bus_voltages_previous = bus_voltages
+        bus_voltages_previous = (1 - alpha) * bus_voltages_previous + alpha * bus_voltages
+        net.res_bus.vm_pu = bus_voltages_previous
 
         # Apply droop correction based on the current time step
         net, soc_list = droop_correction(net, t, time_step_duration, node_data)
@@ -1172,12 +1175,20 @@ def interpolate_p_droop(i, attr, net, droop_curve, t, v_asset):
 
     # Ensure the droop curve is sorted in ascending order of voltage
     v_droop_curve, p_droop_curve = zip(*sorted(zip(v_droop_curve, p_droop_curve)))
+
     # Convert tuples back to NumPy arrays
     v_droop_curve = np.array(v_droop_curve)
     p_droop_curve = np.array(p_droop_curve)
 
     # Compute the base power setpoint at this time step
-    p_setpoint = getattr(net, attr).loc[i, 'power_profile'][t]*getattr(net, attr).loc[i, 'p_nom_mw']
+    #p_setpoint = getattr(net, attr).loc[i, 'power_profile'][t]*getattr(net, attr).loc[i, 'p_nom_mw']
+
+    power_profile = getattr(net, attr).loc[i, 'power_profile']
+
+    if isinstance(power_profile, np.ndarray) and power_profile.ndim == 0:
+        p_setpoint = power_profile * getattr(net, attr).loc[i, 'p_nom_mw']
+    else:
+        p_setpoint = power_profile[t] * getattr(net, attr).loc[i, 'p_nom_mw']
 
     # Scale the droop power curve using the base setpoint
     p_droop_curve = p_droop_curve*p_setpoint
@@ -1195,24 +1206,30 @@ def interpolate_bess_p_droop(i, attr, net, droop_curve, t, duration, v_asset):
     v_droop_curve = np.array(v_droop_curve)
     p_droop_curve = np.array(p_droop_curve)
 
-    p_setpoint = getattr(net, attr).loc[i, 'p_nom_mw']
-    p_droop_curve = p_droop_curve*p_setpoint
-    p_droop = np.interp(v_asset, v_droop_curve, p_droop_curve)
+    if 'EV' in getattr(net, attr).loc[i, 'name']:
+        p_setpoint = getattr(net, attr).loc[i, 'power_profile'][t]*getattr(net, attr).loc[i, 'p_nom_mw']
+    else:  
+        p_setpoint = getattr(net, attr).loc[i, 'p_nom_mw']
+
+    p_droop = np.interp(v_asset, v_droop_curve, p_droop_curve)*p_setpoint
 
     soc_init = getattr(net, attr).loc[i, 'soc_percent'].item()
     max_energy = getattr(net, attr).loc[i, 'max_e_mwh'].item()
 
     # SOC computation
+    soc_lower_limit = 10
+    soc_higher_limit = 95
+
     soc_change = ((p_droop * duration) / max_energy) * 100  # SOC change (in %) Misses change 1 by period duration
     # of each time step
     soc_final = soc_change + soc_init  # if is_positive else ini_SOC - SOC_change
 
-    if soc_final <= 0:
-        soc_max_var = soc_init
+    if soc_final <= soc_lower_limit:
+        soc_max_var = soc_lower_limit - soc_init
         p_droop = (soc_max_var / (100 * duration)) * max_energy
         soc_final = soc_init + soc_max_var
-    elif soc_final > 100:
-        soc_max_var = 100 - soc_init
+    elif soc_final > soc_higher_limit:
+        soc_max_var = soc_higher_limit - soc_init
         p_droop = (soc_max_var / (100 * duration)) * max_energy
         soc_final = soc_init + soc_max_var
 

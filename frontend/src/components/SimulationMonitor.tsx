@@ -1,26 +1,12 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, ResponsiveContainer, 
   Area, AreaChart
 } from 'recharts';
-import { simulationService } from '@/services/SimulationService';
-
-interface BusData {
-  vm_pu: number;
-  va_degree: number;
-  p_mw: number;
-  q_mvar: number;
-}
-
-interface SimulationData {
-  timestamp: number;
-  res_bus: BusData[];
-  is_mock?: boolean;
-}
 
 // Interface for timesteps data
 interface TimestepData {
@@ -29,7 +15,6 @@ interface TimestepData {
   voltage?: number;
   power?: number;
   load?: number;
-  // Add other fields as needed
   [key: string]: string | number | boolean | object | undefined;
 }
 
@@ -50,59 +35,28 @@ interface KpiData {
 
 export default function SimulationMonitor() {
   const [timestepsData, setTimestepsData] = useState<TimestepData[] | null>(null);
-  const [lastUpdate, setLastUpdate] = useState<string>('No updates yet');
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [lastUpdate, setLastUpdate] = useState<string>('Waiting for simulation...');
+  const [simulationTime, setSimulationTime] = useState<string>('--');
   const [isRunning, setIsRunning] = useState<boolean>(false);
-  const [isPaused, setIsPaused] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting');
   const [activeTab, setActiveTab] = useState<'timesteps' | 'kpi'>('timesteps');
   const [visualizationType, setVisualizationType] = useState<'table' | 'lineChart' | 'areaChart'>('table');
   const [selectedMetric, setSelectedMetric] = useState<'voltage' | 'load' | 'converterPower'>('voltage');
-  
-  // Pagination for timesteps data
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(20);
   const [busIdFilter, setBusIdFilter] = useState<number | ''>('');
-  const [timestepFilter, setTimestepFilter] = useState<string>('');
-  
-  // Reference to the socket connection
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [socket, setSocket] = useState<Socket | null>(null);
-  
-  // Fetch timesteps results
-  const fetchTimestepsResults = async () => {
-    try {
-      const data = await simulationService.getTimestepsResults();
-      setTimestepsData(data);
-    } catch (error) {
-      console.error('Error fetching timesteps results:', error);
-    }
-  };
-  
-  // Fetch KPI results
-  const fetchKpiResults = async () => {
-    try {
-      await simulationService.getKpiResults();
-      console.log('KPI data fetched successfully, will be implemented in future');
-    } catch (error) {
-      console.warn('KPI API not available yet:', error);
-    }
-  };
   
   useEffect(() => {
-    // Connect to the backend Socket.IO server
     const socketConnection = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001');
-    setSocket(socketConnection);
     
-    // Handle connection status
     socketConnection.on('connect', () => {
       setConnectionStatus('connected');
       setError(null);
+      console.log('Connected to backend - waiting for simulation data...');
     });
     
     socketConnection.on('disconnect', () => {
       setConnectionStatus('disconnected');
+      setIsRunning(false);
     });
     
     socketConnection.on('connect_error', (err) => {
@@ -111,160 +65,31 @@ export default function SimulationMonitor() {
       setError(`Connection error: ${err.message}`);
     });
     
-    
-    fetchTimestepsResults(); // Fetch timesteps data
-    fetchKpiResults(); // Fetch KPI data (for future)
-    
-    // Listen for real-time updates
-    socketConnection.on('simulation_update', (data: SimulationData) => {
-      // Only update if not paused
-      if (!isPaused) {
-        setLastUpdate(new Date(data.timestamp * 1000).toLocaleTimeString());
-        
-        // Refresh timesteps data when simulation updates
-        fetchTimestepsResults();
-      }
+    // Listen for simulation timestep updates (runs every minute)
+    socketConnection.on('simulation_timestep_update', (payload: {
+      timestamp: string;
+      simulationTime: string;
+      data: TimestepData[];
+    }) => {
+      console.log('Received simulation timestep update:', payload);
+      setTimestepsData(payload.data);
+      setLastUpdate(new Date().toLocaleTimeString('pt-PT'));
+      setSimulationTime(payload.simulationTime);
       setIsRunning(true);
+      setError(null);
     });
     
-    // Listen for simulation stopped event
-    socketConnection.on('simulation_stopped', () => {
-      setIsRunning(false);
-      console.log('Simulation has been stopped by the server');
-    });
-    
-    // Clean up on unmount
     return () => {
-      socketConnection.off('simulation_update');
-      socketConnection.off('simulation_stopped');
-      socketConnection.off('connect');
-      socketConnection.off('disconnect');
-      socketConnection.off('connect_error');
       socketConnection.disconnect();
     };
-  }, [isPaused]);
+  }, []);
   
-
-  
-  // Function to toggle pausing updates
-  const togglePauseUpdates = async () => {
-    const newPausedState = !isPaused;
-    setIsPaused(newPausedState);
-    
-    try {
-      await simulationService.toggleSimulationUpdates(newPausedState);
-      console.log(`${newPausedState ? 'Paused' : 'Resumed'} receiving updates from simulation`);
-    } catch (error) {
-      console.error('Error toggling simulation updates:', error);
-      // Revert the state if the server request failed
-      setIsPaused(!newPausedState);
-    }
-  };
-
-  // Apply filters to timesteps data
+  // Filter timesteps by bus ID if specified
   const filteredTimesteps = useMemo(() => {
     if (!timestepsData) return [];
-    
-    return timestepsData.filter(step => {
-      // Apply bus ID filter if specified
-      if (busIdFilter !== '' && step.bus_id !== busIdFilter) {
-        return false;
-      }
-      
-      // Apply timestep filter if specified - match exact timestep number
-      if (timestepFilter && step.timestamp) {
-        const timestampStr = step.timestamp.toString();
-        const match = timestampStr.match(/Timestep (\d+)/);
-        const timestepNumber = match ? match[1] : '';
-        if (timestepNumber !== timestepFilter) {
-          return false;
-        }
-      }
-      
-      return true;
-    });
-  }, [timestepsData, busIdFilter, timestepFilter]);
-  
-  // Get current page data
-  const currentPageData = useMemo(() => {
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    return filteredTimesteps.slice(indexOfFirstItem, indexOfLastItem);
-  }, [filteredTimesteps, currentPage, itemsPerPage]);
-  
-  // Calculate total pages
-  const totalPages = useMemo(() => {
-    return Math.ceil(filteredTimesteps.length / itemsPerPage);
-  }, [filteredTimesteps, itemsPerPage]);
-  
-  // Functions for pagination
-  const goToPage = (page: number) => {
-    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-  };
-  
-  // Render page buttons
-  const renderPageButtons = () => {
-    const buttons = [];
-    const maxButtonsToShow = 5; // Show 5 page buttons at a time
-    
-    // Always show first page
-    buttons.push(
-      <button 
-        key="first" 
-        onClick={() => goToPage(1)} 
-        className={`px-3 py-1 mx-1 ${currentPage === 1 ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500'} rounded border border-gray-300 dark:border-gray-600 transition-colors`}
-      >
-        1
-      </button>
-    );
-    
-    // Calculate range of pages to show
-    const startPage = Math.max(2, currentPage - Math.floor(maxButtonsToShow / 2));
-    let endPage = Math.min(totalPages - 1, startPage + maxButtonsToShow - 3);
-    
-    // Adjust if we're near the end
-    if (endPage <= startPage) {
-      endPage = startPage;
-    }
-    
-    // Add ellipsis if needed
-    if (startPage > 2) {
-      buttons.push(<span key="ellipsis1" className="px-2 text-gray-500 dark:text-gray-400">...</span>);
-    }
-    
-    // Add pages in the middle
-    for (let i = startPage; i <= endPage; i++) {
-      buttons.push(
-        <button 
-          key={i} 
-          onClick={() => goToPage(i)} 
-          className={`px-3 py-1 mx-1 ${currentPage === i ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500'} rounded border border-gray-300 dark:border-gray-600 transition-colors`}
-        >
-          {i}
-        </button>
-      );
-    }
-    
-    // Add ellipsis if needed
-    if (endPage < totalPages - 1) {
-      buttons.push(<span key="ellipsis2" className="px-2 text-gray-500 dark:text-gray-400">...</span>);
-    }
-    
-    // Always show last page if there is more than 1 page
-    if (totalPages > 1) {
-      buttons.push(
-        <button 
-          key="last" 
-          onClick={() => goToPage(totalPages)} 
-          className={`px-3 py-1 mx-1 ${currentPage === totalPages ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500'} rounded border border-gray-300 dark:border-gray-600 transition-colors`}
-        >
-          {totalPages}
-        </button>
-      );
-    }
-    
-    return buttons;
-  };
+    if (busIdFilter === '') return timestepsData;
+    return timestepsData.filter(step => step.bus_id === busIdFilter);
+  }, [timestepsData, busIdFilter]);
   
   // Get unique bus IDs for filter dropdown
   const uniqueBusIds = useMemo(() => {
@@ -278,23 +103,6 @@ export default function SimulationMonitor() {
     });
     
     return Array.from(busIds).sort((a, b) => a - b);
-  }, [timestepsData]);
-  
-  // Get unique timesteps for filter
-  const uniqueTimesteps = useMemo(() => {
-    if (!timestepsData) return [];
-    
-    const timesteps = new Set<string>();
-    timestepsData.forEach(step => {
-      if (step.timestamp) {
-        const match = step.timestamp.toString().match(/Timestep (\d+)/);
-        if (match) {
-          timesteps.add(match[1]); // Add just the timestep number
-        }
-      }
-    });
-    
-    return Array.from(timesteps).sort((a, b) => parseInt(a) - parseInt(b));
   }, [timestepsData]);
   
   // Prepare data for charts - redesigned for better readability
@@ -427,7 +235,7 @@ export default function SimulationMonitor() {
     console.log('Sample chartData item:', chartData[0]);
     
     return chartData;
-  }, [filteredTimesteps]);
+  }, [filteredTimesteps, timestepsData]);
   
   return (
     <div className="space-y-8">
@@ -449,22 +257,25 @@ export default function SimulationMonitor() {
                    connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
                 </span>
               </div>
-              <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                <span className="font-medium mr-2">Last Update:</span>
-                <span>{lastUpdate}</span>
-                {isPaused && (
-                  <span className="ml-3 px-3 py-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-400 text-xs rounded-full border border-yellow-200 dark:border-yellow-700 font-medium">
-                    Paused
-                  </span>
-                )}
+              <div className="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex items-center">
+                  <span className="font-medium mr-2">Last Update:</span>
+                  <span className="font-mono text-blue-600 dark:text-blue-400">{lastUpdate}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="font-medium mr-2">Simulation Time:</span>
+                  <span className="font-mono text-green-600 dark:text-green-400">{simulationTime}</span>
+                </div>
               </div>
             </div>
-            <button 
-              onClick={togglePauseUpdates}
-              className={`px-4 py-2 ${isPaused ? 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700' : 'bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-600 dark:hover:bg-yellow-700'} text-white rounded-lg font-medium transition-colors`}
-            >
-              {isPaused ? 'Resume Updates' : 'Pause Updates'}
-            </button>
+            <div className="flex items-center space-x-3">
+              {isRunning && (
+                <span className="px-4 py-2 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 text-sm rounded-lg border border-green-200 dark:border-green-700 font-medium flex items-center">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                  Running (every 1 min)
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -513,7 +324,7 @@ export default function SimulationMonitor() {
             timestepsData ? (
               <div className="space-y-8">
                 <div className="text-sm text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
-                  <p>This is the time series data from the simulation. It shows how values change over time for each bus.</p>
+                  <p>Real-time DC power flow simulation results. Data automatically updates every minute with the latest grid state for all buses.</p>
                 </div>
                 
                 {/* Visualization controls */}
@@ -570,17 +381,17 @@ export default function SimulationMonitor() {
                   )}
                 </div>
                 
-                {/* Filters */}
+                {/* Filter */}
                 <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-                  <h3 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">Filters</h3>
-                  <div className="flex flex-wrap items-end gap-4">
+                  <h3 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">Filter Current Timestep</h3>
+                  <div className="flex items-end gap-4">
                     <div>
                       <label htmlFor="busFilter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by Bus ID:</label>
                       <select 
                         id="busFilter" 
                         value={busIdFilter === '' ? '' : busIdFilter.toString()}
                         onChange={(e) => setBusIdFilter(e.target.value === '' ? '' : Number(e.target.value))}
-                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg w-32 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg w-40 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       >
                         <option value="">All Buses</option>
                         {uniqueBusIds.map((id) => (
@@ -588,53 +399,12 @@ export default function SimulationMonitor() {
                         ))}
                       </select>
                     </div>
-                    
-                    {visualizationType === 'table' && (
-                      <>
-                        <div>
-                          <label htmlFor="timestepFilter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by Timestep:</label>
-                          <select 
-                            id="timestepFilter" 
-                            value={timestepFilter}
-                            onChange={(e) => setTimestepFilter(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg w-32 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                          >
-                            <option value="">All Timesteps</option>
-                            {uniqueTimesteps.map((ts) => (
-                              <option key={ts} value={ts}>{ts}</option>
-                            ))}
-                          </select>
-                        </div>
-                        
-                        <div>
-                          <label htmlFor="itemsPerPage" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Items per page:</label>
-                          <select 
-                            id="itemsPerPage" 
-                            value={itemsPerPage}
-                            onChange={(e) => {
-                              setItemsPerPage(Number(e.target.value));
-                              setCurrentPage(1); // Reset to first page when changing items per page
-                            }}
-                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg w-24 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                          >
-                            <option value={10}>10</option>
-                            <option value={20}>20</option>
-                            <option value={50}>50</option>
-                            <option value={100}>100</option>
-                          </select>
-                        </div>
-                      </>
-                    )}
-                    
                     <div>
                       <button 
-                        onClick={() => {
-                          setBusIdFilter('');
-                          setTimestepFilter('');
-                        }}
+                        onClick={() => setBusIdFilter('')}
                         className="px-4 py-2 bg-gray-600 dark:bg-gray-500 hover:bg-gray-700 dark:hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
                       >
-                        Clear Filters
+                        Clear Filter
                       </button>
                     </div>
                   </div>
@@ -647,8 +417,8 @@ export default function SimulationMonitor() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
-                <h3 className="mt-4 text-sm font-medium text-gray-900 dark:text-gray-100">No timesteps data available yet</h3>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Please start the simulation service to begin collecting data.</p>
+                <h3 className="mt-4 text-sm font-medium text-gray-900 dark:text-gray-100">Waiting for simulation data...</h3>
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">The simulation runs automatically every minute. Data will appear here shortly.</p>
               </div>
             )
           )}
@@ -725,7 +495,7 @@ export default function SimulationMonitor() {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Time</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Simulation Time</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Bus ID</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Voltage (pu)</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Load (MW)</th>
@@ -734,8 +504,7 @@ export default function SimulationMonitor() {
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
-                    {currentPageData.map((step, index) => {
-                      // Find converter power and loading values
+                    {filteredTimesteps.map((step, index) => {
                       const converterPowerKeys = Object.keys(step).filter(key => key.includes('converter_') && key.includes('_power'));
                       const converterPower = converterPowerKeys.length > 0 ? step[converterPowerKeys[0]] : null;
                       
@@ -744,7 +513,7 @@ export default function SimulationMonitor() {
                       
                       return (
                         <tr key={index} className={`${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700/30'} hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors duration-150`}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{step.timestamp || '—'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{simulationTime}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{step.bus_id !== undefined ? step.bus_id : '—'}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{step.voltage !== undefined && step.voltage !== null ? step.voltage.toFixed(4) : '—'}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{step.load !== undefined && step.load !== null ? step.load.toFixed(6) : '—'}</td>
@@ -757,33 +526,10 @@ export default function SimulationMonitor() {
                 </table>
               </div>
               
-              {/* Pagination */}
-              <div className="bg-white dark:bg-gray-800 px-6 py-3 border-t border-gray-200 dark:border-gray-600 flex flex-wrap justify-between items-center">
-                <div className="text-sm text-gray-700 dark:text-gray-300 mb-2 md:mb-0">
-                  Showing {filteredTimesteps.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, filteredTimesteps.length)} of {filteredTimesteps.length} records
+              <div className="bg-white dark:bg-gray-800 px-6 py-3 border-t border-gray-200 dark:border-gray-600">
+                <div className="text-sm text-gray-700 dark:text-gray-300">
+                  Showing {filteredTimesteps.length} {filteredTimesteps.length === 1 ? 'bus' : 'buses'} from latest simulation
                 </div>
-                
-                {totalPages > 1 && (
-                  <div className="flex items-center">
-                    <button 
-                      onClick={() => goToPage(currentPage - 1)} 
-                      disabled={currentPage === 1}
-                      className={`px-3 py-1 mx-1 ${currentPage === 1 ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed' : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500'} rounded border border-gray-300 dark:border-gray-600 transition-colors`}
-                    >
-                      Previous
-                    </button>
-                    
-                    {renderPageButtons()}
-                    
-                    <button 
-                      onClick={() => goToPage(currentPage + 1)} 
-                      disabled={currentPage === totalPages}
-                      className={`px-3 py-1 mx-1 ${currentPage === totalPages ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed' : 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500'} rounded border border-gray-300 dark:border-gray-600 transition-colors`}
-                    >
-                      Next
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           )}

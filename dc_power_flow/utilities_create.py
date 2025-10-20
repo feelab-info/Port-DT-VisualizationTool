@@ -161,11 +161,11 @@ def _create_buses_and_components(net: pp.pandapowerNet, node_data: pd.DataFrame,
                     net.load['default_power_profile'] = net.load['default_power_profile'].astype('object')
 
                 net.load.at[l, 'default_power_profile'] = default_assets_profile[row['Asset profile type']].values
-                _, load_profile, _ = generate_load_profile(timelaps, timestep, net.load.at[l, 'default_power_profile'],
-                                                           noise_std=0.1, summer_coeficient=0.95, winter_coeficient=1.1,
-                                                           holiday_coefficient=1/5, weekend_coeficent=1/20,
-                                                           day_varation_sigma=0.1)
-                net.load.at[l, 'power_profile'] = load_profile
+                #_, load_profile, _ = generate_load_profile(timelaps, timestep, net.load.at[l, 'default_power_profile'],
+                #                                           noise_std=0.1, summer_coeficient=0.95, winter_coeficient=1.1,
+                #                                           holiday_coefficient=1/5, weekend_coeficent=1/20,
+                #                                           day_varation_sigma=0.1)
+                net.load.at[l, 'power_profile'] = net.load.at[l, 'default_power_profile']
 
         elif component_type == 'ev':
             ev = pp.create_storage(
@@ -174,7 +174,7 @@ def _create_buses_and_components(net: pp.pandapowerNet, node_data: pd.DataFrame,
                 bus=bus,
                 p_mw=row['Maximum power (kW)'] / 1000,  # Convert kW to MW
                 max_e_mwh=row['Maximum power (kW)'] / 1000 * 4,  # Convert kWh to MWh
-                soc_percent=100,  # Initial state of charge
+                soc_percent=50,  # Initial state of charge
                 scaling=np.sqrt(3)
             )
 
@@ -203,12 +203,12 @@ def _create_buses_and_components(net: pp.pandapowerNet, node_data: pd.DataFrame,
                     net.storage['default_power_profile'] = net.storage['default_power_profile'].astype('object')
 
                 net.storage.at[ev, 'default_power_profile'] = default_assets_profile[row['Asset profile type']].values
-                _, load_profile, _ = generate_load_profile(timelaps, timestep,
-                                                           net.storage.at[ev, 'default_power_profile'],
-                                                           noise_std=0.1, summer_coeficient=0.9, winter_coeficient=1.2,
-                                                           holiday_coefficient=1/5, weekend_coeficent=1/20,
-                                                           day_varation_sigma=0.1)
-                net.storage.at[ev, 'power_profile'] = load_profile
+                #_, load_profile, _ = generate_load_profile(timelaps, timestep,
+                #                                           net.storage.at[ev, 'default_power_profile'],
+                #                                           noise_std=0.1, summer_coeficient=0.9, winter_coeficient=1.2,
+                #                                           holiday_coefficient=1/5, weekend_coeficent=1/20,
+                #                                           day_varation_sigma=0.1)
+                net.storage.at[ev, 'power_profile'] = net.storage.at[ev, 'default_power_profile']
 
         elif component_type == 'storage':
             if not np.isnan(row['Maximum power (kW)']):
@@ -219,7 +219,7 @@ def _create_buses_and_components(net: pp.pandapowerNet, node_data: pd.DataFrame,
                     p_mw=row['Maximum power (kW)'] / 1000,  # Convert kW to MW
                     max_e_mwh=row['Capacity (kWh)'] / 1000,  # Convert kWh to MWh
                     p_nom_mw=row['Maximum power (kW)'] / 1000,  # Convert kW to MW
-                    soc_percent=100,  # Initial state of charge at 50%
+                    soc_percent=50,  # Initial state of charge at 50%
                     scaling=np.sqrt(3)
                 )
             else:
@@ -266,12 +266,12 @@ def _create_buses_and_components(net: pp.pandapowerNet, node_data: pd.DataFrame,
                     net.sgen['default_power_profile'] = net.sgen['default_power_profile'].astype('object')
 
                 net.sgen.at[sgen, 'default_power_profile'] = default_assets_profile[row['Asset profile type']].values
-                _, load_profile, _ = generate_load_profile(timelaps, timestep,
-                                                           net.sgen.at[sgen, 'default_power_profile'],
-                                                           noise_std=0.1, summer_coeficient=1, winter_coeficient=0.4,
-                                                           holiday_coefficient=1, weekend_coeficent=1,
-                                                           day_varation_sigma=0.4)
-                net.sgen.at[sgen, 'power_profile'] = load_profile
+                #_, load_profile, _ = generate_load_profile(timelaps, timestep,
+                #                                           net.sgen.at[sgen, 'default_power_profile'],
+                #                                           noise_std=0.1, summer_coeficient=1, winter_coeficient=0.4,
+                #                                           holiday_coefficient=1, weekend_coeficent=1,
+                #                                           day_varation_sigma=0.4)
+                net.sgen.at[sgen, 'power_profile'] = net.sgen.at[sgen, 'default_power_profile']
 
         # Create linked converter bus if needed
         if not np.isnan(row['Node number for directly linked converter']):

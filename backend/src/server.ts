@@ -2,6 +2,7 @@ import { httpServer, io } from './app';
 import { connectToMongo } from './services/databaseService';
 import { watchMongoChanges } from './services/dataMonitorService';
 import { startDeviceDataUpdates, loadDeviceMappings } from './services/deviceDataService';
+import { startSimulationScheduler } from './services/simulationSchedulerService';
 import emailService from './services/emailService';
 
 // Set up server port
@@ -35,6 +36,9 @@ async function startServer() {
       
       // Start the device data updates for DC power flow
       startDeviceDataUpdates();
+      
+      // Start the simulation scheduler (runs every 1 minute)
+      await startSimulationScheduler(io);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
