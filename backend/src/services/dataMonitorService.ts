@@ -124,7 +124,7 @@ export async function watchMongoChanges(io: Server): Promise<void> {
     } catch (error) {
       console.error('Polling error:', error);
     }
-  }, 30000); // Poll every 30 seconds
+  }, 5000); // Poll every 30 seconds
 
   // Refresh device mappings periodically (every hour)
   setInterval(async () => {

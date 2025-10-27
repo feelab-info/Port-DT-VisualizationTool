@@ -28,12 +28,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p data logs
+RUN mkdir -p data logs output
+
+# Copy and set up entrypoint
+# COPY entrypoint.sh /usr/local/bin/
+# RUN chmod +x /usr/local/bin/entrypoint.sh
+# ENTRYPOINT ["entrypoint.sh"]
 
 # Create non-root user
-RUN useradd --create-home --shell /bin/bash app
-RUN chown -R app:app /app
-USER app
+# RUN useradd --create-home --shell /bin/bash app
+# RUN chown -R app:app /app
+# USER app
 
 # Expose port
 EXPOSE 5002
