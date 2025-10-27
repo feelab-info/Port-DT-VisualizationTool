@@ -1,13 +1,23 @@
-import { Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 import axios from 'axios';
 
 const DC_POWER_FLOW_API = process.env.DC_POWER_FLOW_API || 'http://localhost:5002';
 const SIMULATION_INTERVAL = 60000; // 1 minute in milliseconds
 
 let schedulerInterval: NodeJS.Timeout | null = null;
+let latestSimulationData: any = null; // Variable to store the latest simulation data
 
 export async function startSimulationScheduler(io: Server): Promise<void> {
   console.log('Starting simulation scheduler - will run every 1 minute');
+
+  // Handle new client connections
+  io.on('connection', (socket: Socket) => {
+    console.log(`New client connected: ${socket.id}`);
+    if (latestSimulationData) {
+      console.log(`Sending latest simulation data to client ${socket.id}`);
+      socket.emit('simulation_timestep_update', latestSimulationData);
+    }
+  });
 
   // Run immediately on start
   await runSimulationCycle(io);
@@ -56,6 +66,9 @@ async function runSimulationCycle(io: Server): Promise<void> {
         second: '2-digit'
       })
     };
+
+    // Store the latest data
+    latestSimulationData = updatePayload;
 
     io.emit('simulation_timestep_update', updatePayload);
     console.log(`[Simulation Scheduler] Broadcasted timestep data to ${io.engine.clientsCount} connected clients`);

@@ -200,22 +200,26 @@ def get_timesteps_results():
             for node_id in range(bus_counts):
                 node_key = f"node {node_id}: v_pu"
                 if node_key in timestep:
-                    entry = {
-                        "timestamp": f"Timestep {i+1}",
-                        "timestep": i + 1,
-                        "bus_id": node_id,
-                        "voltage": timestep.get(node_key),
-                        "power": timestep.get(f"node {node_id}: p_mw"),
-                        "load": timestep.get(f"load load {node_id}: p_mw")
-                    }
+                    # Start with all timestep data to preserve line information
+                    entry = dict(timestep)
+                    # Add/override specific fields
+                    entry["timestamp"] = f"Timestep {i+1}"
+                    entry["timestep"] = i + 1
+                    entry["bus_id"] = node_id
+                    entry["voltage"] = timestep.get(node_key)
+                    entry["power"] = timestep.get(f"node {node_id}: p_mw")
+                    entry["load"] = timestep.get(f"load load {node_id}: p_mw")
+                    
+                    # Add converter data
                     for key, value in timestep.items():
                         if "Conv_" in key and "p_mw" in key:
                             entry["converter_power"] = value
                         elif "Conv_" in key and "loading" in key:
                             entry["converter_loading"] = value
+                    
                     transformed_data.append(entry)
         
-        logger.info(f"Transformed {len(transformed_data)} timestep entries")
+        logger.info(f"Transformed {len(transformed_data)} timestep entries with line data")
         return jsonify(transformed_data)
     except Exception as e:
         logger.error(f"Error in get_timesteps_results: {e}")
