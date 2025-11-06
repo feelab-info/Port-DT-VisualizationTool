@@ -4,6 +4,7 @@ import { watchMongoChanges } from './services/dataMonitorService';
 import { startDeviceDataUpdates, loadDeviceMappings } from './services/deviceDataService';
 import { startSimulationScheduler } from './services/simulationSchedulerService';
 import emailService from './services/emailService';
+import { db } from './database/config';
 
 // Set up server port
 const PORT = process.env.PORT || 5001;
@@ -11,7 +12,11 @@ const PORT = process.env.PORT || 5001;
 // Start server
 async function startServer() {
   try {
-    // Connect to database
+    // Connect to PostgreSQL database
+    console.log('Connecting to PostgreSQL...');
+    await db.connect();
+    
+    // Connect to MongoDB
     await connectToMongo();
     
     // Load device mappings BEFORE starting the server
@@ -47,8 +52,9 @@ async function startServer() {
 }
 
 // Handle graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully');
+  await db.disconnect();
   httpServer.close(() => {
     console.log('Server closed');
     process.exit(0);

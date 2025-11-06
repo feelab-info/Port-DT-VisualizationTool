@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import axios from 'axios';
+import { powerFlowStorageService } from './powerFlowStorageService';
 
 const DC_POWER_FLOW_API = process.env.DC_POWER_FLOW_API || 'http://localhost:5002';
 const SIMULATION_INTERVAL = 60000; // 1 minute in milliseconds
@@ -53,7 +54,23 @@ async function runSimulationCycle(io: Server): Promise<void> {
       return;
     }
 
-    // Step 3: Broadcast to all connected clients
+    // Step 3: Store simulation data in PostgreSQL database
+    try {
+      const simulationId = await powerFlowStorageService.storeSimulation(
+        timestepData,
+        2, // scenario
+        {
+          clientCount: io.engine.clientsCount,
+          dataPoints: timestepData.length
+        }
+      );
+      console.log(`[Simulation Scheduler] Stored simulation in database with ID: ${simulationId}`);
+    } catch (dbError: any) {
+      console.error('[Simulation Scheduler] Failed to store simulation in database:', dbError.message);
+      // Continue even if database storage fails - don't break the broadcast
+    }
+
+    // Step 4: Broadcast to all connected clients
     const updatePayload = {
       timestamp: new Date().toISOString(),
       data: timestepData,
