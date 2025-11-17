@@ -15,7 +15,7 @@ export function initSocketHandlers(io: Server): void {
     let isInHistoricalView = false;
     
     // Handle historical data requests
-    socket.on('fetch_historical_data', async (params: { deviceId: string, date: string }, callback) => {
+    socket.on('fetch_historical_data', async (params: { deviceId: string, date: string, endDate?: string }, callback) => {
       try {
         // Set the historical view flag
         isInHistoricalView = true;
@@ -26,14 +26,21 @@ export function initSocketHandlers(io: Server): void {
           return;
         }
         
-        console.log(`Received historical data request for deviceId: "${params.deviceId}", date: "${params.date}"`);
+        console.log(`Received historical data request for deviceId: "${params.deviceId}", date: "${params.date}", endDate: "${params.endDate || 'N/A'}"`);
         
-        // Parse the date
+        // Parse the start date
         const requestedDate = new Date(params.date);
         requestedDate.setHours(0, 0, 0, 0);
         
-        const nextDay = new Date(requestedDate);
-        nextDay.setDate(nextDay.getDate() + 1);
+        // Parse the end date (if provided, otherwise use next day)
+        let endDate: Date;
+        if (params.endDate) {
+          endDate = new Date(params.endDate);
+          endDate.setHours(23, 59, 59, 999);
+        } else {
+          endDate = new Date(requestedDate);
+          endDate.setDate(endDate.getDate() + 1);
+        }
         
         // Connect to MongoDB
         const db = await connectToMongo();
@@ -43,7 +50,7 @@ export function initSocketHandlers(io: Server): void {
         const query: any = {
           timestamp: {
             $gte: requestedDate,
-            $lt: nextDay
+            $lte: endDate
           }
         };
         
@@ -79,11 +86,17 @@ export function initSocketHandlers(io: Server): void {
         console.log('Query:', JSON.stringify(query, null, 2));
         
         // Query for the specific device and date with optimization
+        // Calculate appropriate limit based on date range
+        const daysDiff = Math.ceil((endDate.getTime() - requestedDate.getTime()) / (1000 * 60 * 60 * 24));
+        const recordLimit = Math.max(100000, daysDiff * 50000); // At least 100k, scale with days
+        
+        console.log(`Date range: ${daysDiff} days, using limit: ${recordLimit}`);
+        
         // Add limit and use lean query (only fetch needed fields if possible)
         const historicalData = await eGaugeCollection
           .find(query)
           .sort({ timestamp: 1 }) // Sort by timestamp ascending for chronological order
-          .limit(10000) // Prevent fetching too much data at once
+          .limit(recordLimit)
           .toArray();
         
         console.log(`Found ${historicalData.length} historical records`);
@@ -105,7 +118,10 @@ export function initSocketHandlers(io: Server): void {
         // Send the data
         socket.emit('historical_data_response', enrichedData);
         
-        console.log(`Sent ${enrichedData.length} historical records for ${params.deviceId ? `device ${params.deviceId}` : 'all devices'} on ${params.date}`);
+        const dateRangeText = params.endDate 
+          ? `from ${params.date} to ${params.endDate}` 
+          : `on ${params.date}`;
+        console.log(`Sent ${enrichedData.length} historical records for ${params.deviceId ? `device ${params.deviceId}` : 'all devices'} ${dateRangeText}`);
       } catch (error) {
         console.error('Error fetching historical data:', error);
         callback({ success: false, error: 'Server error fetching historical data' });

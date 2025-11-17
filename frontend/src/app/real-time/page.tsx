@@ -24,6 +24,10 @@ export default function RealTimeDataPage() {
     handleDateChange,
     fetchHistoricalData,
     switchToLiveData,
+    dateRangeType,
+    setDateRangeType,
+    endDate,
+    setEndDate,
   } = useEnergyData();
 
   // Use device data health to determine connection status
@@ -34,7 +38,7 @@ export default function RealTimeDataPage() {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto space-y-8 mt-3">
+      <div className="container mx-auto space-y-8 mt-3 relative z-0">
         {/* Simplified Header Section */}
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -59,6 +63,10 @@ export default function RealTimeDataPage() {
           handleDeviceSelect={handleDeviceSelect}
           handleDateChange={handleDateChange}
           fetchHistoricalData={fetchHistoricalData}
+          dateRangeType={dateRangeType}
+          onDateRangeTypeChange={setDateRangeType}
+          endDate={endDate}
+          onEndDateChange={(e) => setEndDate(e.target.value)}
         />
         
         <DataDisplay

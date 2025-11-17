@@ -280,8 +280,8 @@ class EnergyDataService extends EventEmitter {
     }
   }
 
-  public async fetchHistoricalData(deviceId: string, date: string): Promise<EnergyData[]> {
-    console.log('EnergyDataService: Starting fetchHistoricalData request', { deviceId, date });
+  public async fetchHistoricalData(deviceId: string, date: string, endDate?: string): Promise<EnergyData[]> {
+    console.log('EnergyDataService: Starting fetchHistoricalData request', { deviceId, date, endDate });
     console.log('EnergyDataService: Device ID type:', typeof deviceId, 'length:', deviceId.length);
     
     if (!this.socket || !this.socket.connected) {
@@ -317,7 +317,7 @@ class EnergyDataService extends EventEmitter {
       
       // Request the historical data
       console.log('EnergyDataService: Emitting fetch_historical_data event');
-      this.socket?.emit('fetch_historical_data', { deviceId, date }, (acknowledgement: { success: boolean, error?: string }) => {
+      this.socket?.emit('fetch_historical_data', { deviceId, date, endDate }, (acknowledgement: { success: boolean, error?: string }) => {
         console.log('EnergyDataService: Received acknowledgement', acknowledgement);
         clearTimeout(timeout);
         

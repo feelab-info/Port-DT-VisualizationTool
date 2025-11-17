@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { EnergyData } from '@/services/EnergyDataService';
 import { 
   Chart as ChartJS, 
@@ -47,12 +47,53 @@ export default function EnergyCharts({
     );
   }, [filteredData]);
 
-  // Prepare data for power consumption line chart
+  // Detect if this is multi-day data
+  const isMultiDay = useMemo(() => {
+    if (sortedData.length === 0) return false;
+    const firstDate = new Date(sortedData[0].timestamp).toDateString();
+    const lastDate = new Date(sortedData[sortedData.length - 1].timestamp).toDateString();
+    return firstDate !== lastDate;
+  }, [sortedData]);
+
+  // Downsample data for performance - improved algorithm
+  const downsampleData = useCallback((data: EnergyData[], targetPoints: number): EnergyData[] => {
+    if (data.length <= targetPoints) return data;
+
+    // Use a more conservative approach - take every Nth point but ensure we keep important ones
+    const samplingRate = Math.ceil(data.length / targetPoints);
+    const sampled: EnergyData[] = [];
+    
+    for (let i = 0; i < data.length; i += samplingRate) {
+      sampled.push(data[i]);
+    }
+    
+    // Always include the last point if not already included
+    if (sampled[sampled.length - 1] !== data[data.length - 1]) {
+      sampled.push(data[data.length - 1]);
+    }
+    
+    console.log(`Downsampled from ${data.length} to ${sampled.length} points (target: ${targetPoints})`);
+    return sampled;
+  }, []);
+
+  // Prepare data for power consumption line chart with intelligent downsampling
   const powerChartData = useMemo(() => {
-    // Limit to last 50 points for better visualization if not in historical view
-    const dataPoints = isHistoricalView 
-      ? sortedData 
-      : sortedData.slice(-50);
+    // More generous limits to preserve data visibility
+    const MAX_POINTS = isMultiDay ? 1000 : 500; // Increased limits
+    
+    // Downsample only if significantly over the limit
+    let dataPoints = sortedData;
+    if (sortedData.length > MAX_POINTS * 2) {
+      dataPoints = downsampleData(sortedData, MAX_POINTS);
+    } else if (sortedData.length > MAX_POINTS) {
+      // Use a lighter downsampling for moderate datasets
+      dataPoints = downsampleData(sortedData, Math.floor(sortedData.length * 0.7));
+    }
+
+    // Further limit for live view
+    if (!isHistoricalView && dataPoints.length > 200) {
+      dataPoints = dataPoints.slice(-200);
+    }
 
     return {
       labels: dataPoints.map(item => new Date(item.timestamp)),
@@ -64,7 +105,7 @@ export default function EnergyCharts({
           backgroundColor: 'rgba(239, 68, 68, 0.1)',
           tension: 0.4,
           borderWidth: 2,
-          pointRadius: 2,
+          pointRadius: dataPoints.length > 200 ? 0 : 2, // Hide points if too many
           pointHoverRadius: 6,
           fill: false
         },
@@ -75,7 +116,7 @@ export default function EnergyCharts({
           backgroundColor: 'rgba(16, 185, 129, 0.1)',
           tension: 0.4,
           borderWidth: 2,
-          pointRadius: 2,
+          pointRadius: dataPoints.length > 200 ? 0 : 2,
           pointHoverRadius: 6,
           fill: false
         },
@@ -86,21 +127,17 @@ export default function EnergyCharts({
           backgroundColor: 'rgba(139, 92, 246, 0.1)',
           tension: 0.4,
           borderWidth: 2,
-          pointRadius: 2,
+          pointRadius: dataPoints.length > 200 ? 0 : 2,
           pointHoverRadius: 6,
           fill: false
         },
       ],
     };
-  }, [sortedData, isHistoricalView]);
+  }, [sortedData, isHistoricalView, isMultiDay, downsampleData]);
 
-  // Prepare data for total consumption bar chart
+  // Prepare data for total consumption bar chart (enhanced for multi-day)
   const totalConsumptionData = useMemo(() => {
-    console.log('=== HOURLY CHART DEBUG ===');
-    console.log('Sorted data length:', sortedData.length);
-    
     if (sortedData.length === 0) {
-      console.log('No data available for hourly chart');
       return {
         labels: [],
         datasets: [{
@@ -115,65 +152,148 @@ export default function EnergyCharts({
       };
     }
 
-    // Sample first few items to understand data structure
-    console.log('First 3 data items with power breakdown:', sortedData.slice(0, 3).map(item => ({
-      timestamp: item.timestamp,
-      measure_cons: item.measure_cons,
-      L1_P: item.L1?.P || 0,
-      L2_P: item.L2?.P || 0,
-      L3_P: item.L3?.P || 0,
-      total_power: (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0)
-    })));
+    if (isMultiDay) {
+      // For multi-day data, group by date
+      const dailyData: Record<string, { total: number, count: number }> = {};
+      
+      sortedData.forEach(item => {
+        const date = new Date(item.timestamp);
+        const dayKey = date.toLocaleDateString('en-CA'); // YYYY-MM-DD format
+        
+        if (!dailyData[dayKey]) {
+          dailyData[dayKey] = { total: 0, count: 0 };
+        }
+        
+        const totalPower = (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
+        dailyData[dayKey].total += totalPower;
+        dailyData[dayKey].count += 1;
+      });
+      
+      const sortedDays = Object.keys(dailyData).sort();
+      const labels = sortedDays.map(day => new Date(day).toLocaleDateString('pt-PT', { month: 'short', day: 'numeric' }));
+      const data = sortedDays.map(day => dailyData[day].total / dailyData[day].count);
+      
+      return {
+        labels,
+        datasets: [
+          {
+            label: 'Average Daily Power (W)',
+            data,
+            backgroundColor: 'rgba(59, 130, 246, 0.8)',
+            borderColor: 'rgba(59, 130, 246, 1)',
+            borderWidth: 1,
+            borderRadius: 4,
+            borderSkipped: false,
+          },
+        ],
+      };
+    } else {
+      // For single day data, group by hour
+      const hourlyData: Record<string, { total: number, count: number }> = {};
+      
+      sortedData.forEach(item => {
+        const date = new Date(item.timestamp);
+        const hourKey = `${date.getHours().toString().padStart(2, '0')}:00`;
+        
+        if (!hourlyData[hourKey]) {
+          hourlyData[hourKey] = { total: 0, count: 0 };
+        }
+        
+        const totalPower = (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
+        hourlyData[hourKey].total += totalPower;
+        hourlyData[hourKey].count += 1;
+      });
+      
+      const sortedHours = Object.keys(hourlyData).sort();
+      const labels = sortedHours;
+      const data = sortedHours.map(hour => hourlyData[hour].total / hourlyData[hour].count);
+      
+      return {
+        labels,
+        datasets: [
+          {
+            label: 'Average Hourly Power (W)',
+            data,
+            backgroundColor: 'rgba(59, 130, 246, 0.8)',
+            borderColor: 'rgba(59, 130, 246, 1)',
+            borderWidth: 1,
+            borderRadius: 4,
+            borderSkipped: false,
+          },
+        ],
+      };
+    }
+  }, [sortedData, isMultiDay]);
 
-    // Group data by hour for better visualization
-    const hourlyData: Record<string, { total: number, count: number }> = {};
+  // Daily comparison chart for multi-day data
+  const dailyComparisonData = useMemo(() => {
+    if (!isMultiDay || sortedData.length === 0) {
+      return null;
+    }
+
+    const dailyStats: Record<string, { min: number, max: number, avg: number, count: number, sum: number }> = {};
     
     sortedData.forEach(item => {
       const date = new Date(item.timestamp);
-      const hourKey = `${date.getHours().toString().padStart(2, '0')}:00`;
+      const dayKey = date.toLocaleDateString('en-CA');
       
-      if (!hourlyData[hourKey]) {
-        hourlyData[hourKey] = { total: 0, count: 0 };
+      if (!dailyStats[dayKey]) {
+        dailyStats[dayKey] = { min: Infinity, max: -Infinity, avg: 0, count: 0, sum: 0 };
       }
       
-      // Use total power consumption (L1 + L2 + L3) instead of measure_cons
       const totalPower = (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
-      hourlyData[hourKey].total += totalPower;
-      hourlyData[hourKey].count += 1;
+      dailyStats[dayKey].min = Math.min(dailyStats[dayKey].min, totalPower);
+      dailyStats[dayKey].max = Math.max(dailyStats[dayKey].max, totalPower);
+      dailyStats[dayKey].sum += totalPower;
+      dailyStats[dayKey].count += 1;
+    });
+
+    // Calculate averages
+    Object.keys(dailyStats).forEach(day => {
+      dailyStats[day].avg = dailyStats[day].sum / dailyStats[day].count;
     });
     
-    console.log('Hourly data aggregation:', hourlyData);
-    
-    // Convert to arrays for chart - use average consumption per hour
-    const sortedHours = Object.keys(hourlyData).sort();
-    const labels = sortedHours;
-    const data = sortedHours.map(hour => hourlyData[hour].total / hourlyData[hour].count);
-    
-    console.log('Chart labels:', labels);
-    console.log('Chart data:', data);
-    console.log('Chart data sum:', data.reduce((sum, val) => sum + val, 0));
-    console.log('=== END HOURLY CHART DEBUG ===');
+    const sortedDays = Object.keys(dailyStats).sort();
+    const labels = sortedDays.map(day => new Date(day).toLocaleDateString('pt-PT', { month: 'short', day: 'numeric' }));
     
     return {
       labels,
       datasets: [
         {
-          label: 'Average Total Power (W)',
-          data,
-          backgroundColor: 'rgba(59, 130, 246, 0.8)',
-          borderColor: 'rgba(59, 130, 246, 1)',
-          borderWidth: 1,
+          label: 'Peak Power (W)',
+          data: sortedDays.map(day => dailyStats[day].max),
+          backgroundColor: 'rgba(239, 68, 68, 0.6)',
+          borderColor: 'rgba(239, 68, 68, 1)',
+          borderWidth: 2,
           borderRadius: 4,
-          borderSkipped: false,
+        },
+        {
+          label: 'Average Power (W)',
+          data: sortedDays.map(day => dailyStats[day].avg),
+          backgroundColor: 'rgba(34, 197, 94, 0.6)',
+          borderColor: 'rgba(34, 197, 94, 1)',
+          borderWidth: 2,
+          borderRadius: 4,
+        },
+        {
+          label: 'Minimum Power (W)',
+          data: sortedDays.map(day => dailyStats[day].min),
+          backgroundColor: 'rgba(59, 130, 246, 0.6)',
+          borderColor: 'rgba(59, 130, 246, 1)',
+          borderWidth: 2,
+          borderRadius: 4,
         },
       ],
     };
-  }, [sortedData]);
+  }, [sortedData, isMultiDay]);
 
-  // Enhanced chart options
-  const lineChartOptions = {
+  // Enhanced chart options with performance optimizations
+  const lineChartOptions = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
+    animation: {
+      duration: sortedData.length > 5000 ? 0 : 750 // Disable animation only for very large datasets
+    },
     plugins: {
       legend: {
         position: 'top' as const,
@@ -205,13 +325,18 @@ export default function EnergyCharts({
             return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} W`;
           }
         }
+      },
+      decimation: {
+        enabled: sortedData.length > 2000,
+        algorithm: 'lttb' as const,
+        samples: 1000
       }
     },
     scales: {
       x: {
         type: 'time' as const,
         time: {
-          unit: isHistoricalView ? 'hour' as const : 'minute' as const,
+          unit: isMultiDay ? 'hour' as const : isHistoricalView ? 'hour' as const : 'minute' as const,
           tooltipFormat: 'PPpp',
           displayFormats: {
             minute: 'HH:mm',
@@ -228,6 +353,12 @@ export default function EnergyCharts({
         },
         grid: {
           color: 'rgba(156, 163, 175, 0.2)'
+        },
+        ticks: {
+          maxTicksLimit: isMultiDay ? 20 : 15, // Limit ticks for performance
+          autoSkip: true,
+          maxRotation: 45,
+          minRotation: 0
         }
       },
       y: {
@@ -242,18 +373,32 @@ export default function EnergyCharts({
         },
         grid: {
           color: 'rgba(156, 163, 175, 0.2)'
+        },
+        ticks: {
+          maxTicksLimit: 10 // Limit ticks for performance
         }
       }
     },
     interaction: {
       intersect: false,
       mode: 'index' as const
+    },
+    elements: {
+      point: {
+        radius: sortedData.length > 1000 ? 0 : sortedData.length > 500 ? 1 : 2 // Progressively reduce point size
+      },
+      line: {
+        borderWidth: 2
+      }
     }
-  };
+  }), [sortedData.length, isHistoricalView, isMultiDay]);
 
-  const barChartOptions = {
+  const barChartOptions = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
+    animation: {
+      duration: 750
+    },
     plugins: {
       legend: {
         position: 'top' as const,
@@ -276,14 +421,19 @@ export default function EnergyCharts({
         borderColor: '#374151',
         borderWidth: 1,
         cornerRadius: 8,
-        displayColors: true
+        displayColors: true,
+        callbacks: {
+          label: function(context: TooltipItem<'bar'>) {
+            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} W`;
+          }
+        }
       }
     },
     scales: {
       x: {
         title: {
           display: true,
-          text: 'Hour of Day',
+          text: isMultiDay ? 'Date' : 'Hour of Day',
           font: {
             size: 12,
             weight: 'bold' as const
@@ -291,6 +441,11 @@ export default function EnergyCharts({
         },
         grid: {
           color: 'rgba(156, 163, 175, 0.2)'
+        },
+        ticks: {
+          maxRotation: 45,
+          minRotation: 0,
+          autoSkip: true
         }
       },
       y: {
@@ -305,10 +460,13 @@ export default function EnergyCharts({
         },
         grid: {
           color: 'rgba(156, 163, 175, 0.2)'
+        },
+        ticks: {
+          maxTicksLimit: 10
         }
       }
     }
-  };
+  }), [isMultiDay]);
 
   if (filteredData.length === 0) {
     return (
@@ -333,7 +491,9 @@ export default function EnergyCharts({
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {selectedDevice 
               ? `Line-by-line power analysis for ${selectedDevice}` 
-              : 'Multi-line power consumption trends'}
+              : isMultiDay 
+                ? 'Multi-day power consumption trends across all phases'
+                : 'Real-time power consumption trends'}
           </p>
         </div>
         <div className="p-6">
@@ -343,14 +503,33 @@ export default function EnergyCharts({
         </div>
       </div>
 
-      {/* Hourly Consumption Bar Chart */}
+      {/* Daily Comparison Chart (only for multi-day) */}
+      {isMultiDay && dailyComparisonData && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Daily Power Comparison</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Peak, average, and minimum power consumption per day
+            </p>
+          </div>
+          <div className="p-6">
+            <div className="h-96 w-full">
+              <Bar data={dailyComparisonData} options={barChartOptions} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Aggregated Consumption Chart */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-600">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Hourly Energy Consumption</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            {isMultiDay ? 'Daily Energy Consumption' : 'Hourly Energy Consumption'}
+          </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {selectedDevice 
-              ? `Aggregated hourly consumption for ${selectedDevice}` 
-              : 'Total hourly energy usage patterns'}
+              ? `Aggregated ${isMultiDay ? 'daily' : 'hourly'} consumption for ${selectedDevice}` 
+              : `Total ${isMultiDay ? 'daily' : 'hourly'} energy usage patterns`}
           </p>
         </div>
         <div className="p-6">

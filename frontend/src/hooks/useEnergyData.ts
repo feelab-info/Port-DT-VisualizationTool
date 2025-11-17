@@ -16,6 +16,8 @@ export function useEnergyData() {
   const [backgroundData, setBackgroundData] = useState<EnergyData[]>([]);
   const [hasBackgroundUpdates, setHasBackgroundUpdates] = useState(false);
   const [historicalData, setHistoricalData] = useState<EnergyData[]>([]);
+  const [dateRangeType, setDateRangeType] = useState<'single' | '3days' | 'week' | 'custom'>('single');
+  const [endDate, setEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   // Update comprehensive device list - add new devices but never remove them
   const updateAllKnownDevices = (newDevices: LegacyDevice[]) => {
@@ -183,7 +185,32 @@ export function useEnergyData() {
       setBackgroundData([]);
       setHasBackgroundUpdates(false);
       
-      console.log('Fetching historical data for:', { selectedDevice, selectedDate });
+      // Calculate date range based on dateRangeType
+      let queryEndDate: string | undefined;
+      let queryStartDate = selectedDate;
+      
+      if (dateRangeType === '3days') {
+        // Calculate 3 days before the selected date
+        const endDay = new Date(selectedDate);
+        const startDay = new Date(endDay);
+        startDay.setDate(startDay.getDate() - 2); // 3 days total (including end date)
+        queryStartDate = startDay.toISOString().split('T')[0];
+        queryEndDate = selectedDate;
+      } else if (dateRangeType === 'week') {
+        // Calculate 7 days before the selected date
+        const endDay = new Date(selectedDate);
+        const startDay = new Date(endDay);
+        startDay.setDate(startDay.getDate() - 6); // 7 days total (including end date)
+        queryStartDate = startDay.toISOString().split('T')[0];
+        queryEndDate = selectedDate;
+      } else if (dateRangeType === 'custom') {
+        // Use custom range
+        queryStartDate = selectedDate;
+        queryEndDate = endDate;
+      }
+      // For 'single' day, queryEndDate remains undefined
+      
+      console.log('Fetching historical data for:', { selectedDevice, queryStartDate, queryEndDate, dateRangeType });
       console.log('Socket connected:', energyDataService.isConnected());
       console.log('Backend URL:', process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001');
       
@@ -193,13 +220,13 @@ export function useEnergyData() {
       }
       
       if (selectedDevice) {
-        // Fetch data for specific device and date
+        // Fetch data for specific device and date range
         console.log('📡 Calling fetchHistoricalData with device:', selectedDevice);
         console.log('📡 Device length:', selectedDevice.length);
-        fetchedHistoricalData = await energyDataService.fetchHistoricalData(selectedDevice, selectedDate);
+        fetchedHistoricalData = await energyDataService.fetchHistoricalData(selectedDevice, queryStartDate, queryEndDate);
       } else {
-        // Fetch data for all devices on the selected date
-        fetchedHistoricalData = await energyDataService.fetchHistoricalData('', selectedDate);
+        // Fetch data for all devices on the selected date range
+        fetchedHistoricalData = await energyDataService.fetchHistoricalData('', queryStartDate, queryEndDate);
       }
       
       console.log('Received historical data:', fetchedHistoricalData?.length || 0, 'records');
@@ -415,5 +442,9 @@ export function useEnergyData() {
     handleDateChange,
     fetchHistoricalData,
     switchToLiveData,
+    dateRangeType,
+    setDateRangeType,
+    endDate,
+    setEndDate,
   };
 }
