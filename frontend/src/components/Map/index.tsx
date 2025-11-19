@@ -445,8 +445,90 @@ export default function MapVisualization() {
         ref={mapRef}
         initialViewState={initialZoomCompleted ? viewState : INITIAL_VIEW_STATE}
         style={{width: "100%", height: "100%"}}
-        mapStyle="https://tiles.openfreemap.org/styles/liberty"
+        mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
         attributionControl={false}
+        onLoad={(e) => {
+          const map = e.target;
+          
+          // Function to add 3D buildings
+          const add3DBuildings = () => {
+            try {
+              // Check if layer already exists
+              if (map.getLayer('3d-buildings')) {
+                return;
+              }
+
+              const style = map.getStyle();
+              
+              // CartoDB uses 'carto' as the source name
+              let sourceName = 'carto';
+              let sourceLayer = 'building';
+              
+              // Verify the source exists
+              if (!style?.sources?.carto) {
+                console.log('Carto source not found for 3D buildings');
+                return;
+              }
+
+              const layers = style.layers || [];
+              // Find the first symbol layer to insert buildings before labels
+              const firstSymbolId = layers.find((layer: any) => layer.type === 'symbol')?.id;
+              
+              map.addLayer(
+                {
+                  id: '3d-buildings',
+                  source: sourceName,
+                  'source-layer': sourceLayer,
+                  filter: ['all', ['==', 'extrude', 'true']],
+                  type: 'fill-extrusion',
+                  minzoom: 14,
+                  paint: {
+                    'fill-extrusion-color': [
+                      'interpolate',
+                      ['linear'],
+                      ['get', 'height'],
+                      0, '#e8e8e8',
+                      50, '#d4d4d4',
+                      100, '#c0c0c0'
+                    ],
+                    'fill-extrusion-height': [
+                      'interpolate',
+                      ['linear'],
+                      ['zoom'],
+                      14,
+                      0,
+                      14.5,
+                      ['get', 'height']
+                    ],
+                    'fill-extrusion-base': [
+                      'interpolate',
+                      ['linear'],
+                      ['zoom'],
+                      14,
+                      0,
+                      14.5,
+                      ['get', 'min_height']
+                    ],
+                    'fill-extrusion-opacity': 0.7
+                  }
+                },
+                firstSymbolId
+              );
+              console.log('3D buildings layer added successfully');
+            } catch (error) {
+              console.error('Error adding 3D buildings layer:', error);
+            }
+          };
+
+          // Wait for style to fully load before adding buildings
+          if (map.isStyleLoaded()) {
+            add3DBuildings();
+          } else {
+            map.once('styledata', () => {
+              setTimeout(add3DBuildings, 100);
+            });
+          }
+        }}
         onMove={evt => {
           // Only update view state manually after initial animation is complete
           if (initialZoomCompleted) {
