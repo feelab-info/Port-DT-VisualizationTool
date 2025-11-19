@@ -35,6 +35,10 @@ export default function MapVisualization() {
   const [energyData, setEnergyData] = useState<EnergyData[]>([]);
   const [animationTime, setAnimationTime] = useState(0);
   
+  // Map style with automatic fallback
+  const [mapStyle, setMapStyle] = useState("https://tiles.openfreemap.org/styles/liberty");
+  const [hasTriedFallback, setHasTriedFallback] = useState(false);
+  
   // State for available models - start with just one for memory efficiency
   const [availableModels, setAvailableModels] = useState([DEFAULT_BOAT_MODEL]);
   
@@ -445,10 +449,26 @@ export default function MapVisualization() {
         ref={mapRef}
         initialViewState={initialZoomCompleted ? viewState : INITIAL_VIEW_STATE}
         style={{width: "100%", height: "100%"}}
-        mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+        mapStyle={mapStyle}
         attributionControl={false}
+        onError={(e) => {
+          console.error('Map error:', e);
+          // If OpenFreeMap fails and we haven't tried the fallback yet, switch to CartoDB
+          if (!hasTriedFallback && mapStyle.includes('openfreemap')) {
+            console.warn('OpenFreeMap failed, automatically switching to CartoDB fallback...');
+            setHasTriedFallback(true);
+            setMapStyle("https://basemaps.cartocdn.com/gl/positron-gl-style/style.json");
+          }
+        }}
         onLoad={(e) => {
           const map = e.target;
+          
+          // Log which map style successfully loaded
+          if (mapStyle.includes('openfreemap')) {
+            console.log('✓ OpenFreeMap loaded successfully');
+          } else {
+            console.log('✓ CartoDB fallback loaded successfully');
+          }
           
           // Function to add 3D buildings
           const add3DBuildings = () => {
@@ -460,19 +480,22 @@ export default function MapVisualization() {
 
               const style = map.getStyle();
               
-              // CartoDB uses 'carto' as the source name
+              // Determine source name based on which map style is active
               let sourceName = 'carto';
               let sourceLayer = 'building';
               
-              // Verify the source exists
-              if (!style?.sources?.carto) {
-                console.log('Carto source not found for 3D buildings');
+              // OpenFreeMap uses 'openmaptiles', CartoDB uses 'carto'
+              if (style?.sources?.openmaptiles) {
+                sourceName = 'openmaptiles';
+                sourceLayer = 'building';
+              } else if (!style?.sources?.carto) {
+                console.log('No compatible source found for 3D buildings');
                 return;
               }
 
               const layers = style.layers || [];
               // Find the first symbol layer to insert buildings before labels
-              const firstSymbolId = layers.find((layer: any) => layer.type === 'symbol')?.id;
+              const firstSymbolId = layers.find((layer: { type: string }) => layer.type === 'symbol')?.id;
               
               map.addLayer(
                 {
@@ -514,7 +537,7 @@ export default function MapVisualization() {
                 },
                 firstSymbolId
               );
-              console.log('3D buildings layer added successfully');
+              console.log('✓ 3D buildings layer added successfully');
             } catch (error) {
               console.error('Error adding 3D buildings layer:', error);
             }
