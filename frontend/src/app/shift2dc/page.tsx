@@ -1,6 +1,7 @@
 'use client';
 
 import DashboardLayout from '@/components/DashboardLayout';
+import ElectricalDiagram from '@/components/GridDocumentation/ElectricalDiagram';
 import { ExternalLink, Building, Zap, Factory, Ship, Users, Globe, Euro, MapPin } from 'lucide-react';
 
 export default function SHIFT2DCPage() {
@@ -263,6 +264,9 @@ export default function SHIFT2DCPage() {
             </div>
           </div>
         </div>
+
+        {/* Diagrama Unifilar - Electrical Single-Line Diagram */}
+        <ElectricalDiagram />
 
         {/* Project Leadership & Methodology */}
         <div className="grid md:grid-cols-2 gap-8">
