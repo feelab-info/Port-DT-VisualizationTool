@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useEnergyData } from '@/hooks/useEnergyData';
-import { Activity, Zap, Database, Wifi, WifiOff } from 'lucide-react';
+import { Activity, Zap, Database, Wifi, WifiOff, TrendingUp, TrendingDown, PieChart, DollarSign } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -10,10 +10,12 @@ import {
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
-  TimeScale
+  TimeScale,
+  Filler
 } from 'chart.js';
 import 'chartjs-adapter-date-fns';
 
@@ -23,19 +25,32 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
-  TimeScale
+  TimeScale,
+  Filler
 );
 
 export default function PortEnergyOverview() {
   const { 
-    deviceList, 
     isConnected, 
     isLoading,
     allData 
   } = useEnergyData();
+
+  // State to force chart update every minute
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update current time every minute to refresh chart
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Calculate summary statistics
   const summaryStats = useMemo(() => {
@@ -49,7 +64,23 @@ export default function PortEnergyOverview() {
       };
     }
 
-    // Get the latest data point for each device
+    // Get the latest data point for "Entrada de Energia" for Current Power display
+    const entradaLatest = allData
+      .filter(item => {
+        const deviceLower = item.device?.toLowerCase() || '';
+        const deviceNameLower = item.deviceName?.toLowerCase() || '';
+        return deviceLower.includes('entrada de energia') || deviceNameLower.includes('entrada de energia');
+      })
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+
+    let currentTotalPower = 0;
+    if (entradaLatest) {
+      // Current power from "Entrada de Energia" in kW
+      const powerW = (entradaLatest.L1?.P || 0) + (entradaLatest.L2?.P || 0) + (entradaLatest.L3?.P || 0);
+      currentTotalPower = powerW / 1000; // Convert to kW
+    }
+
+    // Get the latest data point for each device (for other stats)
     const deviceLatestData = new Map();
     allData.forEach(item => {
       const existing = deviceLatestData.get(item.device);
@@ -59,14 +90,6 @@ export default function PortEnergyOverview() {
     });
 
     const latestDataPoints = Array.from(deviceLatestData.values());
-    
-    const totalPower = latestDataPoints.reduce((sum, item) => {
-      return sum + (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
-    }, 0);
-
-    const totalConsumption = latestDataPoints.reduce((sum, item) => {
-      return sum + (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
-    }, 0);
 
     const powerFactors = latestDataPoints.flatMap(item => [
       item.L1?.PF || 0,
@@ -84,58 +107,447 @@ export default function PortEnergyOverview() {
 
     return {
       totalDevices: 33,
-      currentTotalPower: Math.round(totalPower),
+      currentTotalPower: Math.round(currentTotalPower * 100) / 100, // Show in kW with 2 decimals
       averagePowerFactor: Math.round(averagePowerFactor * 100) / 100,
-      totalConsumption: Math.round(totalConsumption),
+      totalConsumption: 0, // Removed - not used
       activeDevices
     };
-  }, [allData, deviceList]);
+  }, [allData]);
 
-  // Prepare chart data for recent power trends (last 20 data points)
-  const trendChartData = useMemo(() => {
-    // Sort data by timestamp and take last 20 points
-    const sortedData = [...allData]
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-      .slice(-20);
+  // Calculate advanced analytics
+  const analyticsStats = useMemo(() => {
+    if (!allData.length) {
+      return {
+        monthlyEnergy: 0,
+        maxPower: 0,
+        minPower: 0,
+        topConsumer: { name: 'N/A', percentage: 0 },
+        estimatedCost: 0
+      };
+    }
 
-    // Group by timestamp and sum power
-    const powerByTime = new Map();
-    
-    sortedData.forEach(item => {
-      const timestamp = item.timestamp;
-      const totalPower = (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
-      
-      if (powerByTime.has(timestamp)) {
-        powerByTime.set(timestamp, powerByTime.get(timestamp) + totalPower);
-      } else {
-        powerByTime.set(timestamp, totalPower);
-      }
+    // Calculate monthly energy from "Entrada de Energia"
+    // Each data point = 1-minute average (sent by Raspberry Pi after averaging 60 second readings)
+    const entradaData = allData.filter(item => {
+      const deviceLower = item.device?.toLowerCase() || '';
+      const deviceNameLower = item.deviceName?.toLowerCase() || '';
+      return (deviceLower.includes('entrada de energia') || deviceNameLower.includes('entrada de energia'));
     });
 
-    const timeLabels = Array.from(powerByTime.keys()).map(ts => new Date(ts));
-    const powerValues = Array.from(powerByTime.values());
+    let monthlyEnergy = 0;
+    if (entradaData.length > 0) {
+      // Sum all power readings (each is a 1-minute average in Watts)
+      let totalPowerMinutes = 0;
+      entradaData.forEach(item => {
+        const power = (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
+        totalPowerMinutes += power;
+      });
+      
+      // Convert to kWh: (Total Watt-minutes) / 1000 / 60 = kWh
+      const energyFromSamples = totalPowerMinutes / 1000 / 60;
+      
+      // Extrapolate to 30 days based on sample rate
+      // 30 days = 43,200 minutes
+      const minutesInMonth = 30 * 24 * 60; // 43,200 minutes
+      const samplingRate = entradaData.length; // minutes of data we have
+      
+      if (samplingRate > 0) {
+        // Scale up to full month
+        monthlyEnergy = (energyFromSamples / samplingRate) * minutesInMonth;
+      }
+    }
+
+    // Calculate max and min power from all devices (excluding Entrada)
+    const filteredData = allData.filter(item => {
+      const deviceLower = item.device?.toLowerCase() || '';
+      const deviceNameLower = item.deviceName?.toLowerCase() || '';
+      return !deviceLower.includes('entrada de energia') && !deviceNameLower.includes('entrada de energia');
+    });
+
+    let maxPower = 0;
+    let minPower = Infinity;
+    
+    filteredData.forEach(item => {
+      const power = (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
+      if (power > maxPower) maxPower = power;
+      if (power < minPower && power > 0) minPower = power;
+    });
+
+    if (minPower === Infinity) minPower = 0;
+
+    // Calculate device contributions (last 15 minutes)
+    const now = currentTime;
+    const fifteenMinAgo = new Date(now.getTime() - 15 * 60 * 1000);
+    const recentData = filteredData.filter(item => new Date(item.timestamp) >= fifteenMinAgo);
+    
+    const deviceContributions = new Map<string, number>();
+    recentData.forEach(item => {
+      const power = (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
+      const deviceName = item.deviceName || item.device;
+      deviceContributions.set(deviceName, (deviceContributions.get(deviceName) || 0) + power);
+    });
+
+    const totalPower = Array.from(deviceContributions.values()).reduce((sum, p) => sum + p, 0);
+    let topConsumer = { name: 'N/A', percentage: 0 };
+    
+    if (totalPower > 0) {
+      let maxContribution = 0;
+      deviceContributions.forEach((power, name) => {
+        if (power > maxContribution) {
+          maxContribution = power;
+          topConsumer = {
+            name,
+            percentage: Math.round((power / totalPower) * 100)
+          };
+        }
+      });
+    }
+
+    // Estimate cost
+    // Formula: Cost = Energy (kWh) × Price (€/kWh)
+    // Price: 0.15 €/kWh (adjust as needed based on actual electricity rates)
+    const pricePerKWh = 0.15;
+    const estimatedCost = monthlyEnergy * pricePerKWh;
 
     return {
-      labels: timeLabels,
-      datasets: [
-        {
-          label: 'Total Power (W)',
-          data: powerValues,
-          borderColor: 'rgb(59, 130, 246)',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          tension: 0.3,
-          fill: true,
-          pointBackgroundColor: 'rgb(59, 130, 246)',
-          pointBorderColor: 'rgb(59, 130, 246)',
-          pointRadius: 3,
-        },
-      ],
+      monthlyEnergy: Math.round(monthlyEnergy),
+      maxPower: Math.round(maxPower / 1000 * 100) / 100,
+      minPower: Math.round(minPower / 1000 * 100) / 100,
+      topConsumer,
+      estimatedCost: Math.round(estimatedCost * 100) / 100
     };
-  }, [allData]);
+  }, [allData, currentTime]);
+
+  // Helper function for natural (alphanumeric) sorting
+  const naturalSort = (a: string, b: string): number => {
+    const re = /(\d+)|(\D+)/g;
+    const aParts = a.match(re) || [];
+    const bParts = b.match(re) || [];
+    
+    for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {
+      const aPart = aParts[i];
+      const bPart = bParts[i];
+      
+      // Check if both parts are numbers
+      const aNum = parseInt(aPart);
+      const bNum = parseInt(bPart);
+      
+      if (!isNaN(aNum) && !isNaN(bNum)) {
+        // Both are numbers, compare numerically
+        if (aNum !== bNum) return aNum - bNum;
+      } else {
+        // At least one is text, compare as strings
+        if (aPart !== bPart) return aPart.localeCompare(bPart);
+      }
+    }
+    
+    // If all parts are equal, shorter string comes first
+    return aParts.length - bParts.length;
+  };
+
+  // Helper function to get consistent color for a device based on its name
+  const getDeviceColor = (deviceName: string) => {
+    const colors = [
+      { bg: 'rgba(59, 130, 246, 0.8)', border: 'rgb(59, 130, 246)' },    // blue
+      { bg: 'rgba(16, 185, 129, 0.8)', border: 'rgb(16, 185, 129)' },    // green
+      { bg: 'rgba(245, 158, 11, 0.8)', border: 'rgb(245, 158, 11)' },    // yellow
+      { bg: 'rgba(239, 68, 68, 0.8)', border: 'rgb(239, 68, 68)' },      // red
+      { bg: 'rgba(139, 92, 246, 0.8)', border: 'rgb(139, 92, 246)' },    // purple
+      { bg: 'rgba(236, 72, 153, 0.8)', border: 'rgb(236, 72, 153)' },    // pink
+      { bg: 'rgba(6, 182, 212, 0.8)', border: 'rgb(6, 182, 212)' },      // cyan
+      { bg: 'rgba(251, 146, 60, 0.8)', border: 'rgb(251, 146, 60)' },    // orange
+      { bg: 'rgba(132, 204, 22, 0.8)', border: 'rgb(132, 204, 22)' },    // lime
+      { bg: 'rgba(20, 184, 166, 0.8)', border: 'rgb(20, 184, 166)' },    // teal
+      { bg: 'rgba(234, 179, 8, 0.8)', border: 'rgb(234, 179, 8)' },      // amber
+      { bg: 'rgba(168, 85, 247, 0.8)', border: 'rgb(168, 85, 247)' },    // violet
+      { bg: 'rgba(244, 114, 182, 0.8)', border: 'rgb(244, 114, 182)' },  // fuchsia
+      { bg: 'rgba(14, 165, 233, 0.8)', border: 'rgb(14, 165, 233)' },    // sky
+      { bg: 'rgba(34, 197, 94, 0.8)', border: 'rgb(34, 197, 94)' },      // emerald
+      { bg: 'rgba(249, 115, 22, 0.8)', border: 'rgb(249, 115, 22)' },    // deep orange
+      { bg: 'rgba(163, 230, 53, 0.8)', border: 'rgb(163, 230, 53)' },    // lime green
+      { bg: 'rgba(20, 184, 166, 0.8)', border: 'rgb(20, 184, 166)' },    // teal
+      { bg: 'rgba(124, 58, 237, 0.8)', border: 'rgb(124, 58, 237)' },    // indigo
+      { bg: 'rgba(219, 39, 119, 0.8)', border: 'rgb(219, 39, 119)' },    // rose
+    ];
+    
+    // Simple hash function to map device name to color index
+    let hash = 0;
+    for (let i = 0; i < deviceName.length; i++) {
+      hash = deviceName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  // Prepare stacked chart data for the last 15 minutes
+  const stackedChartData = useMemo(() => {
+    // Create 15 minute buckets first
+    const now = currentTime;
+    const buckets: Date[] = [];
+    const fifteenMinutesAgo = now.getTime() - (15 * 60000);
+    
+    for (let i = 14; i >= 0; i--) {
+      const bucketTime = new Date(now.getTime() - i * 60000);
+      bucketTime.setSeconds(0, 0);
+      buckets.push(bucketTime);
+    }
+
+    // Filter out "Entrada de energia" device AND only include data from last 15 minutes
+    const filteredData = allData.filter(item => {
+      const deviceLower = item.device?.toLowerCase() || '';
+      const deviceNameLower = item.deviceName?.toLowerCase() || '';
+      const timestamp = new Date(item.timestamp).getTime();
+      
+      return !deviceLower.includes('entrada de energia') && 
+             !deviceNameLower.includes('entrada de energia') &&
+             timestamp >= fifteenMinutesAgo;
+    });
+
+    // Get unique devices and sort them naturally (D1, D2... D9, D10, not D1, D10, D11... D2)
+    const deviceSet = new Set(filteredData.map(item => item.device));
+    const devices = Array.from(deviceSet).sort((a, b) => {
+      // Get display names for sorting
+      const aData = filteredData.find(d => d.device === a);
+      const bData = filteredData.find(d => d.device === b);
+      const aName = aData?.deviceName || a;
+      const bName = bData?.deviceName || b;
+      return naturalSort(aName, bName);
+    });
+    
+    if (devices.length === 0) {
+      return {
+        labels: buckets,
+        datasets: []
+      };
+    }
+
+    // For each device, track its latest value before or at each minute bucket
+    const deviceDataByMinute = new Map<string, Map<number, number>>();
+    
+    devices.forEach(device => {
+      deviceDataByMinute.set(device, new Map());
+    });
+
+    // Create a device data cache sorted by timestamp for efficient lookup
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const deviceDataCache = new Map<string, any[]>();
+    devices.forEach(device => {
+      const devicePoints = filteredData
+        .filter(item => item.device === device)
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      deviceDataCache.set(device, devicePoints);
+    });
+
+    // For each bucket, find the most recent value for each device
+    buckets.forEach((bucketTime, bucketIndex) => {
+      const bucketTimestamp = bucketTime.getTime();
+      
+      devices.forEach(device => {
+        const devicePoints = deviceDataCache.get(device) || [];
+        let latestValue = 0;
+        
+        // Find the most recent data point for this device at or before this bucket time
+        // But within the last 5 minutes (to avoid stale data)
+        const fiveMinutesAgo = bucketTimestamp - (5 * 60000);
+        
+        for (let i = devicePoints.length - 1; i >= 0; i--) {
+          const dataPoint = devicePoints[i];
+          const dataTimestamp = new Date(dataPoint.timestamp).getTime();
+          
+          if (dataTimestamp <= bucketTimestamp && dataTimestamp >= fiveMinutesAgo) {
+            // Found a recent value (convert W to kW)
+            const totalWatts = (dataPoint.L1?.P || 0) + (dataPoint.L2?.P || 0) + (dataPoint.L3?.P || 0);
+            latestValue = totalWatts / 1000; // Convert to kW
+            break;
+          }
+        }
+        
+        deviceDataByMinute.get(device)?.set(bucketIndex, latestValue);
+      });
+    });
+
+    // Create datasets for each device - stacked area chart style
+    const datasets = devices.map((device) => {
+      const deviceValues = deviceDataByMinute.get(device);
+      // Ensure we have a value for each bucket (0 if no data)
+      const data = buckets.map((_, bucketIndex) => {
+        const value = deviceValues?.get(bucketIndex);
+        return value !== undefined ? value : 0;
+      });
+      
+      // Get device name for label (use deviceName if available)
+      const deviceData = filteredData.find(d => d.device === device);
+      const deviceLabel = deviceData?.deviceName || device;
+      
+      // Get consistent color based on device name
+      const color = getDeviceColor(deviceLabel);
+
+      return {
+        label: deviceLabel,
+        data: data,
+        backgroundColor: color.bg,
+        borderColor: color.border,
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4, // Smooth curves
+        pointRadius: 0, // Hide points for cleaner look
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: color.border,
+        pointHoverBorderColor: '#fff',
+        pointHoverBorderWidth: 2,
+      };
+    });
+
+    return {
+      labels: buckets,
+      datasets: datasets
+    };
+  }, [allData, currentTime]);
 
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'bottom' as const,
+        labels: {
+          boxWidth: 10,
+          padding: 6,
+          font: {
+            size: 9,
+            family: "'Inter', 'system-ui', sans-serif"
+          },
+          usePointStyle: true,
+          pointStyle: 'circle',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          sort: (a: any, b: any) => {
+            return naturalSort(a.text, b.text);
+          }
+        },
+        maxHeight: 120,
+      },
+      tooltip: {
+        enabled: true,
+        mode: 'index' as const,
+        intersect: false,
+        position: 'nearest' as const,
+        backgroundColor: 'rgba(17, 24, 39, 0.97)',
+        titleColor: '#fff',
+        bodyColor: '#e5e7eb',
+        borderColor: 'rgba(59, 130, 246, 0.5)',
+        borderWidth: 1,
+        padding: 12,
+        displayColors: true,
+        boxWidth: 10,
+        boxHeight: 10,
+        usePointStyle: true,
+        bodySpacing: 5,
+        titleFont: {
+          size: 13,
+          weight: 'bold' as const,
+          family: "'Inter', 'system-ui', sans-serif"
+        },
+        bodyFont: {
+          size: 11,
+          family: "'Inter', 'system-ui', sans-serif"
+        },
+        footerFont: {
+          size: 12,
+          weight: 'bold' as const,
+          family: "'Inter', 'system-ui', sans-serif"
+        },
+        yAlign: 'center' as const,
+        xAlign: 'left' as const,
+        caretPadding: 10,
+        callbacks: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          title: function(tooltipItems: any[]) {
+            if (tooltipItems.length > 0) {
+              const date = new Date(tooltipItems[0].parsed.x);
+              return date.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false 
+              });
+            }
+            return '';
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          beforeBody: function(tooltipItems: any[]) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const activeDevices = tooltipItems.filter((item: any) => item.parsed.y > 0.1).length;
+            if (activeDevices > 10) {
+              return [`📊 ${activeDevices} active devices - Top 10 shown`];
+            }
+            return [];
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: function(context: any) {
+            // Don't show devices with 0 or very low power
+            if (!context.parsed.y || context.parsed.y < 0.1) {
+              return null;
+            }
+            
+            // Get all items at this point and sort by power
+            const allItems = context.chart.tooltip.dataPoints || [];
+            const sortedItems = [...allItems]
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .filter((item: any) => item.parsed.y >= 0.1)
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .sort((a: any, b: any) => b.parsed.y - a.parsed.y);
+            
+            // Find index of current item in sorted list
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const currentIndex = sortedItems.findIndex((item: any) => 
+              item.datasetIndex === context.datasetIndex
+            );
+            
+            // Only show top 10 devices
+            if (currentIndex >= 10) {
+              return null;
+            }
+            
+            let label = context.dataset.label || '';
+            if (label) {
+              label += ': ';
+            }
+            label += context.parsed.y.toFixed(2) + ' kW';
+            return label;
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          afterBody: function(tooltipItems: any[]) {
+            // Sort by power and calculate others
+            const sortedItems = [...tooltipItems]
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .filter((item: any) => item.parsed.y >= 0.1)
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .sort((a: any, b: any) => b.parsed.y - a.parsed.y);
+            
+            if (sortedItems.length > 10) {
+              const othersCount = sortedItems.length - 10;
+              const othersPower = sortedItems
+                .slice(10)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                .reduce((sum: number, item: any) => sum + item.parsed.y, 0);
+              
+              return [`\n+ ${othersCount} other device${othersCount > 1 ? 's' : ''}: ${othersPower.toFixed(2)} kW`];
+            }
+            return [];
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          footer: function(tooltipItems: any[]) {
+            let sum = 0;
+            tooltipItems.forEach(function(tooltipItem) {
+              sum += tooltipItem.parsed.y;
+            });
+            return '━━━━━━━━━━━━━\nTotal: ' + sum.toFixed(2) + ' kW';
+          }
+        }
+      },
+      filler: {
+        propagate: true
+      }
+    },
     scales: {
       x: {
         type: 'time' as const,
@@ -143,33 +555,64 @@ export default function PortEnergyOverview() {
           displayFormats: {
             minute: 'HH:mm',
             hour: 'HH:mm'
-          }
+          },
+          unit: 'minute' as const,
+          tooltipFormat: 'MMM dd, HH:mm',
+          minUnit: 'minute' as const,
         },
+        stacked: true,
         grid: {
           display: false,
+          drawBorder: false,
         },
+        ticks: {
+          maxRotation: 0,
+          autoSkip: true,
+          maxTicksLimit: 8,
+          font: {
+            size: 11,
+            family: "'Inter', 'system-ui', sans-serif"
+          },
+          color: '#6b7280'
+        },
+        border: {
+          display: false
+        }
       },
       y: {
         beginAtZero: true,
+        stacked: true,
         grid: {
-          color: 'rgba(0, 0, 0, 0.1)',
+          color: 'rgba(0, 0, 0, 0.08)',
+          drawBorder: false,
         },
-      },
-    },
-    plugins: {
-      legend: {
-        display: false,
-      },
-      tooltip: {
-        mode: 'index' as const,
-        intersect: false,
+        ticks: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          callback: function(value: any) {
+            return value.toLocaleString() + ' kW';
+          },
+          font: {
+            size: 11,
+            family: "'Inter', 'system-ui', sans-serif"
+          },
+          color: '#6b7280',
+          padding: 8
+        },
+        border: {
+          display: false,
+          dash: [5, 5]
+        }
       },
     },
     interaction: {
-      mode: 'nearest' as const,
-      axis: 'x' as const,
+      mode: 'index' as const,
       intersect: false,
     },
+    elements: {
+      line: {
+        tension: 0.4
+      }
+    }
   };
 
   if (isLoading) {
@@ -231,7 +674,7 @@ export default function PortEnergyOverview() {
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Current Power</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{summaryStats.currentTotalPower.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Watts</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">kW (Entrada de Energia)</p>
             </div>
           </div>
         </div>
@@ -247,17 +690,84 @@ export default function PortEnergyOverview() {
         </div>
       </div>
 
-      {/* Power Trend Chart */}
-      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
-        <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-3">Real-time Power Trend</h3>
-        <div className="h-48">
-          {allData.length > 0 ? (
-            <Line data={trendChartData} options={chartOptions} />
+      {/* Stacked Device Power Chart */}
+      <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-lg">
+        <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 flex items-center">
+          <Activity className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
+          Device Power Distribution - Last 15 Minutes
+        </h3>
+        <div className="h-96">
+          {stackedChartData.datasets.length > 0 ? (
+            <Line data={stackedChartData} options={chartOptions} />
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
-              {isConnected ? "Waiting for data..." : "Connect to view real-time data"}
+              {isConnected ? "Waiting for device data..." : "Connect to view real-time data"}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Advanced Analytics - 4 boxes below */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 rounded-lg p-4 border border-indigo-200 dark:border-indigo-700">
+          <div className="flex items-center">
+            <Zap className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Monthly Energy</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{analyticsStats.monthlyEnergy.toLocaleString()}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">kWh (Last 30 days)</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-rose-50 to-rose-100 dark:from-rose-900/20 dark:to-rose-800/20 rounded-lg p-4 border border-rose-200 dark:border-rose-700">
+          <div className="flex items-center">
+            <TrendingUp className="h-8 w-8 text-rose-600 dark:text-rose-400" />
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Peak Power</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{analyticsStats.maxPower.toLocaleString()}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">kW (Maximum)</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-lg p-4 border border-emerald-200 dark:border-emerald-700">
+          <div className="flex items-center">
+            <TrendingDown className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Min Power</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{analyticsStats.minPower.toLocaleString()}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">kW (Minimum)</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 rounded-lg p-4 border border-amber-200 dark:border-amber-700">
+          <div className="flex items-center">
+            <PieChart className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Top Consumer</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{analyticsStats.topConsumer.name}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{analyticsStats.topConsumer.percentage}% of total</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Energy Cost Estimate */}
+      <div className="mt-6 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <DollarSign className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Estimated Monthly Cost</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">€{analyticsStats.estimatedCost.toLocaleString()}</p>
+            </div>
+          </div>
+          <div className="text-right text-xs text-gray-500 dark:text-gray-400">
+            <p>Based on 0.15 €/kWh</p>
+            <p>{analyticsStats.monthlyEnergy.toLocaleString()} kWh consumed</p>
+          </div>
         </div>
       </div>
 

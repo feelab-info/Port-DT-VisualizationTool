@@ -153,7 +153,7 @@ export function initSocketHandlers(io: Server): void {
         const todayDocs = await eGaugeCollection
           .find({ timestamp: { $gte: queryStartDate } })
           .sort({ timestamp: -1 })  // Sort by timestamp descending
-          .limit(100)  // Limit to 100 most recent documents
+          .limit(1000)  // Limit to 1000 most recent documents (enough for 15+ minutes with 33 devices)
           .toArray();
         
         if (todayDocs.length > 0) {

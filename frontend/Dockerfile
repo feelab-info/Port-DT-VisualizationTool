@@ -1,6 +1,6 @@
 # Frontend Dockerfile - Multi-stage build
 # Stage 1: Build
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -12,7 +12,8 @@ ARG NEXT_PUBLIC_BACKEND_URL
 ENV NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
 
 # Install dependencies including dev dependencies for building
-RUN npm ci && npm cache clean --force
+# Using --legacy-peer-deps to handle React 19 upgrade (security fix) with packages expecting React 18
+RUN npm ci --legacy-peer-deps && npm cache clean --force
 
 # Copy source code
 COPY . .
@@ -21,7 +22,7 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Production
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 
 # Install wget for health checks
 RUN apk add --no-cache wget

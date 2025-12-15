@@ -58,7 +58,7 @@ class EnergyDataService extends EventEmitter {
       if (this.backgroundData.length > 0) {
         this.data = [...this.data, ...this.backgroundData]
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-          .slice(0, 100);
+          .slice(0, 1000);
         this.backgroundData = [];
         
         // Notify listeners of the merged data
@@ -175,10 +175,10 @@ class EnergyDataService extends EventEmitter {
         const uniqueNewData = validData.filter(item => !existingIds.has(item._id));
         
         if (uniqueNewData.length > 0) {
-          // Merge, sort newest-first, and keep only latest 100
+          // Merge, sort newest-first, and keep only latest 1000 (enough for 15+ minutes with 33 devices)
           this.data = [...this.data, ...uniqueNewData]
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-            .slice(0, 100);
+            .slice(0, 1000);
           this.emit('data-update', this.data);
           
           // Update device data health monitor
@@ -198,10 +198,10 @@ class EnergyDataService extends EventEmitter {
       }
       
       if (validData && validData.length > 0) {
-        // Ensure newest-first and cap at 100
+        // Ensure newest-first and cap at 1000 (enough for 15+ minutes with 33 devices)
         this.data = [...validData]
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-          .slice(0, 100);
+          .slice(0, 1000);
         this.isInitialDataLoaded = true;
         this.emit('data-update', this.data);
         

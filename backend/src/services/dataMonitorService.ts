@@ -52,7 +52,7 @@ export async function watchMongoChanges(io: Server): Promise<void> {
       const newDocs = await eGaugeCollection
         .find({ timestamp: { $gt: lastUpdate } })
         .sort({ timestamp: 1 })  // Sort ascending to get oldest first
-        .limit(33)  // Limit to 33 documents per update
+        .limit(100)  // Limit to 100 documents per update (allow multiple updates per device per cycle)
         .toArray();
 
       if (newDocs.length > 0) {
