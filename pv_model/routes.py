@@ -16,7 +16,7 @@ from pvlib_service import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/pv-system", tags=["PV System"])
+router = APIRouter(prefix="/pv_model", tags=["PV System"])
 
 
 @router.post("/configure")
