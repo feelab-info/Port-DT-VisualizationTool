@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { EnergyData } from '@/services/EnergyDataService';
 import EnergyCharts from './EnergyCharts';
 
@@ -19,7 +19,15 @@ export default function DataDisplay({
   isHistoricalView,
   isLoading
 }: DataDisplayProps) {
-  const [activeTab, setActiveTab] = useState<string>("table");
+  // Default to charts for historical view (better for large datasets)
+  const [activeTab, setActiveTab] = useState<string>(isHistoricalView ? "charts" : "table");
+  
+  // Switch to charts when entering historical mode
+  useEffect(() => {
+    if (isHistoricalView && filteredData.length > 0) {
+      setActiveTab("charts");
+    }
+  }, [isHistoricalView, filteredData.length]);
 
   // Helper function for safe rounding
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -316,21 +324,40 @@ export default function DataDisplay({
         </div>
       ) : (
         <div>
-          {/* Tab Navigation */}
+          {/* Tab Navigation - Charts first for historical view */}
           <div className="mb-4 border-b border-gray-200 dark:border-gray-600">
             <div className="flex space-x-8">
-              <button
-                className={`py-2 px-4 font-medium ${activeTab === 'table' ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
-                onClick={() => setActiveTab('table')}
-              >
-                Table View
-              </button>
-              <button
-                className={`py-2 px-4 font-medium ${activeTab === 'charts' ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
-                onClick={() => setActiveTab('charts')}
-              >
-                Charts
-              </button>
+              {isHistoricalView ? (
+                <>
+                  <button
+                    className={`py-2 px-4 font-medium ${activeTab === 'charts' ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                    onClick={() => setActiveTab('charts')}
+                  >
+                    Charts
+                  </button>
+                  <button
+                    className={`py-2 px-4 font-medium ${activeTab === 'table' ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                    onClick={() => setActiveTab('table')}
+                  >
+                    Table View
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className={`py-2 px-4 font-medium ${activeTab === 'table' ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                    onClick={() => setActiveTab('table')}
+                  >
+                    Table View
+                  </button>
+                  <button
+                    className={`py-2 px-4 font-medium ${activeTab === 'charts' ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                    onClick={() => setActiveTab('charts')}
+                  >
+                    Charts
+                  </button>
+                </>
+              )}
             </div>
           </div>
           

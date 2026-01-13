@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { useEnergyData } from '@/hooks/useEnergyData';
-import { Activity, Zap, Database, Wifi, WifiOff, TrendingUp, TrendingDown, PieChart, DollarSign } from 'lucide-react';
+import { Activity, Zap, Database, Wifi, WifiOff, TrendingUp, PieChart, DollarSign, Clock } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -33,6 +33,8 @@ ChartJS.register(
   Filler
 );
 
+type TimePeriod = '15min' | '30min' | '1hour' | '3hours' | '6hours';
+
 export default function PortEnergyOverview() {
   const { 
     isConnected, 
@@ -42,6 +44,12 @@ export default function PortEnergyOverview() {
 
   // State to force chart update every minute
   const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // State for selected time period
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('15min');
+  
+  // State for loading additional data
+  const [isFetchingAdditionalData, setIsFetchingAdditionalData] = useState(false);
 
   // Update current time every minute to refresh chart
   useEffect(() => {
@@ -51,6 +59,82 @@ export default function PortEnergyOverview() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Helper function to get minutes for selected time period
+  const getTimePeriodMinutes = (period: TimePeriod): number => {
+    switch (period) {
+      case '15min': return 15;
+      case '30min': return 30;
+      case '1hour': return 60;
+      case '3hours': return 180;
+      case '6hours': return 360;
+      default: return 15;
+    }
+  };
+
+  // Check if we have enough data for the selected time period
+  // If not, fetch additional historical data
+  useEffect(() => {
+    const checkAndFetchData = async () => {
+      if (!isConnected || allData.length === 0) return;
+      
+      const periodMinutes = getTimePeriodMinutes(timePeriod);
+      const now = new Date();
+      const periodAgo = new Date(now.getTime() - periodMinutes * 60 * 1000);
+      
+      // Check oldest data point we have
+      const oldestDataPoint = allData.length > 0 
+        ? new Date(allData[allData.length - 1].timestamp)
+        : now;
+      
+      // If our oldest data is newer than what we need, fetch more
+      const needsMoreData = oldestDataPoint > periodAgo;
+      
+      // Only fetch if we need more data and period is longer than 30 minutes
+      if (needsMoreData && periodMinutes > 30 && !isFetchingAdditionalData) {
+        setIsFetchingAdditionalData(true);
+        
+        try {
+          const { energyDataService } = await import('@/services/EnergyDataService');
+          
+          // Calculate how far back we need to go
+          const fetchFromDate = new Date(periodAgo);
+          fetchFromDate.setHours(0, 0, 0, 0); // Start of day
+          
+          const today = new Date();
+          today.setHours(23, 59, 59, 999);
+          
+          // Fetch historical data for all devices
+          const historicalData = await energyDataService.fetchHistoricalData(
+            '', // empty deviceId means all devices
+            fetchFromDate.toISOString().split('T')[0],
+            today.toISOString().split('T')[0]
+          );
+          
+          console.log(`Fetched ${historicalData.length} additional data points for ${timePeriod} view`);
+        } catch (error) {
+          console.error('Failed to fetch additional data:', error);
+        } finally {
+          setIsFetchingAdditionalData(false);
+        }
+      }
+    };
+    
+    checkAndFetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timePeriod, allData.length, isConnected, isFetchingAdditionalData]);
+
+  // Helper function to get display label for time period
+  const getTimePeriodLabel = (period: TimePeriod): string => {
+    switch (period) {
+      case '15min': return 'Last 15 Minutes';
+      case '30min': return 'Last 30 Minutes';
+      case '1hour': return 'Last 1 Hour';
+      case '3hours': return 'Last 3 Hours';
+      case '6hours': return 'Last 6 Hours';
+      default: return 'Last 15 Minutes';
+    }
+  };
 
   // Calculate summary statistics
   const summaryStats = useMemo(() => {
@@ -120,7 +204,6 @@ export default function PortEnergyOverview() {
       return {
         monthlyEnergy: 0,
         maxPower: 0,
-        minPower: 0,
         topConsumer: { name: 'N/A', percentage: 0 },
         estimatedCost: 0
       };
@@ -157,7 +240,7 @@ export default function PortEnergyOverview() {
       }
     }
 
-    // Calculate max and min power from all devices (excluding Entrada)
+    // Calculate max power from all devices (excluding Entrada)
     const filteredData = allData.filter(item => {
       const deviceLower = item.device?.toLowerCase() || '';
       const deviceNameLower = item.deviceName?.toLowerCase() || '';
@@ -165,20 +248,17 @@ export default function PortEnergyOverview() {
     });
 
     let maxPower = 0;
-    let minPower = Infinity;
     
     filteredData.forEach(item => {
       const power = (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
       if (power > maxPower) maxPower = power;
-      if (power < minPower && power > 0) minPower = power;
     });
 
-    if (minPower === Infinity) minPower = 0;
-
-    // Calculate device contributions (last 15 minutes)
+    // Calculate device contributions based on selected time period
     const now = currentTime;
-    const fifteenMinAgo = new Date(now.getTime() - 15 * 60 * 1000);
-    const recentData = filteredData.filter(item => new Date(item.timestamp) >= fifteenMinAgo);
+    const periodMinutes = getTimePeriodMinutes(timePeriod);
+    const periodAgo = new Date(now.getTime() - periodMinutes * 60 * 1000);
+    const recentData = filteredData.filter(item => new Date(item.timestamp) >= periodAgo);
     
     const deviceContributions = new Map<string, number>();
     recentData.forEach(item => {
@@ -212,11 +292,10 @@ export default function PortEnergyOverview() {
     return {
       monthlyEnergy: Math.round(monthlyEnergy),
       maxPower: Math.round(maxPower / 1000 * 100) / 100,
-      minPower: Math.round(minPower / 1000 * 100) / 100,
       topConsumer,
       estimatedCost: Math.round(estimatedCost * 100) / 100
     };
-  }, [allData, currentTime]);
+  }, [allData, currentTime, timePeriod]);
 
   // Helper function for natural (alphanumeric) sorting
   const naturalSort = (a: string, b: string): number => {
@@ -278,20 +357,34 @@ export default function PortEnergyOverview() {
     return colors[Math.abs(hash) % colors.length];
   };
 
-  // Prepare stacked chart data for the last 15 minutes
+  // Prepare stacked chart data for the selected time period
   const stackedChartData = useMemo(() => {
-    // Create 15 minute buckets first
+    // Get the number of minutes for the selected period
+    const periodMinutes = getTimePeriodMinutes(timePeriod);
+    
+    // Create minute buckets for the selected period
     const now = currentTime;
     const buckets: Date[] = [];
-    const fifteenMinutesAgo = now.getTime() - (15 * 60000);
+    const periodAgo = now.getTime() - (periodMinutes * 60000);
     
-    for (let i = 14; i >= 0; i--) {
-      const bucketTime = new Date(now.getTime() - i * 60000);
+    // For longer periods, use appropriate bucket intervals
+    let bucketInterval = 1; // Default: 1 minute per bucket
+    let numBuckets = periodMinutes;
+    
+    // Adjust bucket size for longer periods to keep chart readable
+    // Note: For 24-hour view, we aggregate data into ~2.4 minute intervals (60 buckets)
+    if (periodMinutes > 60) {
+      bucketInterval = Math.ceil(periodMinutes / 60); // Aim for ~60 buckets max
+      numBuckets = Math.ceil(periodMinutes / bucketInterval);
+    }
+    
+    for (let i = numBuckets - 1; i >= 0; i--) {
+      const bucketTime = new Date(now.getTime() - i * bucketInterval * 60000);
       bucketTime.setSeconds(0, 0);
       buckets.push(bucketTime);
     }
 
-    // Filter out "Entrada de energia" device AND only include data from last 15 minutes
+    // Filter out "Entrada de energia" device AND only include data from selected time period
     const filteredData = allData.filter(item => {
       const deviceLower = item.device?.toLowerCase() || '';
       const deviceNameLower = item.deviceName?.toLowerCase() || '';
@@ -299,7 +392,7 @@ export default function PortEnergyOverview() {
       
       return !deviceLower.includes('entrada de energia') && 
              !deviceNameLower.includes('entrada de energia') &&
-             timestamp >= fifteenMinutesAgo;
+             timestamp >= periodAgo;
     });
 
     // Get unique devices and sort them naturally (D1, D2... D9, D10, not D1, D10, D11... D2)
@@ -401,9 +494,10 @@ export default function PortEnergyOverview() {
       labels: buckets,
       datasets: datasets
     };
-  }, [allData, currentTime]);
+  }, [allData, currentTime, timePeriod]);
 
-  const chartOptions = {
+  // Dynamic chart options based on selected time period
+  const chartOptions = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -556,7 +650,7 @@ export default function PortEnergyOverview() {
             minute: 'HH:mm',
             hour: 'HH:mm'
           },
-          unit: 'minute' as const,
+          unit: timePeriod === '6hours' ? 'hour' as const : 'minute' as const,
           tooltipFormat: 'MMM dd, HH:mm',
           minUnit: 'minute' as const,
         },
@@ -613,7 +707,7 @@ export default function PortEnergyOverview() {
         tension: 0.4
       }
     }
-  };
+  }), [timePeriod]);
 
   if (isLoading) {
     return (
@@ -690,11 +784,84 @@ export default function PortEnergyOverview() {
         </div>
       </div>
 
+      {/* Time Period Selector */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700 mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <label className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <Clock className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+            View Time Period
+          </label>
+          {isFetchingAdditionalData && (
+            <div className="flex items-center text-xs text-blue-600 dark:text-blue-400">
+              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-2"></div>
+              Loading additional data...
+            </div>
+          )}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <button
+            onClick={() => setTimePeriod('15min')}
+            disabled={isFetchingAdditionalData}
+            className={`px-4 py-3 rounded-lg font-medium transition-all duration-200 border-2 ${
+              timePeriod === '15min'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-600 hover:shadow-sm'
+            } ${isFetchingAdditionalData ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <div className="text-sm">15 Minutes</div>
+          </button>
+          <button
+            onClick={() => setTimePeriod('30min')}
+            disabled={isFetchingAdditionalData}
+            className={`px-4 py-3 rounded-lg font-medium transition-all duration-200 border-2 ${
+              timePeriod === '30min'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-600 hover:shadow-sm'
+            } ${isFetchingAdditionalData ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <div className="text-sm">30 Minutes</div>
+          </button>
+          <button
+            onClick={() => setTimePeriod('1hour')}
+            disabled={isFetchingAdditionalData}
+            className={`px-4 py-3 rounded-lg font-medium transition-all duration-200 border-2 ${
+              timePeriod === '1hour'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-600 hover:shadow-sm'
+            } ${isFetchingAdditionalData ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <div className="text-sm">1 Hour</div>
+          </button>
+          <button
+            onClick={() => setTimePeriod('3hours')}
+            disabled={isFetchingAdditionalData}
+            className={`px-4 py-3 rounded-lg font-medium transition-all duration-200 border-2 ${
+              timePeriod === '3hours'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-600 hover:shadow-sm'
+            } ${isFetchingAdditionalData ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <div className="text-sm">3 Hours</div>
+          </button>
+          <button
+            onClick={() => setTimePeriod('6hours')}
+            disabled={isFetchingAdditionalData}
+            className={`px-4 py-3 rounded-lg font-medium transition-all duration-200 border-2 ${
+              timePeriod === '6hours'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-600 hover:shadow-sm'
+            } ${isFetchingAdditionalData ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <div className="text-sm">6 Hours</div>
+          </button>
+        </div>
+      </div>
+
       {/* Stacked Device Power Chart */}
       <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-lg">
         <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 flex items-center">
           <Activity className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
-          Device Power Distribution - Last 15 Minutes
+          Device Power Distribution - {getTimePeriodLabel(timePeriod)}
         </h3>
         <div className="h-96">
           {stackedChartData.datasets.length > 0 ? (
@@ -707,8 +874,8 @@ export default function PortEnergyOverview() {
         </div>
       </div>
 
-      {/* Advanced Analytics - 4 boxes below */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+      {/* Advanced Analytics - 3 boxes below */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
         <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 rounded-lg p-4 border border-indigo-200 dark:border-indigo-700">
           <div className="flex items-center">
             <Zap className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
@@ -731,24 +898,13 @@ export default function PortEnergyOverview() {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-lg p-4 border border-emerald-200 dark:border-emerald-700">
-          <div className="flex items-center">
-            <TrendingDown className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Min Power</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{analyticsStats.minPower.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">kW (Minimum)</p>
-            </div>
-          </div>
-        </div>
-
         <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 rounded-lg p-4 border border-amber-200 dark:border-amber-700">
           <div className="flex items-center">
             <PieChart className="h-8 w-8 text-amber-600 dark:text-amber-400" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Top Consumer</p>
               <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{analyticsStats.topConsumer.name}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{analyticsStats.topConsumer.percentage}% of total</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{analyticsStats.topConsumer.percentage}% ({getTimePeriodLabel(timePeriod)})</p>
             </div>
           </div>
         </div>

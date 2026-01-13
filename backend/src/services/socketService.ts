@@ -150,10 +150,12 @@ export function initSocketHandlers(io: Server): void {
         
         // Query for documents from today - optimized
         // Note: hint removed temporarily - will auto-use index if it exists
+        // Default limit optimized for fast initial load (15-30 minutes)
+        // Additional data will be fetched on-demand when user selects longer periods
         const todayDocs = await eGaugeCollection
           .find({ timestamp: { $gte: queryStartDate } })
           .sort({ timestamp: -1 })  // Sort by timestamp descending
-          .limit(1000)  // Limit to 1000 most recent documents (enough for 15+ minutes with 33 devices)
+          .limit(1000)  // Fast initial load: ~15-30 minutes of data with 33 devices
           .toArray();
         
         if (todayDocs.length > 0) {
