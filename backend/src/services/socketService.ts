@@ -155,7 +155,7 @@ export function initSocketHandlers(io: Server): void {
         const todayDocs = await eGaugeCollection
           .find({ timestamp: { $gte: queryStartDate } })
           .sort({ timestamp: -1 })  // Sort by timestamp descending
-          .limit(1000)  // Fast initial load: ~15-30 minutes of data with 33 devices
+          .limit(12000)
           .toArray();
         
         if (todayDocs.length > 0) {
