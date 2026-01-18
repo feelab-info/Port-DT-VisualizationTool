@@ -2,6 +2,7 @@
 import { VesselDetailPageClient } from './client';
 
 // Server component to handle params properly and pass data to client component
-export default function VesselDetailPage({ params }: { params: { id: string } }) {
-  return <VesselDetailPageClient id={params.id} />;
+export default async function VesselDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <VesselDetailPageClient id={id} />;
 } 
