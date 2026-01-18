@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw, Maximize2, X, Info } from 'lucide-react';
+import { useEnergyData } from '@/hooks/useEnergyData';
 
 // ============================================
 // SVG Components
@@ -52,26 +53,61 @@ const Transformer: React.FC<{ x: number; y: number }> = ({ x, y }) => (
   <g>
     <circle cx={x} cy={y - 12} r={14} fill="none" stroke="#7c3aed" strokeWidth={2} />
     <circle cx={x} cy={y + 12} r={14} fill="none" stroke="#7c3aed" strokeWidth={2} />
-    <text x={x + 26} y={y + 4} fontSize={10} fill="#7c3aed" fontWeight="600">Transformador</text>
+    <text x={x + 26} y={y + 4} fontSize={10} fill="#7c3aed" fontWeight="600">Transformer</text>
   </g>
 );
 
-const Line: React.FC<{ x1: number; y1: number; x2: number; y2: number; color?: string; dashed?: boolean; width?: number }> = ({ 
-  x1, y1, x2, y2, color = '#475569', dashed = false, width = 2
+const Line: React.FC<{ x1: number; y1: number; x2: number; y2: number; color?: string; dashed?: boolean; width?: number; animated?: boolean }> = ({ 
+  x1, y1, x2, y2, color = '#475569', dashed = false, width = 2, animated = false
 }) => (
-  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={width} strokeDasharray={dashed ? '6,4' : undefined} />
+  <>
+    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={width} strokeDasharray={dashed ? '6,4' : undefined} />
+    {animated && (
+      <line 
+        x1={x1} y1={y1} x2={x2} y2={y2} 
+        stroke={color} 
+        strokeWidth={width} 
+        strokeDasharray="10 10"
+        strokeOpacity="0.7"
+        style={{
+          animation: 'flow 1.5s linear infinite'
+        }}
+      >
+        <animate
+          attributeName="stroke-dashoffset"
+          from="0"
+          to="20"
+          dur="1.5s"
+          repeatCount="indefinite"
+        />
+      </line>
+    )}
+  </>
 );
 
 const BusBar: React.FC<{ x: number; y: number; width: number; color?: string }> = ({ x, y, width, color = '#1e3a8a' }) => (
   <rect x={x - width/2} y={y - 3} width={width} height={6} fill={color} rx={2} />
 );
 
-const EndPanel: React.FC<{ x: number; y: number; label: string; id: string; onClick?: (id: string) => void; color?: string }> = ({
-  x, y, label, id, onClick, color = '#dbeafe'
+const EndPanel: React.FC<{ 
+  x: number; 
+  y: number; 
+  label: string; 
+  id: string; 
+  onClick?: (id: string) => void; 
+  color?: string;
+  powerValue?: number;
+}> = ({
+  x, y, label, id, onClick, color = '#dbeafe', powerValue
 }) => (
   <g className="cursor-pointer hover:opacity-75" onClick={() => onClick?.(id)}>
     <rect x={x - 32} y={y - 12} width={64} height={24} fill={color} stroke="#3b82f6" strokeWidth={1.5} rx={4} />
-    <text x={x} y={y + 4} textAnchor="middle" fontSize={7} fontWeight="600" fill="#1e40af">{label}</text>
+    <text x={x} y={y + 2} textAnchor="middle" fontSize={7} fontWeight="600" fill="#1e40af">{label}</text>
+    {powerValue !== undefined && powerValue >= 0 && (
+      <text x={x} y={y + 10} textAnchor="middle" fontSize={6} fontWeight="bold" fill="#059669">
+        {powerValue.toFixed(2)} kW
+      </text>
+    )}
   </g>
 );
 
@@ -80,20 +116,48 @@ const EndPanel: React.FC<{ x: number; y: number; label: string; id: string; onCl
 // ============================================
 
 export default function ElectricalDiagram() {
-  const [scale, setScale] = useState(0.5);
+  const { allData } = useEnergyData();
+  const [scale, setScale] = useState(1.0);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [selectedComponent, setSelectedComponent] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Zoom limits: min 35%, max 150%
-  const MIN_ZOOM = 1.35;
-  const MAX_ZOOM = 2.5;
+  // Get latest power values for each device
+  const devicePowerMap = useMemo(() => {
+    const powerMap = new Map<string, number>();
+    
+    if (!allData.length) return powerMap;
+    
+    // Get the latest data point for each device
+    const deviceLatestData = new Map();
+    allData.forEach(item => {
+      const deviceName = item.deviceName || item.device;
+      const existing = deviceLatestData.get(deviceName);
+      if (!existing || new Date(item.timestamp) > new Date(existing.timestamp)) {
+        deviceLatestData.set(deviceName, item);
+      }
+    });
+    
+    // Calculate power for each device
+    deviceLatestData.forEach((item, deviceName) => {
+      const power = (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
+      // Convert to kW and filter negative values
+      const powerKW = Math.max(0, power / 1000);
+      powerMap.set(deviceName, powerKW);
+    });
+    
+    return powerMap;
+  }, [allData]);
+
+  // Zoom limits: min 100%, max 350%
+  const MIN_ZOOM = 1.0;
+  const MAX_ZOOM = 4.5;
 
   const handleZoomIn = () => setScale(s => Math.min(s + 0.1, MAX_ZOOM));
   const handleZoomOut = () => setScale(s => Math.max(s - 0.1, MIN_ZOOM));
-  const handleReset = useCallback(() => { setScale(0.5); setPosition({ x: 0, y: 0 }); }, []);
+  const handleReset = useCallback(() => { setScale(1.0); setPosition({ x: 0, y: 0 }); }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 0) { setIsDragging(true); setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y }); }
@@ -157,9 +221,9 @@ export default function ElectricalDiagram() {
               <div className="p-2 bg-blue-500/20 rounded-lg">
                 <Info className="w-5 h-5 text-blue-400" />
               </div>
-              Diagrama Unifilar - Porto do Funchal
+              Single Line Diagram - Funchal Port
             </h2>
-            <p className="text-slate-400 text-sm mt-1 ml-12">Esquema de distribuição elétrica do demonstrador SHIFT2DC</p>
+            <p className="text-slate-400 text-sm mt-1 ml-12">SHIFT2DC Demonstrator Electrical Distribution Scheme</p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleZoomOut} className="p-2.5 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors" disabled={scale <= MIN_ZOOM}>
@@ -211,64 +275,64 @@ export default function ElectricalDiagram() {
           {/* ========================================== */}
           
           <text x={centerX} y={topY} textAnchor="middle" fontSize={16} fontWeight="bold" fill="#dc2626">
-            REDE ELÉTRICA (Utility Grid)
+            ELECTRICAL GRID (Utility Grid)
           </text>
-          <Line x1={centerX} y1={topY + 12} x2={centerX} y2={topY + 30} color="#dc2626" width={2.5} />
+          <Line x1={centerX} y1={topY + 12} x2={centerX} y2={topY + 30} color="#dc2626" width={2.5} animated />
           
           <Transformer x={centerX} y={topY + 55} />
-          <Line x1={centerX} y1={topY + 80} x2={centerX} y2={topY + 100} color="#7c3aed" width={2.5} />
+          <Line x1={centerX} y1={topY + 80} x2={centerX} y2={topY + 100} color="#7c3aed" width={2.5} animated />
           
           {/* Q.GE */}
           <Disjuntor x={centerX} y={topY + 135} label="Q.GE" sublabel="Main Entry" id="q-ge" onClick={handleClick} size="large" color="#dc2626" />
           
           {/* Emergency Generator */}
-          <Generator x={centerX - 180} y={topY + 135} label="Gerador Emergência" onClick={handleClick} />
+          <Generator x={centerX - 180} y={topY + 135} label="Emergency Generator" onClick={handleClick} />
           <Line x1={centerX - 155} y1={topY + 135} x2={centerX - 50} y2={topY + 135} color="#16a34a" dashed width={2} />
           <text x={centerX - 100} y={topY + 123} textAnchor="middle" fontSize={9} fill="#16a34a" fontWeight="600">(backup)</text>
           
           {/* Q.GE to QGBT */}
-          <Line x1={centerX} y1={topY + 180} x2={centerX} y2={topY + 210} color="#1e3a8a" width={2.5} />
+          <Line x1={centerX} y1={topY + 180} x2={centerX} y2={topY + 210} color="#1e3a8a" width={2.5} animated />
           
           {/* QGBT */}
           <Disjuntor x={centerX} y={topY + 250} label="QGBT (N+E)" sublabel="Main Switchboard" id="qgbt" onClick={handleClick} size="large" color="#1e3a8a" />
           
           {/* QGBT to Main Bus */}
-          <Line x1={centerX} y1={topY + 295} x2={centerX} y2={mainBusY} color="#1e3a8a" width={2.5} />
+          <Line x1={centerX} y1={topY + 295} x2={centerX} y2={mainBusY} color="#1e3a8a" width={2.5} animated />
           
           {/* Main Bus Bar */}
-          <BusBar x={mainBusCenterX} y={mainBusY} width={mainBusWidth} color="#1e3a8a" />
+          <rect x={975} y={357} width={1290} height={6} fill="#1e3a8a" rx={2} />
           
           {/* Branch down to QGED(E) */}
-          <Line x1={qgedECenterX} y1={mainBusY + 4} x2={qgedECenterX} y2={qgedY - 45} color="#f97316" width={2.5} />
+          <Line x1={qgedECenterX} y1={mainBusY + 4} x2={qgedECenterX} y2={qgedY - 45} color="#f97316" width={2.5} animated />
           
           {/* Branch down to QGED(N) */}
-          <Line x1={qgedNCenterX} y1={mainBusY + 4} x2={qgedNCenterX} y2={qgedY - 45} color="#22c55e" width={2.5} />
+          <Line x1={qgedNCenterX} y1={mainBusY + 4} x2={qgedNCenterX} y2={qgedY - 45} color="#22c55e" width={2.5} animated />
 
           {/* ========================================== */}
           {/* QGED (E) - Emergency Power */}
           {/* ========================================== */}
           
           <Disjuntor x={qgedECenterX} y={qgedY} label="QGED (E)" sublabel="Emergency Power" id="qged-e" onClick={handleClick} size="large" color="#f97316" />
-          <Line x1={qgedECenterX} y1={qgedY + 50} x2={qgedECenterX} y2={subBusY} color="#f97316" width={2.5} />
+          <Line x1={qgedECenterX} y1={qgedY + 50} x2={qgedECenterX} y2={subBusY} color="#f97316" width={2.5} animated />
           
           {/* QGED(E) Bus Bar - extends left to include Q.DEMONSTRADOR */}
-          <BusBar x={qgedEBusCenterX} y={subBusY} width={qgedEBusWidth} color="#f97316" />
+          <rect x={180} y={537} width={1320} height={6} fill="#f97316" rx={2} />
 
           {/* ========================================== */}
           {/* Q.DEMONSTRADOR - Sub-branch of QGED(E) */}
           {/* ========================================== */}
           
           {/* Line from QGED(E) bus down to Q.DEMONSTRADOR */}
-          <Line x1={demoX} y1={subBusY + 4} x2={demoX} y2={demoPanelY - 35} color="#0891b2" width={2.5} />
+          <Line x1={demoX} y1={subBusY + 4} x2={demoX} y2={demoPanelY - 35} color="#0891b2" width={2.5} animated />
           
           {/* Q.DEMONSTRADOR panel */}
           <Disjuntor x={demoX} y={demoPanelY} label="Q.DEMONSTRADOR" sublabel="FÍSICO" id="demonstrador" onClick={handleClick} size="medium" color="#0891b2" />
           
           {/* Line down to equipment bus */}
-          <Line x1={demoX} y1={demoPanelY + 45} x2={demoX} y2={demoBusY} color="#0891b2" width={2} />
+          <Line x1={demoX} y1={demoPanelY + 45} x2={demoX} y2={demoBusY} color="#0891b2" width={2} animated />
           
           {/* Demonstrador equipment bus */}
-          <BusBar x={demoX + 130} y={demoBusY} width={360} color="#0891b2" />
+          <rect x={165} y={777} width={550} height={6} fill="#0891b2" rx={2} />
           
           {/* 6 Equipment */}
           {[
@@ -279,11 +343,12 @@ export default function ElectricalDiagram() {
             { l: 'Q.Carregadores', i: 4 },
             { l: 'Q.PV', i: 5 },
           ].map((item) => {
-            const px = demoX - 10 + item.i * 58;
+            const px = demoX - 10 + item.i * 108; // Increased spacing from 58 to 108 (50px more)
+            const power = devicePowerMap.get(item.l);
             return (
               <g key={`demo-${item.i}`}>
-                <Line x1={px} y1={demoBusY + 4} x2={px} y2={demoEquipY - 12} color="#0891b2" />
-                <EndPanel x={px} y={demoEquipY} label={item.l} id={item.l} onClick={handleClick} color="#cffafe" />
+                <Line x1={px} y1={demoBusY + 4} x2={px} y2={demoEquipY - 12} color="#0891b2" animated />
+                <EndPanel x={px} y={demoEquipY} label={item.l} id={item.l} onClick={handleClick} color="#cffafe" powerValue={power} />
               </g>
             );
           })}
@@ -309,12 +374,28 @@ export default function ElectricalDiagram() {
             { d: 'D31', p: 'Q.SERVIDORES' },
           ].map((item, i) => {
             const bx = qgedEStartX + i * cbSpacing;
+            
+            // Try exact panel name match first
+            let power = devicePowerMap.get(item.p);
+            
+            // If no match, search for device name starting with the device number (e.g., "D15")
+            if (power === undefined) {
+              const devicePrefix = item.d.toLowerCase();
+              for (const [deviceName, devicePower] of devicePowerMap.entries()) {
+                // Check if device name starts with the device number (case-insensitive)
+                if (deviceName.toLowerCase().startsWith(devicePrefix)) {
+                  power = devicePower;
+                  break;
+                }
+              }
+            }
+            
             return (
               <g key={`e-${i}`}>
-                <Line x1={bx} y1={subBusY + 4} x2={bx} y2={cbY - 25} color="#f97316" />
+                <Line x1={bx} y1={subBusY + 4} x2={bx} y2={cbY - 25} color="#f97316" animated />
                 <Disjuntor x={bx} y={cbY} label={item.d} id={`e-${item.d}`} onClick={handleClick} size="small" color="#f97316" />
-                <Line x1={bx} y1={cbY + 30} x2={bx} y2={endPanelY - 12} color="#f97316" />
-                <EndPanel x={bx} y={endPanelY} label={item.p} id={`e-${item.p}`} onClick={handleClick} color="#ffedd5" />
+                <Line x1={bx} y1={cbY + 30} x2={bx} y2={endPanelY - 12} color="#f97316" animated />
+                <EndPanel x={bx} y={endPanelY} label={item.p} id={`e-${item.p}`} onClick={handleClick} color="#ffedd5" powerValue={power} />
               </g>
             );
           })}
@@ -324,8 +405,8 @@ export default function ElectricalDiagram() {
           {/* ========================================== */}
           
           <Disjuntor x={qgedNCenterX} y={qgedY} label="QGED (N)" sublabel="Normal Power" id="qged-n" onClick={handleClick} size="large" color="#22c55e" />
-          <Line x1={qgedNCenterX} y1={qgedY + 50} x2={qgedNCenterX} y2={subBusY} color="#22c55e" width={2.5} />
-          <BusBar x={qgedNCenterX} y={subBusY} width={qgedNBusWidth} color="#22c55e" />
+          <Line x1={qgedNCenterX} y1={qgedY + 50} x2={qgedNCenterX} y2={subBusY} color="#22c55e" width={2.5} animated />
+          <rect x={1750} y={537} width={915} height={6} fill="#22c55e" rx={2} />
 
           {/* QGED(N) Circuit Breakers D1-D14 */}
           {[
@@ -345,33 +426,49 @@ export default function ElectricalDiagram() {
             { d: 'D14', p: 'CHILLER (N)' },
           ].map((item, i) => {
             const bx = qgedNStartX + i * cbSpacing;
+            
+            // Try exact panel name match first
+            let power = devicePowerMap.get(item.p);
+            
+            // If no match, search for device name starting with the device number (e.g., "D13")
+            if (power === undefined) {
+              const devicePrefix = item.d.toLowerCase();
+              for (const [deviceName, devicePower] of devicePowerMap.entries()) {
+                // Check if device name starts with the device number (case-insensitive)
+                if (deviceName.toLowerCase().startsWith(devicePrefix)) {
+                  power = devicePower;
+                  break;
+                }
+              }
+            }
+            
             return (
               <g key={`n-${i}`}>
-                <Line x1={bx} y1={subBusY + 4} x2={bx} y2={cbY - 25} color="#22c55e" />
+                <Line x1={bx} y1={subBusY + 4} x2={bx} y2={cbY - 25} color="#22c55e" animated />
                 <Disjuntor x={bx} y={cbY} label={item.d} id={`n-${item.d}`} onClick={handleClick} size="small" color="#22c55e" />
-                <Line x1={bx} y1={cbY + 30} x2={bx} y2={endPanelY - 12} color="#22c55e" />
-                <EndPanel x={bx} y={endPanelY} label={item.p} id={item.p} onClick={handleClick} color="#dcfce7" />
+                <Line x1={bx} y1={cbY + 30} x2={bx} y2={endPanelY - 12} color="#22c55e" animated />
+                <EndPanel x={bx} y={endPanelY} label={item.p} id={item.p} onClick={handleClick} color="#dcfce7" powerValue={power} />
               </g>
             );
           })}
 
-          {/* Normal energia label */}
-          <text x={qgedNCenterX} y={endPanelY + 35} textAnchor="middle" fontSize={11} fill="#166534" fontStyle="italic" fontWeight="600">(Normal energia)</text>
+          {/* Normal power label */}
+          <text x={qgedNCenterX} y={endPanelY + 35} textAnchor="middle" fontSize={11} fill="#166534" fontStyle="italic" fontWeight="600">(Normal power)</text>
 
           {/* ========================================== */}
           {/* LEGEND & TITLE - top right */}
           {/* ========================================== */}
           <g transform={`translate(${W - 520}, ${topY + 40})`}>
             <rect x={0} y={0} width={240} height={100} fill="white" stroke="#e2e8f0" strokeWidth={1.2} rx={8} />
-            <text x={14} y={18} fontSize={11} fontWeight="bold" fill="#1e293b">Legenda</text>
+            <text x={14} y={18} fontSize={11} fontWeight="bold" fill="#1e293b">Legend</text>
             
             <rect x={14} y={30} width={14} height={20} fill="white" stroke="#1e40af" strokeWidth={1.2} rx={2} />
             <line x1={16} y1={48} x2={26} y2={32} stroke="#1e40af" strokeWidth={1.2} />
-            <text x={40} y={43} fontSize={9} fill="#334155">Disjuntor</text>
+            <text x={40} y={43} fontSize={9} fill="#334155">Circuit Breaker</text>
             
             <circle cx={22} cy={70} r={7} fill="white" stroke="#16a34a" strokeWidth={1.2} />
             <text x={22} y={73} textAnchor="middle" fontSize={7} fontWeight="bold" fill="#16a34a">G</text>
-            <text x={40} y={73} fontSize={9} fill="#334155">Gerador</text>
+            <text x={40} y={73} fontSize={9} fill="#334155">Generator</text>
             
             <rect x={130} y={30} width={12} height={8} fill="#22c55e" rx={2} />
             <text x={150} y={38} fontSize={8} fill="#334155">Normal</text>
@@ -380,7 +477,7 @@ export default function ElectricalDiagram() {
             <text x={150} y={54} fontSize={8} fill="#334155">Emergency</text>
             
             <rect x={130} y={62} width={12} height={8} fill="#0891b2" rx={2} />
-            <text x={150} y={70} fontSize={8} fill="#334155">Demonstrador</text>
+            <text x={150} y={70} fontSize={8} fill="#334155">Demonstrator</text>
             
             <rect x={130} y={78} width={12} height={8} fill="#1e3a8a" rx={2} />
             <text x={150} y={86} fontSize={8} fill="#334155">Main</text>
@@ -390,9 +487,9 @@ export default function ElectricalDiagram() {
             <rect x={0} y={0} width={200} height={90} fill="white" stroke="#1e3a8a" strokeWidth={1.5} rx={6} />
             <rect x={0} y={0} width={200} height={24} fill="#1e3a8a" rx={6} />
             <rect x={0} y={18} width={200} height={6} fill="#1e3a8a" />
-            <text x={100} y={17} textAnchor="middle" fontSize={11} fontWeight="bold" fill="white">DIAGRAMA UNIFILAR</text>
-            <text x={100} y={42} textAnchor="middle" fontSize={9} fill="#1e293b" fontWeight="600">Porto do Funchal - SHIFT2DC</text>
-            <text x={100} y={58} textAnchor="middle" fontSize={8} fill="#475569">Distribuição Elétrica</text>
+            <text x={100} y={17} textAnchor="middle" fontSize={11} fontWeight="bold" fill="white">SINGLE LINE DIAGRAM</text>
+            <text x={100} y={42} textAnchor="middle" fontSize={9} fill="#1e293b" fontWeight="600">Funchal Port - SHIFT2DC</text>
+            <text x={100} y={58} textAnchor="middle" fontSize={8} fill="#475569">Electrical Distribution</text>
             <text x={100} y={74} textAnchor="middle" fontSize={8} fill="#94a3b8">v2.4 • 2024</text>
           </g>
         </svg>
@@ -406,13 +503,13 @@ export default function ElectricalDiagram() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-sm text-slate-600 dark:text-slate-400">Componente do sistema elétrico.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Electrical system component.</p>
           </div>
         )}
 
         {/* Controls */}
         <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur rounded-lg px-4 py-2 text-sm text-slate-600 shadow-lg border">
-          <span className="font-medium">Controlos:</span> Scroll = zoom • Arrastar = mover
+          <span className="font-medium">Controls:</span> Scroll = zoom • Drag = move
         </div>
       </div>
 
@@ -421,8 +518,8 @@ export default function ElectricalDiagram() {
         {[
           { label: 'QGED(N)', value: '14', desc: 'D1-D14', color: 'bg-green-500', bg: 'bg-green-50' },
           { label: 'QGED(E)', value: '17', desc: 'D15-D31', color: 'bg-orange-500', bg: 'bg-orange-50' },
-          { label: 'Demonstrador', value: '6', desc: 'Equipamentos', color: 'bg-cyan-500', bg: 'bg-cyan-50' },
-          { label: 'Total', value: '31', desc: 'Disjuntores', color: 'bg-blue-500', bg: 'bg-blue-50' },
+          { label: 'Demonstrator', value: '6', desc: 'Equipment', color: 'bg-cyan-500', bg: 'bg-cyan-50' },
+          { label: 'Total', value: '31', desc: 'Circuit Breakers', color: 'bg-blue-500', bg: 'bg-blue-50' },
         ].map((stat, i) => (
           <div key={i} className={`${stat.bg} rounded-xl p-4 border border-slate-200`}>
             <div className="flex items-center gap-2 mb-1">

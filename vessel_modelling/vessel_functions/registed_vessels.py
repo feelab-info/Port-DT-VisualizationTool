@@ -90,11 +90,16 @@ def plot_energy_graph_for_closest_ship(target_ship, closest_ship_name, folder_pa
                 df = df.sort_values('Timestamp')
 
                 # Determine the start and end datetime for the resampling
-                start_datetime = arrival_time
-                end_datetime = departure_time
+                # Parse arrival and departure times to datetime
+                start_datetime = pd.to_datetime(arrival_time)
+                end_datetime = pd.to_datetime(departure_time)
+                
+                # Handle multi-day stays: if departure is before arrival, add one day to departure
+                if end_datetime <= start_datetime:
+                    end_datetime = end_datetime + pd.Timedelta(days=1)
 
                 # Resample the data using the resample_data function
-                resampled_df = resample_data(df, arrival_time, departure_time, start_datetime, end_datetime)
+                resampled_df = resample_data(df, start_datetime, end_datetime, start_datetime, end_datetime)
 
                 # Apply the scaling factor to the energy values
                 resampled_df['Hotel Power'] *= scaling_factor

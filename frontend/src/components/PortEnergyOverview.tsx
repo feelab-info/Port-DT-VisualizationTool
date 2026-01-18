@@ -42,7 +42,7 @@ export default function PortEnergyOverview() {
     allData 
   } = useEnergyData();
 
-  // State to force chart update every minute
+  // State for current time (still used by analyticsStats)
   const [currentTime, setCurrentTime] = useState(new Date());
   
   // State for selected time period
@@ -51,7 +51,7 @@ export default function PortEnergyOverview() {
   // State for loading additional data
   const [isFetchingAdditionalData, setIsFetchingAdditionalData] = useState(false);
 
-  // Update current time every minute to refresh chart
+  // Update current time every minute for analytics calculations
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date());
@@ -161,12 +161,20 @@ export default function PortEnergyOverview() {
     if (entradaLatest) {
       // Current power from "Entrada de Energia" in kW
       const powerW = (entradaLatest.L1?.P || 0) + (entradaLatest.L2?.P || 0) + (entradaLatest.L3?.P || 0);
-      currentTotalPower = powerW / 1000; // Convert to kW
+      currentTotalPower = Math.max(0, powerW / 1000); // Convert to kW and filter negative values
     }
 
     // Get the latest data point for each device (for other stats)
+    // Exclude "Entrada de Energia" from device counts
     const deviceLatestData = new Map();
     allData.forEach(item => {
+      // Skip "Entrada de Energia" device
+      const deviceLower = item.device?.toLowerCase() || '';
+      const deviceNameLower = item.deviceName?.toLowerCase() || '';
+      if (deviceLower.includes('entrada de energia') || deviceNameLower.includes('entrada de energia')) {
+        return;
+      }
+      
       const existing = deviceLatestData.get(item.device);
       if (!existing || new Date(item.timestamp) > new Date(existing.timestamp)) {
         deviceLatestData.set(item.device, item);
@@ -174,6 +182,7 @@ export default function PortEnergyOverview() {
     });
 
     const latestDataPoints = Array.from(deviceLatestData.values());
+    const totalDevices = latestDataPoints.length; // Count of devices excluding Entrada de Energia
 
     const powerFactors = latestDataPoints.flatMap(item => [
       item.L1?.PF || 0,
@@ -185,12 +194,14 @@ export default function PortEnergyOverview() {
       ? powerFactors.reduce((sum, pf) => sum + pf, 0) / powerFactors.length 
       : 0;
 
-    const activeDevices = latestDataPoints.filter(item => 
-      (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0) > 0
-    ).length;
+    const activeDevices = latestDataPoints.filter(item => {
+      const power = (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
+      // Only count devices with positive power
+      return power > 0;
+    }).length;
 
     return {
-      totalDevices: 33,
+      totalDevices, // Now dynamically calculated, excluding Entrada de Energia
       currentTotalPower: Math.round(currentTotalPower * 100) / 100, // Show in kW with 2 decimals
       averagePowerFactor: Math.round(averagePowerFactor * 100) / 100,
       totalConsumption: 0, // Removed - not used
@@ -223,7 +234,8 @@ export default function PortEnergyOverview() {
       let totalPowerMinutes = 0;
       entradaData.forEach(item => {
         const power = (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
-        totalPowerMinutes += power;
+        // Filter out negative values
+        totalPowerMinutes += Math.max(0, power);
       });
       
       // Convert to kWh: (Total Watt-minutes) / 1000 / 60 = kWh
@@ -240,18 +252,34 @@ export default function PortEnergyOverview() {
       }
     }
 
-    // Calculate max power from all devices (excluding Entrada)
+    // Calculate max power from sum of all devices at each minute (excluding Entrada)
     const filteredData = allData.filter(item => {
       const deviceLower = item.device?.toLowerCase() || '';
       const deviceNameLower = item.deviceName?.toLowerCase() || '';
       return !deviceLower.includes('entrada de energia') && !deviceNameLower.includes('entrada de energia');
     });
 
-    let maxPower = 0;
+    // Group data by minute and sum all device power for each minute
+    const powerByMinute = new Map<string, number>();
     
     filteredData.forEach(item => {
+      const timestamp = new Date(item.timestamp);
+      // Round to minute (remove seconds and milliseconds)
+      timestamp.setSeconds(0, 0);
+      const minuteKey = timestamp.toISOString();
+      
       const power = (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
-      if (power > maxPower) maxPower = power;
+      // Filter out negative values
+      const positivePower = Math.max(0, power);
+      
+      // Sum all device power for this minute
+      powerByMinute.set(minuteKey, (powerByMinute.get(minuteKey) || 0) + positivePower);
+    });
+    
+    // Find the maximum sum across all minutes
+    let maxPower = 0;
+    powerByMinute.forEach(totalPower => {
+      if (totalPower > maxPower) maxPower = totalPower;
     });
 
     // Calculate device contributions based on selected time period
@@ -263,8 +291,10 @@ export default function PortEnergyOverview() {
     const deviceContributions = new Map<string, number>();
     recentData.forEach(item => {
       const power = (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
+      // Filter out negative values
+      const positivePower = Math.max(0, power);
       const deviceName = item.deviceName || item.device;
-      deviceContributions.set(deviceName, (deviceContributions.get(deviceName) || 0) + power);
+      deviceContributions.set(deviceName, (deviceContributions.get(deviceName) || 0) + positivePower);
     });
 
     const totalPower = Array.from(deviceContributions.values()).reduce((sum, p) => sum + p, 0);
@@ -362,29 +392,40 @@ export default function PortEnergyOverview() {
     // Get the number of minutes for the selected period
     const periodMinutes = getTimePeriodMinutes(timePeriod);
     
-    // Create minute buckets for the selected period
-    const now = currentTime;
+    // Create minute buckets aligned to clock times
+    // Use the most recent data timestamp if available, otherwise use current time
+    const latestDataTime = allData.length > 0 
+      ? new Date(Math.max(...allData.map(d => new Date(d.timestamp).getTime())))
+      : new Date();
+    
+    // Round to nearest minute (floor)
+    const currentMinute = new Date(latestDataTime);
+    currentMinute.setSeconds(0, 0);
+    
     const buckets: Date[] = [];
-    const periodAgo = now.getTime() - (periodMinutes * 60000);
     
     // For longer periods, use appropriate bucket intervals
     let bucketInterval = 1; // Default: 1 minute per bucket
     let numBuckets = periodMinutes;
     
     // Adjust bucket size for longer periods to keep chart readable
-    // Note: For 24-hour view, we aggregate data into ~2.4 minute intervals (60 buckets)
     if (periodMinutes > 60) {
       bucketInterval = Math.ceil(periodMinutes / 60); // Aim for ~60 buckets max
       numBuckets = Math.ceil(periodMinutes / bucketInterval);
     }
     
-    for (let i = numBuckets - 1; i >= 0; i--) {
-      const bucketTime = new Date(now.getTime() - i * bucketInterval * 60000);
-      bucketTime.setSeconds(0, 0);
+    // Create buckets aligned to clock times
+    // Start from the oldest time and go forward to current
+    const startTime = new Date(currentMinute.getTime() - (numBuckets - 1) * bucketInterval * 60000);
+    
+    for (let i = 0; i < numBuckets; i++) {
+      const bucketTime = new Date(startTime.getTime() + i * bucketInterval * 60000);
       buckets.push(bucketTime);
     }
 
     // Filter out "Entrada de energia" device AND only include data from selected time period
+    // Include data from the start of our time window
+    const periodStart = startTime.getTime();
     const filteredData = allData.filter(item => {
       const deviceLower = item.device?.toLowerCase() || '';
       const deviceNameLower = item.deviceName?.toLowerCase() || '';
@@ -392,7 +433,7 @@ export default function PortEnergyOverview() {
       
       return !deviceLower.includes('entrada de energia') && 
              !deviceNameLower.includes('entrada de energia') &&
-             timestamp >= periodAgo;
+             timestamp >= periodStart;
     });
 
     // Get unique devices and sort them naturally (D1, D2... D9, D10, not D1, D10, D11... D2)
@@ -431,25 +472,37 @@ export default function PortEnergyOverview() {
     });
 
     // For each bucket, find the most recent value for each device
+    // Carry forward last known values until new data arrives
     buckets.forEach((bucketTime, bucketIndex) => {
-      const bucketTimestamp = bucketTime.getTime();
+      const bucketStart = bucketTime.getTime();
+      const bucketEnd = bucketStart + (bucketInterval * 60000); // End of this bucket period
       
       devices.forEach(device => {
         const devicePoints = deviceDataCache.get(device) || [];
-        let latestValue = 0;
         
-        // Find the most recent data point for this device at or before this bucket time
-        // But within the last 5 minutes (to avoid stale data)
-        const fiveMinutesAgo = bucketTimestamp - (5 * 60000);
+        // Start with the previous bucket's value (carry forward behavior)
+        // If this is the first bucket, start with 0
+        let latestValue = bucketIndex > 0 
+          ? (deviceDataByMinute.get(device)?.get(bucketIndex - 1) || 0)
+          : 0;
         
+        // Look for the most recent data point within this bucket's time range
+        // Search from the end (most recent) backwards
         for (let i = devicePoints.length - 1; i >= 0; i--) {
           const dataPoint = devicePoints[i];
           const dataTimestamp = new Date(dataPoint.timestamp).getTime();
           
-          if (dataTimestamp <= bucketTimestamp && dataTimestamp >= fiveMinutesAgo) {
-            // Found a recent value (convert W to kW)
+          // Check if data point falls within this bucket's time window
+          if (dataTimestamp >= bucketStart && dataTimestamp < bucketEnd) {
+            // Found a value within this bucket - use it (convert W to kW)
             const totalWatts = (dataPoint.L1?.P || 0) + (dataPoint.L2?.P || 0) + (dataPoint.L3?.P || 0);
-            latestValue = totalWatts / 1000; // Convert to kW
+            // Filter out negative values - only use non-negative power readings
+            latestValue = Math.max(0, totalWatts / 1000); // Convert to kW and ensure non-negative
+            break;
+          }
+          
+          // If we've gone past this bucket (data is older), stop searching
+          if (dataTimestamp < bucketStart) {
             break;
           }
         }
@@ -494,7 +547,7 @@ export default function PortEnergyOverview() {
       labels: buckets,
       datasets: datasets
     };
-  }, [allData, currentTime, timePeriod]);
+  }, [allData, timePeriod]); // Removed currentTime dependency - buckets now based on data timestamps
 
   // Dynamic chart options based on selected time period
   const chartOptions = useMemo(() => ({
@@ -674,7 +727,8 @@ export default function PortEnergyOverview() {
         }
       },
       y: {
-        beginAtZero: true,
+        beginAtZero: false, // Allow chart to auto-scale based on actual data
+        suggestedMin: 0, // Suggest 0 as minimum, but allow auto-scaling if data is higher
         stacked: true,
         grid: {
           color: 'rgba(0, 0, 0, 0.08)',
@@ -683,6 +737,8 @@ export default function PortEnergyOverview() {
         ticks: {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           callback: function(value: any) {
+            // Filter out negative tick values
+            if (value < 0) return '';
             return value.toLocaleString() + ' kW';
           },
           font: {

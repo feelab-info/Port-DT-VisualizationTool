@@ -85,12 +85,30 @@ def resample_data(df, arrival_time, departure_time, start_datetime, end_datetime
     if isinstance(departure_time, str):
         departure_time = pd.to_datetime(departure_time)
     
+    # Handle multi-day stays: if departure is before arrival, add one day to departure
+    if departure_time <= arrival_time:
+        departure_time = departure_time + pd.Timedelta(days=1)
+        # Also update end_datetime if it's being used
+        if isinstance(end_datetime, str):
+            end_datetime = pd.to_datetime(end_datetime)
+        if end_datetime <= start_datetime:
+            end_datetime = end_datetime + pd.Timedelta(days=1)
+    
     # Select the columns we are interested in
     data = df[['Chillers Power', 'Hotel Power']]
 
     # Calculate the time range for the actual ship presence (arrival to departure)
     time_range_minutes = int((departure_time - arrival_time).total_seconds() / 60)
+    
+    # Ensure we have a positive time range
+    if time_range_minutes <= 0:
+        raise ValueError(f"Invalid time range: arrival={arrival_time}, departure={departure_time}. Time range is {time_range_minutes} minutes.")
+    
     required_data_points = time_range_minutes // 5
+    
+    # Ensure we have at least 1 data point
+    if required_data_points < 1:
+        required_data_points = 1
     
     # Resample the data
     data_resampled = resample_dataframe(data, required_data_points)

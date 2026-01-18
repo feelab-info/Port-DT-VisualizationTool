@@ -14,6 +14,7 @@ services:
       DC_POWER_FLOW_API: ${DC_POWER_FLOW_API:-http://dc-power-flow:5002}
       VESSEL_API: ${VESSEL_API:-http://vessel-modelling:5003}
       VESSEL_API_URL: ${VESSEL_API:-http://vessel-modelling:5003}
+      PV_MODEL_API: ${PV_MODEL_API:-http://pv-model:5004}
       FRONTEND_URL: ${FRONTEND_URL}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
@@ -89,6 +90,23 @@ services:
       - ./vessel_modelling/logs:/app/logs
       - ./vessel_modelling/output:/app/output
 
+  # PV Model Service
+  pv-model:
+    build:
+      context: ./pv_model
+      dockerfile: Dockerfile
+    container_name: port-pv-model
+    restart: unless-stopped
+    environment:
+      FLASK_ENV: production
+      PORT: 5004
+    networks:
+      - port-network
+    ports:
+      - "127.0.0.1:5004:5004"
+    volumes:
+      - ./pv_model/logs:/app/logs
+
   # Frontend
   frontend:
     build:
@@ -105,6 +123,7 @@ services:
       - backend
       - dc-power-flow
       - vessel-modelling
+      - pv-model
     networks:
       - port-network
     ports:
@@ -131,6 +150,7 @@ services:
       - backend
       - dc-power-flow
       - vessel-modelling
+      - pv-model
     restart: unless-stopped
 
   # Certbot for SSL certificates (production)

@@ -78,9 +78,20 @@ def process_registered_vessel():
         
         # Generate and save the energy profile
         logger.info(f"Generating energy profile for {target_ship} using {closest_ship}...")
-        json_output = plot_energy_graph_for_closest_ship(
-            target_ship, closest_ship, FOLDER_PATH, arrival_time, departure_time, scaling_factor
-        )
+        try:
+            json_output = plot_energy_graph_for_closest_ship(
+                target_ship, closest_ship, FOLDER_PATH, arrival_time, departure_time, scaling_factor
+            )
+        except ValueError as ve:
+            logger.error(f"ValueError generating profile for {target_ship}: {str(ve)}")
+            return jsonify({
+                "error": f"Invalid time range: {str(ve)}"
+            }), 400
+        except Exception as e:
+            logger.error(f"Exception generating profile for {target_ship}: {str(e)}", exc_info=True)
+            return jsonify({
+                "error": f"Failed to generate energy profile: {str(e)}"
+            }), 500
         
         if not json_output:
             logger.error(f"plot_energy_graph_for_closest_ship returned None for {target_ship}")
@@ -139,7 +150,18 @@ def process_custom_vessel():
             }), 404
         
         # Generate and save the energy profile
-        df, json_output = generate_energy_profile(user_ship, closest_ship, FOLDER_PATH, scaling_factor)
+        try:
+            df, json_output = generate_energy_profile(user_ship, closest_ship, FOLDER_PATH, scaling_factor)
+        except ValueError as ve:
+            logger.error(f"ValueError generating profile for {user_ship['name']}: {str(ve)}")
+            return jsonify({
+                "error": f"Invalid time range: {str(ve)}"
+            }), 400
+        except Exception as e:
+            logger.error(f"Exception generating profile for {user_ship['name']}: {str(e)}", exc_info=True)
+            return jsonify({
+                "error": f"Failed to generate energy profile: {str(e)}"
+            }), 500
         
         if not json_output:
             return jsonify({

@@ -85,6 +85,10 @@ def generate_energy_profile(user_ship, closest_ship_name, folder_path, scaling_f
                 start_datetime = pd.to_datetime(user_ship["arrival_time"])
                 end_datetime = pd.to_datetime(user_ship["departure_time"])
                 
+                # Handle multi-day stays: if departure is before arrival, add one day to departure
+                if end_datetime <= start_datetime:
+                    end_datetime = end_datetime + pd.Timedelta(days=1)
+                
                 # Resample data based on the given arrival and departure time
                 resampled_data = resample_data(df, start_datetime, end_datetime, start_datetime, end_datetime)
                 

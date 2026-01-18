@@ -83,12 +83,18 @@ class VesselScheduleScraper:
                     arrival_datetime = self._parse_datetime(arrival_time)
                     departure_datetime = self._parse_datetime(departure_time)
                     
-                    # Only add vessels for the current day
+                    # Only add vessels that arrive on the current day
+                    # This includes vessels that depart on a later day
                     if self._is_current_day(arrival_datetime):
+                        # Extract just the time components for the API
+                        # The API will handle multi-day stays internally
+                        arrival_time_only = arrival_datetime.strftime("%H:%M:%S")
+                        departure_time_only = departure_datetime.strftime("%H:%M:%S")
+                        
                         vessels.append({
                             "vessel_name": vessel_name,
-                            "arrival_time": arrival_datetime.strftime("%H:%M:%S"),
-                            "departure_time": departure_datetime.strftime("%H:%M:%S"),
+                            "arrival_time": arrival_time_only,
+                            "departure_time": departure_time_only,
                             "arrival_datetime": arrival_datetime,
                             "departure_datetime": departure_datetime,
                             "origin": cells[4].text.strip() if cells[4].text.strip() else "Unknown",
@@ -304,7 +310,14 @@ def main():
             profile_data = profiler.generate_custom_vessel_profile(vessel)
         
         if "error" in profile_data:
-            logger.error(f"Failed to generate profile for {vessel_name}")
+            error_msg = profile_data.get("error", "Unknown error")
+            logger.error(f"Failed to generate profile for {vessel_name}: {error_msg}")
+            results.append({
+                "vessel_name": vessel_name,
+                "is_registered": is_registered,
+                "success": False,
+                "error": error_msg
+            })
             continue
         
         # Save profile to file - use target date for filename
@@ -320,10 +333,22 @@ def main():
         })
     
     # Print summary
-    logger.info(f"Processed {len(results)} vessels successfully")
-    for result in results:
+    successful = [r for r in results if r.get('success', False)]
+    failed = [r for r in results if not r.get('success', False)]
+    
+    logger.info(f"Processing complete: {len(successful)} successful, {len(failed)} failed")
+    
+    # Print successful vessels
+    for result in successful:
         vessel_type = "registered" if result['is_registered'] else "custom"
         print(f"✅ {result['vessel_name']} ({vessel_type}): {result['profile_file']}")
+    
+    # Print failed vessels
+    for result in failed:
+        vessel_type = "registered" if result['is_registered'] else "custom"
+        error_msg = result.get('error', 'Unknown error')
+        print(f"❌ {result['vessel_name']} ({vessel_type}): {error_msg}")
+        logger.warning(f"Vessel {result['vessel_name']} failed: {error_msg}")
 
 if __name__ == "__main__":
     main()
