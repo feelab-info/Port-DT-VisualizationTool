@@ -71,11 +71,33 @@ export function VesselDetailPageClient({ id }: { id: string }) {
       return 0;
     }
     
-    const arrivalParts = vesselData.data.arrival_time.split(':').map(Number);
-    const departureParts = vesselData.data.departure_time.split(':').map(Number);
+    // Helper to parse time (handles both HH:MM:SS and YYYY-MM-DD HH:MM:SS)
+    const parseTimeToHours = (timeStr: string): number => {
+      if (timeStr.includes(' ')) {
+        const timePart = timeStr.split(' ')[1];
+        const [hours, minutes] = timePart.split(':').map(Number);
+        return hours + minutes / 60;
+      }
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours + minutes / 60;
+    };
     
-    const arrivalHours = arrivalParts[0] + arrivalParts[1] / 60;
-    const departureHours = departureParts[0] + departureParts[1] / 60;
+    // Use full datetime parsing if available for accurate multi-day calculation
+    if (vesselData.data.arrival_time.includes(' ') && vesselData.data.departure_time.includes(' ')) {
+      const arrivalDate = new Date(vesselData.data.arrival_time);
+      const departureDate = new Date(vesselData.data.departure_time);
+      return (departureDate.getTime() - arrivalDate.getTime()) / (1000 * 60 * 60);
+    }
+    
+    // Fall back to time-only calculation
+    const arrivalHours = parseTimeToHours(vesselData.data.arrival_time);
+    let departureHours = parseTimeToHours(vesselData.data.departure_time);
+    
+    // If departure time is less than arrival time, the vessel stayed overnight
+    // Add 24 hours to account for the next day
+    if (departureHours < arrivalHours) {
+      departureHours += 24;
+    }
     
     return departureHours - arrivalHours;
   };

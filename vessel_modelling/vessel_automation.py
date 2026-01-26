@@ -86,15 +86,15 @@ class VesselScheduleScraper:
                     # Only add vessels that arrive on the current day
                     # This includes vessels that depart on a later day
                     if self._is_current_day(arrival_datetime):
-                        # Extract just the time components for the API
-                        # The API will handle multi-day stays internally
-                        arrival_time_only = arrival_datetime.strftime("%H:%M:%S")
-                        departure_time_only = departure_datetime.strftime("%H:%M:%S")
+                        # Send full datetime strings to properly handle multi-day stays
+                        # Format: YYYY-MM-DD HH:MM:SS for proper parsing
+                        arrival_time_str = arrival_datetime.strftime("%Y-%m-%d %H:%M:%S")
+                        departure_time_str = departure_datetime.strftime("%Y-%m-%d %H:%M:%S")
                         
                         vessels.append({
                             "vessel_name": vessel_name,
-                            "arrival_time": arrival_time_only,
-                            "departure_time": departure_time_only,
+                            "arrival_time": arrival_time_str,
+                            "departure_time": departure_time_str,
                             "arrival_datetime": arrival_datetime,
                             "departure_datetime": departure_datetime,
                             "origin": cells[4].text.strip() if cells[4].text.strip() else "Unknown",
@@ -194,9 +194,10 @@ class VesselEnergyProfiler:
                 vessel_data["hotel_energy"] = 10000  # Default value
             
             # Convert datetime objects to strings to make them JSON serializable
+            # Use full datetime format to support multi-day stays
             for key, value in vessel_data.items():
                 if isinstance(value, datetime.datetime):
-                    vessel_data[key] = value.strftime("%H:%M:%S")
+                    vessel_data[key] = value.strftime("%Y-%m-%d %H:%M:%S")
                 
             response = requests.post(self.custom_vessel_endpoint, json=vessel_data)
             response.raise_for_status()

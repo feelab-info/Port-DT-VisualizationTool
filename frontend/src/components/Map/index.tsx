@@ -207,9 +207,66 @@ export default function MapVisualization() {
       try {
         // Get current date in YYYY-MM-DD format
         const today = new Date().toISOString().split('T')[0];
-        // Fetch detailed simulations
-        const data = await vesselSimulationService.getDetailedSimulations(today);
-        setSimulationsData(data);
+        
+        // Also get yesterday's date to catch vessels that arrived yesterday but depart today
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        
+        // Fetch detailed simulations for both today and yesterday
+        const [todayData, yesterdayData] = await Promise.allSettled([
+          vesselSimulationService.getDetailedSimulations(today),
+          vesselSimulationService.getDetailedSimulations(yesterdayStr)
+        ]);
+        
+        // Combine simulations from both days
+        const allSimulations: SimulationDetail[] = [];
+        
+        if (todayData.status === 'fulfilled' && todayData.value.success) {
+          allSimulations.push(...todayData.value.simulations);
+        }
+        
+        if (yesterdayData.status === 'fulfilled' && yesterdayData.value.success) {
+          // Only include vessels from yesterday that have overnight stays
+          const overnightVessels = yesterdayData.value.simulations.filter(sim => {
+            // Helper to parse time (handles both HH:MM:SS and YYYY-MM-DD HH:MM:SS)
+            const parseTimeToHours = (timeStr: string): number => {
+              if (timeStr.includes(' ')) {
+                const timePart = timeStr.split(' ')[1];
+                const [hours, minutes] = timePart.split(':').map(Number);
+                return hours + minutes / 60;
+              }
+              const [hours, minutes] = timeStr.split(':').map(Number);
+              return hours + minutes / 60;
+            };
+            
+            // For full datetime format, check if departure is next day
+            if (sim.data.arrival_time.includes(' ') && sim.data.departure_time.includes(' ')) {
+              const arrivalDate = new Date(sim.data.arrival_time);
+              const departureDate = new Date(sim.data.departure_time);
+              // Include if departure is on a different (later) day
+              return departureDate.getDate() !== arrivalDate.getDate() || 
+                     departureDate.getMonth() !== arrivalDate.getMonth() ||
+                     departureDate.getFullYear() !== arrivalDate.getFullYear();
+            }
+            
+            // For time-only format, check if departure < arrival (overnight indicator)
+            const arrivalHours = parseTimeToHours(sim.data.arrival_time);
+            const departureHours = parseTimeToHours(sim.data.departure_time);
+            return departureHours < arrivalHours;
+          }).map(sim => ({
+            ...sim,
+            // Tag these with their arrival date for proper filtering
+            arrivalDate: yesterdayStr
+          }));
+          allSimulations.push(...overnightVessels);
+        }
+        
+        setSimulationsData({
+          success: true,
+          simulations: allSimulations,
+          date: today
+        });
       } catch (error) {
         console.error('Error fetching vessel simulations for map:', error);
         setSimulationsData(null);
@@ -243,9 +300,17 @@ export default function MapVisualization() {
     const currentSeconds = currentTime.getSeconds();
     const currentTimeInSeconds = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
 
-    // Helper function to parse time string (HH:MM:SS) to seconds since midnight
+    // Helper function to parse time string to seconds since midnight
+    // Handles both HH:MM:SS and YYYY-MM-DD HH:MM:SS formats
     const parseTimeToSeconds = (timeStr: string): number => {
-      const [hours, minutes, seconds] = timeStr.split(':').map(Number);
+      let timePart = timeStr;
+      
+      // If it's full datetime format (YYYY-MM-DD HH:MM:SS), extract time part
+      if (timeStr.includes(' ')) {
+        timePart = timeStr.split(' ')[1];
+      }
+      
+      const [hours, minutes, seconds] = timePart.split(':').map(Number);
       return hours * 3600 + minutes * 60 + (seconds || 0);
     };
 
@@ -254,8 +319,49 @@ export default function MapVisualization() {
       const arrivalSeconds = parseTimeToSeconds(simulation.data.arrival_time);
       const departureSeconds = parseTimeToSeconds(simulation.data.departure_time);
       
+      // Check if this is an overnight vessel from yesterday
+      const isOvernightFromYesterday = (simulation as any).arrivalDate !== undefined;
+      
+      // Get dates for proper comparison
+      const currentDate = selectedTime.toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      
       // Check if current time is between arrival and departure
-      return currentTimeInSeconds >= arrivalSeconds && currentTimeInSeconds <= departureSeconds;
+      // Handle overnight stays (when departure < arrival, vessel stays into next day)
+      if (departureSeconds < arrivalSeconds) {
+        // Overnight case - vessel arrives one day and departs the next
+        if (isOvernightFromYesterday) {
+          // For vessels that arrived yesterday
+          // If viewing today, show vessel only before departure time
+          if (currentDate === today) {
+            return currentTimeInSeconds <= departureSeconds;
+          }
+          // If viewing yesterday, show vessel only after arrival time
+          if (currentDate === (simulation as any).arrivalDate) {
+            return currentTimeInSeconds >= arrivalSeconds;
+          }
+          return false;
+        } else {
+          // For overnight vessels arriving today
+          // Get tomorrow's date
+          const tomorrow = new Date(selectedTime);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const tomorrowDate = tomorrow.toISOString().split('T')[0];
+          
+          // If viewing today, show vessel only after arrival time
+          if (currentDate === today) {
+            return currentTimeInSeconds >= arrivalSeconds;
+          }
+          // If viewing tomorrow, show vessel only before departure time
+          if (currentDate === tomorrowDate) {
+            return currentTimeInSeconds <= departureSeconds;
+          }
+          return false;
+        }
+      } else {
+        // Same day case: vessel is in port if time is between arrival and departure
+        return currentTimeInSeconds >= arrivalSeconds && currentTimeInSeconds <= departureSeconds;
+      }
     });
 
     // Log vessel visibility changes

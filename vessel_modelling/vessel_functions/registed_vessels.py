@@ -94,9 +94,11 @@ def plot_energy_graph_for_closest_ship(target_ship, closest_ship_name, folder_pa
                 start_datetime = pd.to_datetime(arrival_time)
                 end_datetime = pd.to_datetime(departure_time)
                 
-                # Handle multi-day stays: if departure is before arrival, add one day to departure
+                # Handle multi-day stays: if departure is before or equal to arrival, add one day to departure
+                # Only add a day if both have the same date (time-only format was used)
                 if end_datetime <= start_datetime:
-                    end_datetime = end_datetime + pd.Timedelta(days=1)
+                    if start_datetime.date() == end_datetime.date():
+                        end_datetime = end_datetime + pd.Timedelta(days=1)
 
                 # Resample the data using the resample_data function
                 resampled_df = resample_data(df, start_datetime, end_datetime, start_datetime, end_datetime)

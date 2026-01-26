@@ -12,8 +12,15 @@ color_palette= sns.color_palette()
 def find_best_slice_for_arrival_departure(arrival_time_str, departure_time_str, folder_path, ship_name):
     
     # Convert arrival and departure times from string to time objects
-    arrival_time = datetime.strptime(arrival_time_str, '%H:%M:%S').time()
-    departure_time = datetime.strptime(departure_time_str, '%H:%M:%S').time()
+    # Support both formats: HH:MM:SS and YYYY-MM-DD HH:MM:SS
+    try:
+        # Try full datetime format first
+        arrival_time = datetime.strptime(arrival_time_str, '%Y-%m-%d %H:%M:%S').time()
+        departure_time = datetime.strptime(departure_time_str, '%Y-%m-%d %H:%M:%S').time()
+    except ValueError:
+        # Fall back to time-only format
+        arrival_time = datetime.strptime(arrival_time_str, '%H:%M:%S').time()
+        departure_time = datetime.strptime(departure_time_str, '%H:%M:%S').time()
 
     ship_folder_path = os.path.join(folder_path, ship_name)
     files = [f for f in os.listdir(ship_folder_path) if f.endswith('.xlsx')]
@@ -85,14 +92,19 @@ def resample_data(df, arrival_time, departure_time, start_datetime, end_datetime
     if isinstance(departure_time, str):
         departure_time = pd.to_datetime(departure_time)
     
-    # Handle multi-day stays: if departure is before arrival, add one day to departure
+    # Handle multi-day stays: if departure is before or equal to arrival, add one day to departure
+    # This handles cases where only time is provided (HH:MM:SS format)
     if departure_time <= arrival_time:
-        departure_time = departure_time + pd.Timedelta(days=1)
-        # Also update end_datetime if it's being used
-        if isinstance(end_datetime, str):
-            end_datetime = pd.to_datetime(end_datetime)
-        if end_datetime <= start_datetime:
-            end_datetime = end_datetime + pd.Timedelta(days=1)
+        # Check if we have date information (not just time)
+        # If arrival and departure have the same date but departure time is earlier,
+        # it means we're dealing with time-only format and need to add a day
+        if arrival_time.date() == departure_time.date():
+            departure_time = departure_time + pd.Timedelta(days=1)
+            # Also update end_datetime if it's being used
+            if isinstance(end_datetime, str):
+                end_datetime = pd.to_datetime(end_datetime)
+            if end_datetime <= start_datetime:
+                end_datetime = end_datetime + pd.Timedelta(days=1)
     
     # Select the columns we are interested in
     data = df[['Chillers Power', 'Hotel Power']]

@@ -98,8 +98,24 @@ const VesselEnergyProfile: React.FC<VesselEnergyProfileProps> = ({
     );
   }
 
+  // Helper function to parse timestamps (handles both formats)
+  const parseTimestamp = (timestamp: string): Date => {
+    // Replace space with 'T' for ISO format compatibility
+    // This ensures consistent parsing across all browsers
+    const isoFormat = timestamp.replace(' ', 'T');
+    const date = new Date(isoFormat);
+    
+    // Validate the date
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid timestamp:', timestamp);
+      return new Date(); // Fallback to current date
+    }
+    
+    return date;
+  };
+
   // Prepare data for the chart
-  const timestamps = data.energy_profile_data.map(point => new Date(point.Timestamp));
+  const timestamps = data.energy_profile_data.map(point => parseTimestamp(point.Timestamp));
   const chillersPower = data.energy_profile_data.map(point => point['Chillers Power']);
   const hotelPower = data.energy_profile_data.map(point => point['Hotel Power']);
   const totalPower = data.energy_profile_data.map(point => point['Chillers Power'] + point['Hotel Power']);
@@ -172,7 +188,17 @@ const VesselEnergyProfile: React.FC<VesselEnergyProfileProps> = ({
         displayColors: true,
         callbacks: {
           title: function(context: any) {
-            return new Date(context[0].label).toLocaleString();
+            // context[0].label is already a Date object, no need to re-parse
+            const date = context[0].label;
+            if (date instanceof Date && !isNaN(date.getTime())) {
+              return date.toLocaleString();
+            }
+            // Fallback: try to parse if it's a string
+            try {
+              return new Date(date).toLocaleString();
+            } catch {
+              return date.toString();
+            }
           },
           label: function(context: any) {
             return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} kW`;
@@ -321,14 +347,16 @@ const VesselEnergyProfile: React.FC<VesselEnergyProfileProps> = ({
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
-              {currentRecords.map((point, index) => (
+              {currentRecords.map((point, index) => {
+                const timestamp = parseTimestamp(point.Timestamp);
+                return (
                 <tr key={index} className={`${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700/30'} hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors duration-150`}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {new Date(point.Timestamp).toLocaleDateString('pt-PT')}
+                      {timestamp.toLocaleDateString('pt-PT')}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(point.Timestamp).toLocaleTimeString()}
+                      {timestamp.toLocaleTimeString()}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -347,7 +375,8 @@ const VesselEnergyProfile: React.FC<VesselEnergyProfileProps> = ({
                     </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>
