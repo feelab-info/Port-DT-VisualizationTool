@@ -44,19 +44,19 @@ export const VESSEL_DOCKING_POSITIONS = [
   },
   // East Terminal
   {
-    name: "Terminal 2",
-    longitude: -16.913820,
-    latitude: 32.643247,
-    elevation: -5,
-    rotation: 215,
-    scale: 0.23  // Slightly smaller scale for memory efficiency
-  },
-  {
     name: "Terminal 3",
     longitude: -16.90923641097217,
     latitude: 32.64237832255226,
     elevation: -5,
     rotation: 180,
+    scale: 0.23  // Slightly smaller scale for memory efficiency
+  },
+  {
+    name: "Terminal 2",
+    longitude: -16.913820,
+    latitude: 32.643247,
+    elevation: -5,
+    rotation: 215,
     scale: 0.23  // Slightly smaller scale for memory efficiency
   },
 ];

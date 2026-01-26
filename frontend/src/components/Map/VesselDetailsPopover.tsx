@@ -26,6 +26,22 @@ const VesselDetailsPopover: React.FC<VesselDetailsPopoverProps> = ({ vessel, onC
       <h3 className="text-xl font-bold text-blue-800 mb-2">{vessel.name}</h3>
       <p className="text-gray-600 mb-2">Docked at: {vessel.dockName || 'Port'}</p>
       
+      {/* Show schedule from vessel data if available */}
+      {vessel.arrivalTime && vessel.departureTime && !vessel.simulation && (
+        <div className="bg-blue-50 p-3 rounded-lg my-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-xs text-gray-500">Arrival</p>
+              <p className="font-medium">{vessel.arrivalTime}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Departure</p>
+              <p className="font-medium">{vessel.departureTime}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {vessel.simulation ? (
         <>
           <div className="bg-gray-50 p-3 rounded-lg my-3">

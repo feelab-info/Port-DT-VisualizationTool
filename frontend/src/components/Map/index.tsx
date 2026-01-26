@@ -6,6 +6,8 @@ import { Map, useControl, MapRef } from 'react-map-gl/maplibre';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import { DeckProps } from '@deck.gl/core';
 import SlidingSidebar from '../SlidingSidebar';
+import MapSensorPanel from './MapSensorPanel';
+import TimeSlider from './TimeSlider';
 import { energyDataService, EnergyData } from '@/services/EnergyDataService';
 import vesselSimulationService, { SimulationDetail, DetailedSimulationsResponse } from '@/services/VesselSimulationService';
 import { StationaryVessel, createBoatLayer, createHighlightLayers, createPowerLayers, createVesselLayers } from './layers';
@@ -67,6 +69,11 @@ export default function MapVisualization() {
   const [selectedVessel, setSelectedVessel] = useState<(StationaryVessel & {
     simulation?: SimulationDetail;
   }) | null>(null);
+
+  // Time slider state
+  const [isLiveMode, setIsLiveMode] = useState(true);
+  const [selectedTime, setSelectedTime] = useState(new Date());
+  const [isPlaying, setIsPlaying] = useState(false);
 
   // Use viewState to track the current map view
   // Start with the initial wide view of the island
@@ -146,10 +153,24 @@ export default function MapVisualization() {
   useEffect(() => {
     const handleDataUpdate = (data: EnergyData[]) => {
       setEnergyData(data);
+      // If in live mode, update selected time to the most recent timestamp
+      if (isLiveMode && data.length > 0) {
+        // Find the most recent timestamp regardless of array order
+        const timestamps = data.map(d => new Date(d.timestamp).getTime());
+        const latestTimestamp = new Date(Math.max(...timestamps));
+        setSelectedTime(latestTimestamp);
+      }
     };
     
     // Set initial state
-    setEnergyData(energyDataService.getData());
+    const initialData = energyDataService.getData();
+    setEnergyData(initialData);
+    if (initialData.length > 0) {
+      // Find the most recent timestamp regardless of array order
+      const timestamps = initialData.map(d => new Date(d.timestamp).getTime());
+      const latestTimestamp = new Date(Math.max(...timestamps));
+      setSelectedTime(latestTimestamp);
+    }
     
     // Subscribe to events
     energyDataService.on('data-update', handleDataUpdate);
@@ -158,7 +179,7 @@ export default function MapVisualization() {
       // Cleanup listeners
       energyDataService.removeListener('data-update', handleDataUpdate);
     };
-  }, []);
+  }, [isLiveMode]);
 
   // Progressive loading of boat models
   useEffect(() => {
@@ -189,55 +210,96 @@ export default function MapVisualization() {
         // Fetch detailed simulations
         const data = await vesselSimulationService.getDetailedSimulations(today);
         setSimulationsData(data);
-        
-        // Create stationary vessels at dock positions based on simulations
-        if (data && data.success && data.simulations.length > 0) {
-          // Limit to maximum vessels (port capacity)
-          const vesselCount = Math.min(data.simulations.length, MAX_VESSELS);
-          
-          const vesselsData = data.simulations.slice(0, vesselCount).map((simulation, index) => {
-            // Get the specific docking position
-            const dockPosition = VESSEL_DOCKING_POSITIONS[index % VESSEL_DOCKING_POSITIONS.length];
-            
-            // Use default model for safety
-            const modelIndex = Math.min(
-              Math.floor(Math.random() * availableModels.length),
-              availableModels.length - 1
-            );
-            
-            return {
-              id: `vessel-${index}`,
-              name: simulation.data.vessel,
-              position: [dockPosition.longitude, dockPosition.latitude, dockPosition.elevation] as [number, number, number],
-              rotation: dockPosition.rotation,
-              scale: dockPosition.scale,
-              dockName: dockPosition.name,
-              model: availableModels.length > 0 ? availableModels[modelIndex] || DEFAULT_BOAT_MODEL : DEFAULT_BOAT_MODEL
-            };
-          });
-          
-          setStationaryVessels(vesselsData);
-        } else {
-          setStationaryVessels([]);
-        }
       } catch (error) {
         console.error('Error fetching vessel simulations for map:', error);
-        setStationaryVessels([]);
+        setSimulationsData(null);
       }
     };
     
     // Initial fetch
     fetchVesselSimulations();
     
-    // Set up a polling interval to refresh data periodically - but increase the interval to reduce load
+    // Set up a polling interval to refresh data periodically
     const intervalId = setInterval(() => {
       fetchVesselSimulations();
-    }, 120000); // Refresh every 2 minutes instead of 1 minute
+    }, 120000); // Refresh every 2 minutes
     
     return () => {
       clearInterval(intervalId);
     };
-  }, [availableModels]);
+  }, []);
+
+  // Update visible vessels based on current time (from time slider or live)
+  useEffect(() => {
+    if (!simulationsData || !simulationsData.success || simulationsData.simulations.length === 0) {
+      setStationaryVessels([]);
+      return;
+    }
+
+    // Get current time to check against
+    const currentTime = selectedTime;
+    const currentHours = currentTime.getHours();
+    const currentMinutes = currentTime.getMinutes();
+    const currentSeconds = currentTime.getSeconds();
+    const currentTimeInSeconds = currentHours * 3600 + currentMinutes * 60 + currentSeconds;
+
+    // Helper function to parse time string (HH:MM:SS) to seconds since midnight
+    const parseTimeToSeconds = (timeStr: string): number => {
+      const [hours, minutes, seconds] = timeStr.split(':').map(Number);
+      return hours * 3600 + minutes * 60 + (seconds || 0);
+    };
+
+    // Filter simulations to only show vessels that should be at port at current time
+    const activeSimulations = simulationsData.simulations.filter(simulation => {
+      const arrivalSeconds = parseTimeToSeconds(simulation.data.arrival_time);
+      const departureSeconds = parseTimeToSeconds(simulation.data.departure_time);
+      
+      // Check if current time is between arrival and departure
+      return currentTimeInSeconds >= arrivalSeconds && currentTimeInSeconds <= departureSeconds;
+    });
+
+    // Log vessel visibility changes
+    const activeVesselNames = activeSimulations.map(s => s.data.vessel).join(', ');
+    if (activeSimulations.length > 0) {
+      console.log(`[${currentTime.toLocaleTimeString()}] Vessels at port:`, activeVesselNames);
+    } else {
+      console.log(`[${currentTime.toLocaleTimeString()}] No vessels at port`);
+    }
+
+    // Create stationary vessels for active simulations
+    if (activeSimulations.length > 0) {
+      // Limit to maximum vessels (port capacity)
+      const vesselCount = Math.min(activeSimulations.length, MAX_VESSELS);
+      
+      const vesselsData = activeSimulations.slice(0, vesselCount).map((simulation, index) => {
+        // Get the specific docking position
+        const dockPosition = VESSEL_DOCKING_POSITIONS[index % VESSEL_DOCKING_POSITIONS.length];
+        
+        // Use default model for safety
+        const modelIndex = Math.min(
+          Math.floor(Math.random() * availableModels.length),
+          availableModels.length - 1
+        );
+        
+        return {
+          id: `vessel-${simulation.data.vessel}-${index}`,
+          name: simulation.data.vessel,
+          position: [dockPosition.longitude, dockPosition.latitude, dockPosition.elevation] as [number, number, number],
+          rotation: dockPosition.rotation,
+          scale: dockPosition.scale,
+          dockName: dockPosition.name,
+          model: availableModels.length > 0 ? availableModels[modelIndex] || DEFAULT_BOAT_MODEL : DEFAULT_BOAT_MODEL,
+          arrivalTime: simulation.data.arrival_time,
+          departureTime: simulation.data.departure_time
+        };
+      });
+      
+      setStationaryVessels(vesselsData);
+    } else {
+      // No vessels should be visible at this time
+      setStationaryVessels([]);
+    }
+  }, [simulationsData, selectedTime, availableModels]);
 
   // Animation loop for smooth energy flow
   useEffect(() => {
@@ -260,7 +322,8 @@ export default function MapVisualization() {
     };
   }, [initialZoomCompleted]);
 
-  // Boat animation logic
+  // Boat animation logic - COMMENTED OUT
+  /*
   useEffect(() => {
     let animationFrameId: number;
     let startTime: number | null = null;
@@ -367,11 +430,105 @@ export default function MapVisualization() {
       cancelAnimationFrame(animationFrameId);
     };
   }, [currentPathIndex, isDocked, dockingStartTime, boatPaths]);
+  */
 
-  // Function to get the latest data
-  const getLatestData = (): EnergyData | null => {
+  // Playback effect
+  useEffect(() => {
+    if (!isPlaying || energyData.length === 0) return;
+
+    const interval = setInterval(() => {
+      // Find all timestamps greater than current selected time
+      const futureTimes = energyData
+        .map(d => new Date(d.timestamp).getTime())
+        .filter(t => t > selectedTime.getTime())
+        .sort((a, b) => a - b); // Sort ascending to get the next timestamp
+
+      if (futureTimes.length === 0) {
+        // No more future data, we've reached live
+        setIsPlaying(false);
+        setIsLiveMode(true);
+        return;
+      }
+
+      // Move to the next timestamp in the future
+      setSelectedTime(new Date(futureTimes[0]));
+    }, 500); // Update every 500ms
+
+    return () => clearInterval(interval);
+  }, [isPlaying, selectedTime, energyData]);
+
+  // Function to get data at selected time
+  const getDataAtTime = (): EnergyData | null => {
     if (!energyData || energyData.length === 0) return null;
-    return energyData[energyData.length - 1];
+    
+    if (isLiveMode) {
+      // Find the data point with the most recent timestamp
+      return energyData.reduce((latest, current) => {
+        return new Date(current.timestamp).getTime() > new Date(latest.timestamp).getTime()
+          ? current
+          : latest;
+      });
+    }
+
+    // Find the closest data point to selected time
+    const targetTime = selectedTime.getTime();
+    let closestData = energyData[0];
+    let minDiff = Math.abs(new Date(energyData[0].timestamp).getTime() - targetTime);
+
+    for (const data of energyData) {
+      const diff = Math.abs(new Date(data.timestamp).getTime() - targetTime);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestData = data;
+      }
+    }
+
+    return closestData;
+  };
+
+  // Get time range for slider (last 6 hours of data)
+  const getTimeRange = (): { start: Date; end: Date } => {
+    if (energyData.length === 0) {
+      const now = new Date();
+      return {
+        start: new Date(now.getTime() - 6 * 60 * 60 * 1000),
+        end: now
+      };
+    }
+
+    // Check actual order by comparing first and last timestamps
+    const firstTime = new Date(energyData[0].timestamp);
+    const lastTime = new Date(energyData[energyData.length - 1].timestamp);
+    
+    // Determine which is earlier and which is later
+    const earliestTime = firstTime < lastTime ? firstTime : lastTime;
+    const latestTime = firstTime > lastTime ? firstTime : lastTime;
+    
+    return {
+      start: earliestTime,
+      end: latestTime
+    };
+  };
+
+  const handleTimeChange = (time: Date) => {
+    setSelectedTime(time);
+    setIsLiveMode(false);
+  };
+
+  const handlePlayPause = () => {
+    setIsPlaying(!isPlaying);
+    if (isPlaying) {
+      // Pausing
+      setIsLiveMode(false);
+    }
+  };
+
+  const handleReset = () => {
+    setIsLiveMode(true);
+    setIsPlaying(false);
+    if (energyData.length > 0) {
+      setSelectedTime(new Date(energyData[energyData.length - 1].timestamp));
+    }
   };
 
   // Add a method to find simulation details by vessel name
@@ -391,8 +548,9 @@ export default function MapVisualization() {
 
   // Create deck.gl layers
   const getLayers = () => {
-    const latestData = getLatestData();
-    const boatLayer = createBoatLayer(boatPosition, boatRotation, boatVisible);
+    const latestData = getDataAtTime();
+    // Boat layer commented out
+    // const boatLayer = createBoatLayer(boatPosition, boatRotation, boatVisible);
     
     // Create vessel layers
     const vesselLayers = createVesselLayers(
@@ -407,7 +565,7 @@ export default function MapVisualization() {
       animationTime
     );
     
-    if (!latestData) return [...highlightLayers, ...vesselLayers, boatLayer];
+    if (!latestData) return [...highlightLayers, ...vesselLayers];
     
     // Create power-related layers
     const powerLayers = createPowerLayers(latestData, animationTime);
@@ -418,12 +576,11 @@ export default function MapVisualization() {
       powerLayers.infrastructureMarkers,
       powerLayers.centerMarker,
       powerLayers.powerLines, 
-      powerLayers.particles, 
-      powerLayers.labels, 
-      powerLayers.infrastructureLabels,
+      powerLayers.particles,
+      // Labels removed - now shown in MapSensorPanel
       ...highlightLayers,
       ...vesselLayers,
-      boatLayer,
+      // boatLayer, // Commented out - no animated boat
     ];
   };
 
@@ -443,7 +600,25 @@ export default function MapVisualization() {
 
   return (
     <div className="relative w-full h-full">
+      {/* Sensor Data Panel - Bottom Left */}
+      <MapSensorPanel 
+        energyData={energyData} 
+        isVisible={initialZoomCompleted}
+        selectedTime={isLiveMode ? undefined : selectedTime}
+      />
 
+      {/* Time Slider - Top Right */}
+      {initialZoomCompleted && energyData.length > 0 && (
+        <TimeSlider
+          startTime={getTimeRange().start}
+          endTime={getTimeRange().end}
+          currentTime={selectedTime}
+          onTimeChange={handleTimeChange}
+          isPlaying={isPlaying}
+          onPlayPause={handlePlayPause}
+          onReset={handleReset}
+        />
+      )}
 
       <Map
         ref={mapRef}
@@ -565,12 +740,13 @@ export default function MapVisualization() {
         />
       </Map>
       
+      {/* Right Sidebar - COMMENTED OUT */}
+      {/*
       <SlidingSidebar 
         position="right" 
         mapRef={mapRef.current}
         title="Main Dock Energy Grid"
       >
-        {/* Energy Grid Information */}
         <div className="p-4 space-y-4">
           <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
             <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-300 mb-2">Energy Monitoring Status</h3>
@@ -578,7 +754,6 @@ export default function MapVisualization() {
               Real-time monitoring of the main dock energy grid with three-phase power analysis
             </p>
             
-            {/* Latest Energy Data */}
             {energyData.length > 0 && (() => {
               const latestData = energyData[energyData.length - 1];
               const totalPower = (latestData.L1?.P || 0) + (latestData.L2?.P || 0) + (latestData.L3?.P || 0);
@@ -596,7 +771,6 @@ export default function MapVisualization() {
                     </div>
                   </div>
                   
-                  {/* Three Phase Breakdown */}
                   <div className="bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-600">
                     <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Three-Phase Analysis</div>
                     <div className="space-y-2">
@@ -624,7 +798,6 @@ export default function MapVisualization() {
                     </div>
                   </div>
                   
-                  {/* Grid Status */}
                   <div className="bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-600">
                     <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Grid Status</div>
                     <div className="grid grid-cols-2 gap-2 text-xs">
@@ -650,7 +823,6 @@ export default function MapVisualization() {
             })()}
           </div>
           
-          {/* Vessels Section */}
           {simulationsData && simulationsData.success && (
             <div className="bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 p-4 rounded-lg border border-amber-200 dark:border-amber-700">
               <h3 className="text-lg font-semibold text-amber-800 dark:text-amber-300 mb-2">Vessels at Port</h3>
@@ -676,7 +848,6 @@ export default function MapVisualization() {
             </div>
           )}
           
-          {/* Visualization Legend */}
           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
             <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Energy Distribution Network</h4>
             <div className="space-y-2 text-xs">
@@ -718,6 +889,7 @@ export default function MapVisualization() {
           </div>
         </div>
       </SlidingSidebar>
+      */}
 
       {/* Vessel Details Popover */}
       {selectedVessel && (

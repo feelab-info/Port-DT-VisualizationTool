@@ -11,6 +11,8 @@ export interface StationaryVessel {
   position: [number, number, number];
   rotation: number;
   scale?: number;
+  arrivalTime?: string;
+  departureTime?: string;
   dockName?: string;
   model: string;
 }
@@ -21,7 +23,7 @@ export interface StationaryVessel {
 export const createPowerLayers = (latestData: EnergyData, animationTime: number) => {
   // Since all energy data comes from the main dock, we'll show the total power there
   const mainDockLocation = PORT_LOCATIONS[0]; // Only main dock exists now
-  const totalPower = (latestData.L1.P || 0) + (latestData.L2.P || 0) + (latestData.L3.P || 0);
+  const totalPower = (latestData?.L1?.P || 0) + (latestData?.L2?.P || 0) + (latestData?.L3?.P || 0);
   
   // Column layer to show total power consumption at main dock
   const columns = new ColumnLayer({
@@ -29,9 +31,9 @@ export const createPowerLayers = (latestData: EnergyData, animationTime: number)
     data: [{
       ...mainDockLocation,
       power: totalPower,
-      L1Power: latestData.L1.P || 0,
-      L2Power: latestData.L2.P || 0,
-      L3Power: latestData.L3.P || 0
+      L1Power: latestData?.L1?.P || 0,
+      L2Power: latestData?.L2?.P || 0,
+      L3Power: latestData?.L3?.P || 0
     }],
     diskResolution: 12,
     radius: 15, // Larger radius for better visibility
@@ -131,9 +133,9 @@ export const createPowerLayers = (latestData: EnergyData, animationTime: number)
     // Simulate different power consumption for different systems
     let systemPower;
     const basePhase = index % 3;
-    const phasePower = basePhase === 0 ? latestData.L1.P : 
-                      basePhase === 1 ? latestData.L2.P : 
-                      latestData.L3.P;
+    const phasePower = basePhase === 0 ? (latestData?.L1?.P || 0) : 
+                      basePhase === 1 ? (latestData?.L2?.P || 0) : 
+                      (latestData?.L3?.P || 0);
     
     // Different power distribution based on system type
     if (destination.id.includes('crane')) {
@@ -244,7 +246,9 @@ export const createPowerLayers = (latestData: EnergyData, animationTime: number)
     }
   });
   
-  // Enhanced text label for main dock with much better contrast - positioned to avoid overlap
+  // Labels removed - sensor data now shown in dedicated bottom-left panel
+  // Keeping the code commented out for reference if needed in the future
+  /*
   const labels = new TextLayer({
     id: 'main-dock-label',
     data: [{
@@ -252,23 +256,22 @@ export const createPowerLayers = (latestData: EnergyData, animationTime: number)
       text: `${mainDockLocation.name}\nL1: ${Math.round(latestData.L1.P || 0)}W | L2: ${Math.round(latestData.L2.P || 0)}W | L3: ${Math.round(latestData.L3.P || 0)}W`
     }],
     pickable: true,
-    getPosition: d => [d.longitude, d.latitude + 0.0008, d.elevation + 40], // Offset position to avoid overlap
+    getPosition: d => [d.longitude, d.latitude + 0.0008, d.elevation + 40],
     getText: d => d.text,
     getSize: 12,
     getAngle: 0,
     getTextAnchor: 'middle',
     getAlignmentBaseline: 'center',
     getPixelOffset: [0, -20],
-    getColor: [255, 255, 255, 255], // Pure white text
-    getBackgroundColor: [0, 0, 0, 200], // Strong black background
+    getColor: [255, 255, 255, 255],
+    getBackgroundColor: [0, 0, 0, 200],
     background: true,
     backgroundPadding: [6, 3, 6, 3]
   });
   
-  // Infrastructure labels with better contrast
   const infrastructureLabels = new TextLayer({
     id: 'infrastructure-labels',
-    data: PORT_DESTINATIONS.slice(1), // Skip main dock
+    data: PORT_DESTINATIONS.slice(1),
     pickable: true,
     getPosition: d => [d.longitude, d.latitude, 25],
     getText: d => d.name.replace(' System', '').replace(' Grid', ''),
@@ -282,7 +285,7 @@ export const createPowerLayers = (latestData: EnergyData, animationTime: number)
     background: true,
     backgroundPadding: [4, 2, 4, 2]
   });
-  
+  */
   
   return {
     columns,
@@ -291,8 +294,7 @@ export const createPowerLayers = (latestData: EnergyData, animationTime: number)
     centerMarker,
     powerLines,
     particles,
-    labels,
-    infrastructureLabels
+    // labels and infrastructureLabels removed - data now in MapSensorPanel
   };
 };
 
@@ -333,20 +335,23 @@ export const createVesselLayers = (
   selectedVesselId: string | null,
   onVesselClick: (vessel: StationaryVessel) => void
 ) => {
-  return stationaryVessels.map((vessel, index) => {
+  // Filter out any null or invalid vessels
+  const validVessels = stationaryVessels.filter(vessel => vessel && vessel.id && vessel.position);
+  
+  return validVessels.map((vessel, index) => {
     try {
       // Check if this vessel is the selected one to apply visual effects
       const isSelected = selectedVesselId === vessel.id;
       
       return new ScenegraphLayer({
-        id: `vessel-${index}`,
+        id: `vessel-${vessel.id || index}`,
         data: [vessel],
         scenegraph: vessel.model || DEFAULT_BOAT_MODEL,
         // Increase size slightly if selected for emphasis
         sizeScale: isSelected ? (vessel.scale || 0.18) * 1.2 : vessel.scale || 0.18,
         _lighting: 'pbr',
         getPosition: d => d.position,
-        getOrientation: d => [0, d.rotation, 90],
+        getOrientation: d => [0, d.rotation || 0, 90],
         pickable: true,
         onClick: (info) => {
           const clickedVessel = info.object;
@@ -373,10 +378,10 @@ export const createVesselLayers = (
         }
       });
     } catch (error) {
-      console.error(`Error creating vessel layer ${index}:`, error);
+      console.error(`Error creating vessel layer ${vessel.id || index}:`, error);
       // Return a simple placeholder layer if the 3D model failed to load
       return new ScatterplotLayer({
-        id: `vessel-${index}-placeholder`,
+        id: `vessel-${vessel.id || index}-placeholder`,
         data: [vessel],
         getPosition: d => d.position,
         getFillColor: [255, 0, 0],
@@ -394,7 +399,8 @@ export const createVesselLayers = (
  * Create highlight layers for the selected vessel
  */
 export const createHighlightLayers = (selectedVessel: StationaryVessel | null, animationTime: number) => {
-  if (!selectedVessel) return [];
+  // Check if selectedVessel exists and has required properties
+  if (!selectedVessel || !selectedVessel.position || !selectedVessel.id) return [];
   
   return [
     // Add a pulsing circle around the selected vessel
@@ -408,7 +414,7 @@ export const createHighlightLayers = (selectedVessel: StationaryVessel | null, a
       radiusMinPixels: 30,
       radiusMaxPixels: 50,
       lineWidthMinPixels: 2,
-      getPosition: () => selectedVessel.position,
+      getPosition: (d) => d.position,
       getFillColor: [0, 100, 255, 50 + 40 * Math.sin(animationTime * Math.PI * 2)], // Pulsing blue
       getLineColor: [0, 150, 255, 150 + 100 * Math.sin(animationTime * Math.PI * 2)], // Pulsing border
       updateTriggers: {
@@ -425,7 +431,7 @@ export const createHighlightLayers = (selectedVessel: StationaryVessel | null, a
       extruded: true,
       pickable: false,
       elevationScale: 1,
-      getPosition: () => [selectedVessel.position[0], selectedVessel.position[1], -5], // Start below the vessel
+      getPosition: (d) => [d.position[0], d.position[1], -5], // Start below the vessel
       getElevation: 500, // Tall vertical column
       getFillColor: [0, 150, 255, 100 + 50 * Math.sin(animationTime * Math.PI * 2)], // Pulsing blue
       updateTriggers: {
