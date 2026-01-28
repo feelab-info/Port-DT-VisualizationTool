@@ -3,6 +3,7 @@ import { simulationRoutes } from './simulationRoutes';
 import { vesselRoutes } from './vesselRoutes';
 import { authRoutes } from './authRoutes';
 import { pvModelRoutes } from './pvModelRoutes';
+import { converterRoutes } from './converterRoutes';
 import powerFlowRoutes from './powerFlowRoutes';
 
 /**
@@ -17,6 +18,7 @@ export function setupRoutes(app: Express): void {
   simulationRoutes(app);
   vesselRoutes(app);
   pvModelRoutes(app);
+  converterRoutes(app);
   
   // Power flow simulation storage routes
   app.use('/api/powerflow', powerFlowRoutes);

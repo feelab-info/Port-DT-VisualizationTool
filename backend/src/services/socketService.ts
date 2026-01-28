@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { connectToMongo } from './databaseService';
 import { ObjectId } from 'mongodb';
 import { getDeviceMappings, findDeviceIdByName } from './deviceDataService';
+import { collectLatestConverterData, collectHistoricalConverterData } from './converterDataService';
 
 /**
  * Initialize Socket.IO event handlers
@@ -201,6 +202,45 @@ export function initSocketHandlers(io: Server): void {
     socket.on('toggle_simulation_updates', (isPaused: boolean) => {
       socket.data.pauseSimulationUpdates = isPaused;
       console.log(`Client ${socket.id} ${isPaused ? 'paused' : 'resumed'} simulation updates`);
+    });
+
+    // Converter data handlers
+    socket.on('fetch_initial_converter_data', async (callback) => {
+      try {
+        console.log('Fetching initial converter data...');
+        const converterData = await collectLatestConverterData();
+        
+        callback({ success: true });
+        socket.emit('initial_converter_data', converterData);
+        console.log(`Sent ${converterData.length} initial converter readings to client`);
+      } catch (error) {
+        console.error('Error fetching initial converter data:', error);
+        callback({ success: false, error: 'Failed to fetch initial converter data' });
+      }
+    });
+
+    socket.on('fetch_historical_converter_data', async (params: { node?: string, startDate?: string, endDate?: string }, callback) => {
+      try {
+        console.log('Received historical converter data request:', params);
+        
+        // Parse dates if provided
+        const startDate = params.startDate ? new Date(params.startDate) : undefined;
+        const endDate = params.endDate ? new Date(params.endDate) : undefined;
+        
+        // Fetch historical data
+        const historicalData = await collectHistoricalConverterData(
+          params.node,
+          startDate,
+          endDate
+        );
+        
+        callback({ success: true });
+        socket.emit('historical_converter_data_response', historicalData);
+        console.log(`Sent ${historicalData.length} historical converter records`);
+      } catch (error) {
+        console.error('Error fetching historical converter data:', error);
+        callback({ success: false, error: 'Failed to fetch historical converter data' });
+      }
     });
   });
 } 

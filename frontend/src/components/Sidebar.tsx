@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Home, Map, Activity, Database, Anchor, BarChart2, Sun, Moon, LogOut, Zap } from 'lucide-react';
+import { Home, Map, Activity, Database, Anchor, BarChart2, Sun, Moon, LogOut, Zap, Power } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -16,6 +16,7 @@ export default function Sidebar() {
     { name: 'Port Map', href: '/map', icon: Map },
     { name: 'Simulation', href: '/simulation', icon: Activity },
     { name: 'Historical Port Data', href: '/real-time', icon: Database },
+    { name: 'Converters', href: '/converters', icon: Power },
     { name: 'Ship Energy Prediction', href: '/prediction', icon: BarChart2 },
     { name: 'PV Solar Model', href: '/pv-model', icon: Zap },
   ];

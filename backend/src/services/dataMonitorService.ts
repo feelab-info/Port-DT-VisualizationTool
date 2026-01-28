@@ -13,6 +13,7 @@ export async function watchMongoChanges(io: Server): Promise<void> {
   
   // Use cached collections for better performance
   const eGaugeCollection = getCachedCollection('enerspectrumSamples', 'eGauge');
+  const convertersCollection = getCachedCollection('enerspectrumSamples', 'Converters');
   const producersCollection = getCachedCollection('enerspectrumMetadata', 'producers');
     
   // Initial load of device mappings - specifically targeting the producer with ID "672357cdcb0b0c7c0f7eb6b4"
@@ -149,4 +150,47 @@ export async function watchMongoChanges(io: Server): Promise<void> {
       console.error('Error refreshing device mappings:', error);
     }
   }, 3600000); // Refresh every hour
+
+  // Watch for converter data updates
+  let lastConverterUpdate = new Date();
+  let lastSentConverterDocIds = new Set<string>();
+
+  setInterval(async () => {
+    try {
+      // Query for converter documents newer than last update
+      const newConverterDocs = await convertersCollection
+        .find({ timestamp: { $gt: lastConverterUpdate } })
+        .sort({ timestamp: 1 })
+        .limit(50) // Limit to 50 documents per update (10 per converter max)
+        .toArray();
+
+      if (newConverterDocs.length > 0) {
+        lastConverterUpdate = new Date();
+        
+        // Filter out documents we've already sent recently
+        const uniqueConverterDocs = newConverterDocs.filter(doc => {
+          const docId = doc._id.toString();
+          if (lastSentConverterDocIds.has(docId)) {
+            return false;
+          }
+          lastSentConverterDocIds.add(docId);
+          return true;
+        });
+        
+        // Limit the size of our tracking set
+        if (lastSentConverterDocIds.size > 500) {
+          const idsArray = Array.from(lastSentConverterDocIds);
+          lastSentConverterDocIds = new Set(idsArray.slice(-250));
+        }
+        
+        if (uniqueConverterDocs.length > 0) {
+          // Send converter updates to all connected clients
+          io.emit('converter_update', uniqueConverterDocs);
+          console.log(`Sent converter update to clients: ${uniqueConverterDocs.length} documents`);
+        }
+      }
+    } catch (error) {
+      console.error('Converter polling error:', error);
+    }
+  }, 30000); // Poll every 30 seconds (matching converter update frequency)
 } 
