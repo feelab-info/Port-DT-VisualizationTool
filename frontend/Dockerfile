@@ -24,8 +24,8 @@ RUN npm run build
 # Stage 2: Production
 FROM node:20-alpine AS runner
 
-# Install curl for health checks and tini for proper process management
-RUN apk add --no-cache curl tini
+# Install tini for proper process management
+RUN apk add --no-cache tini
 
 WORKDIR /app
 
@@ -47,10 +47,6 @@ EXPOSE 3000
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
-
-# Health check using curl (prevents zombie processes)
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/ || exit 1
 
 # Start the application with tini to reap zombie processes
 ENTRYPOINT ["/sbin/tini", "--"]
