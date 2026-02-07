@@ -1,5 +1,8 @@
+'use client';
+
 import React from 'react';
 import { EnergyData } from '@/services/EnergyDataService';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface HistoricalControlsProps {
   isHistoricalView: boolean;
@@ -16,6 +19,7 @@ export default function HistoricalControls({
   isConnected,
   switchToLiveData
 }: HistoricalControlsProps) {
+  const t = useTranslation();
   return (
     <div className="flex items-center gap-4">
       {/* Background Updates Notification */}
@@ -23,7 +27,7 @@ export default function HistoricalControls({
         <div className="flex items-center gap-3 bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 text-yellow-800 dark:text-yellow-300 px-4 py-2 rounded-lg border border-yellow-200 dark:border-yellow-700 shadow-sm">
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium">{backgroundData.length} new updates available</span>
+            <span className="text-sm font-medium">{backgroundData.length} {t.newUpdatesAvailable}</span>
           </div>
           <button 
             onClick={switchToLiveData}
@@ -32,7 +36,7 @@ export default function HistoricalControls({
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            <span>Switch to Live</span>
+            <span>{t.switchToLive}</span>
           </button>
         </div>
       )}
@@ -46,7 +50,7 @@ export default function HistoricalControls({
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
-          <span>Switch to Live Data</span>
+          <span>{t.switchToLiveData}</span>
         </button>
       )}
       
@@ -61,7 +65,7 @@ export default function HistoricalControls({
             ? 'bg-green-500 animate-pulse' 
             : 'bg-red-500'
         }`}></div>
-        <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
+        <span>{isConnected ? t.connected : t.disconnected}</span>
         {isConnected && (
           <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />

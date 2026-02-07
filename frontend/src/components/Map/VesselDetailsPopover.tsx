@@ -1,8 +1,11 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import { SimulationDetail } from '@/services/VesselSimulationService';
 import { StationaryVessel } from './layers';
 import { calculateTotalEnergy, getStayDuration } from './utils';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface VesselDetailsPopoverProps {
   vessel: StationaryVessel & {
@@ -12,6 +15,7 @@ interface VesselDetailsPopoverProps {
 }
 
 const VesselDetailsPopover: React.FC<VesselDetailsPopoverProps> = ({ vessel, onClose }) => {
+  const t = useTranslation();
   return (
     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg p-4 max-w-sm w-full z-20">
       <button 
@@ -24,18 +28,18 @@ const VesselDetailsPopover: React.FC<VesselDetailsPopoverProps> = ({ vessel, onC
       </button>
       
       <h3 className="text-xl font-bold text-blue-800 mb-2">{vessel.name}</h3>
-      <p className="text-gray-600 mb-2">Docked at: {vessel.dockName || 'Port'}</p>
+      <p className="text-gray-600 mb-2">{t.dockedAt}: {vessel.dockName || t.port}</p>
       
       {/* Show schedule from vessel data if available */}
       {vessel.arrivalTime && vessel.departureTime && !vessel.simulation && (
         <div className="bg-blue-50 p-3 rounded-lg my-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <p className="text-xs text-gray-500">Arrival</p>
+              <p className="text-xs text-gray-500">{t.arrival}</p>
               <p className="font-medium">{vessel.arrivalTime}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">Departure</p>
+              <p className="text-xs text-gray-500">{t.departure}</p>
               <p className="font-medium">{vessel.departureTime}</p>
             </div>
           </div>
@@ -47,19 +51,19 @@ const VesselDetailsPopover: React.FC<VesselDetailsPopoverProps> = ({ vessel, onC
           <div className="bg-gray-50 p-3 rounded-lg my-3">
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <p className="text-xs text-gray-500">Arrival</p>
+                <p className="text-xs text-gray-500">{t.arrival}</p>
                 <p className="font-medium">{vessel.simulation.data.arrival_time}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Departure</p>
+                <p className="text-xs text-gray-500">{t.departure}</p>
                 <p className="font-medium">{vessel.simulation.data.departure_time}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Stay Duration</p>
-                <p className="font-medium">{getStayDuration(vessel.simulation).toFixed(1)} hours</p>
+                <p className="text-xs text-gray-500">{t.stayDuration}</p>
+                <p className="font-medium">{getStayDuration(vessel.simulation).toFixed(1)} {t.hours}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Gross Tonnage</p>
+                <p className="text-xs text-gray-500">{t.grossTonnage}</p>
                 <p className="font-medium">{vessel.simulation.data.gross_tonnage.toLocaleString()} GT</p>
               </div>
             </div>
@@ -68,12 +72,12 @@ const VesselDetailsPopover: React.FC<VesselDetailsPopoverProps> = ({ vessel, onC
             <div className="mt-3 pt-3 border-t border-gray-200">
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-xs text-gray-500">Est. Energy Consumption</p>
-                  <p className="font-medium text-blue-700">{calculateTotalEnergy(vessel.simulation).toFixed(2)} kWh</p>
+                  <p className="text-xs text-gray-500">{t.estimatedEnergyConsumption}</p>
+                  <p className="font-medium text-blue-700">{calculateTotalEnergy(vessel.simulation).toFixed(2)} {t.kWh}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-gray-500">Based on</p>
-                  <p className="font-medium">{vessel.simulation.closest_ship} model</p>
+                  <p className="text-xs text-gray-500">{t.basedOn}</p>
+                  <p className="font-medium">{vessel.simulation.closest_ship} {t.model}</p>
                 </div>
               </div>
             </div>
@@ -86,14 +90,14 @@ const VesselDetailsPopover: React.FC<VesselDetailsPopoverProps> = ({ vessel, onC
                 className="block w-full py-2 px-4 text-center bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors duration-200"
                 onClick={onClose}
               >
-                View Energy Profile
+                {t.viewEnergyProfile}
               </Link>
             </div>
           )}
         </>
       ) : (
         <div className="bg-yellow-50 p-3 rounded-lg my-3 text-yellow-800">
-          <p>No detailed information available for this vessel.</p>
+          <p>{t.noDetailedInformationAvailable}</p>
         </div>
       )}
     </div>

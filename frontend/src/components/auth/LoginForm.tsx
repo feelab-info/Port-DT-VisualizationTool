@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { authService } from '@/services/AuthService';
@@ -5,10 +7,12 @@ import { Mail, AlertCircle, Loader2, Lock, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 import RegistrationForm from './RegistrationForm';
 import EmailVerificationForm from './EmailVerificationForm';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type AuthStep = 'login' | 'registration' | 'verification';
 
 export default function LoginForm() {
+  const t = useTranslation();
   const { login } = useAuth();
   const [currentStep, setCurrentStep] = useState<AuthStep>('login');
   const [registrationEmail, setRegistrationEmail] = useState('');
@@ -26,18 +30,18 @@ export default function LoginForm() {
 
     // Email validation
     if (!formData.email) {
-      newErrors.email = 'Email is required';
+      newErrors.email = t.emailRequired;
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = t.validEmailAddress;
     } else if (!authService.validatePortEmail(formData.email)) {
-      newErrors.email = 'Access restricted to Port of Funchal staff (@apram.pt emails) or authorized personnel';
+      newErrors.email = t.accessRestrictedToPort;
     }
 
     // Password validation
     if (!formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = t.passwordRequired;
     } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters long';
+      newErrors.password = t.passwordMinLength;
     }
 
     setErrors(newErrors);
@@ -61,14 +65,14 @@ export default function LoginForm() {
       
       const result = await login(formData.email.trim(), formData.password.trim()).catch((error) => {
         console.error('[LoginForm] Login function threw error:', error);
-        return { success: false, error: 'Login failed. Please try again.' };
+        return { success: false, error: t.loginFailed };
       });
       
       console.log('[LoginForm] Login result:', result);
       
       if (!result.success) {
         // Show the error message (especially for 401 verification needed)
-        const errorMessage = result.error || 'Login failed. Please try again.';
+        const errorMessage = result.error || t.loginFailed;
         console.log('[LoginForm] Setting error message:', errorMessage);
         setGeneralError(errorMessage);
       } else {
@@ -76,7 +80,7 @@ export default function LoginForm() {
       }
     } catch (error) {
       console.error('[LoginForm] Caught error in handleSubmit:', error);
-      setGeneralError('An unexpected error occurred. Please try again.');
+      setGeneralError(t.unexpectedError);
     } finally {
       console.log('[LoginForm] Setting loading to false');
       setIsLoading(false);
@@ -175,10 +179,10 @@ export default function LoginForm() {
               
               
               <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                Welcome Back
+                {t.welcomeBack}
               </h2>
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                Access restricted to Port of Funchal staff
+                {t.accessRestricted}
               </p>
             </div>
 
@@ -201,7 +205,7 @@ export default function LoginForm() {
               {/* Email Field */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Email Address
+                  {t.emailAddress}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -230,7 +234,7 @@ export default function LoginForm() {
               {/* Password Field */}
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Password
+                  {t.password}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -247,7 +251,7 @@ export default function LoginForm() {
                         ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
                         : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700'
                     } text-gray-900 dark:text-gray-100`}
-                    placeholder="Enter your password"
+                    placeholder={t.enterYourPassword}
                     disabled={isLoading}
                   />
                   <button
@@ -277,10 +281,10 @@ export default function LoginForm() {
                 {isLoading ? (
                   <>
                     <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5" />
-                    Signing in...
+                    {t.signingIn}
                   </>
                 ) : (
-                  'Sign In'
+                  t.signIn
                 )}
               </button>
             </form>
@@ -288,13 +292,13 @@ export default function LoginForm() {
             {/* Register Link */}
             <div className="text-center">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                First time using the system?{' '}
+                {t.firstTimeUsingSystem}{' '}
                 <button
                   onClick={handleRegisterClick}
                   className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
                   disabled={isLoading}
                 >
-                  Register your email
+                  {t.registerYourEmail}
                 </button>
               </p>
             </div>
@@ -302,9 +306,9 @@ export default function LoginForm() {
             {/* Footer */}
             <div className="text-center">
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Only authorized Port of Funchal staff can access this system.
+                {t.onlyAuthorizedStaff}
                 <br />
-                Contact IT support if you need assistance.
+                {t.contactITSupport}
               </p>
             </div>
           </div>
@@ -331,11 +335,10 @@ export default function LoginForm() {
                 {/* Overlay with branding */}
                 <div className="absolute inset-0 bg-blue-900/40 flex flex-col justify-end p-8">
                   <div className="text-white">
-                    <h1 className="text-4xl font-bold mb-2">Port of Funchal</h1>
-                    <p className="text-xl text-blue-100 mb-4">Digital Twin Platform</p>
+                    <h1 className="text-4xl font-bold mb-2">{t.portOfFunchal}</h1>
+                    <p className="text-xl text-blue-100 mb-4">{t.digitalTwinPlatform}</p>
                     <p className="text-blue-200 leading-relaxed">
-                      Advanced port management and energy monitoring system for the Port of Funchal. 
-                      Providing real-time insights and simulation capabilities for efficient port operations.
+                      {t.advancedPortManagement}
                     </p>
                   </div>
                 </div>

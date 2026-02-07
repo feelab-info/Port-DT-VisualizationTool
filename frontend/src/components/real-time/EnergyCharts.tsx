@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useMemo, useCallback } from 'react';
 import { EnergyData } from '@/services/EnergyDataService';
 import { 
@@ -15,6 +17,7 @@ import {
 } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
 import 'chartjs-adapter-date-fns';
+import { useTranslation } from '@/hooks/useTranslation';
 
 // Register ChartJS components
 ChartJS.register(
@@ -40,6 +43,7 @@ export default function EnergyCharts({
   selectedDevice,
   isHistoricalView
 }: EnergyChartsProps) {
+  const t = useTranslation();
   // Sort data by timestamp to ensure chronological order
   const sortedData = useMemo(() => {
     return [...filteredData].sort((a, b) => 
@@ -99,7 +103,7 @@ export default function EnergyCharts({
       labels: dataPoints.map(item => new Date(item.timestamp)),
       datasets: [
         {
-          label: 'L1 Power (W)',
+          label: `${t.l1Power} (W)`,
           data: dataPoints.map(item => item.L1?.P || 0),
           borderColor: 'rgb(239, 68, 68)',
           backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -110,7 +114,7 @@ export default function EnergyCharts({
           fill: false
         },
         {
-          label: 'L2 Power (W)',
+          label: `${t.l2Power} (W)`,
           data: dataPoints.map(item => item.L2?.P || 0),
           borderColor: 'rgb(16, 185, 129)',
           backgroundColor: 'rgba(16, 185, 129, 0.1)',
@@ -121,7 +125,7 @@ export default function EnergyCharts({
           fill: false
         },
         {
-          label: 'L3 Power (W)',
+          label: `${t.l3Power} (W)`,
           data: dataPoints.map(item => item.L3?.P || 0),
           borderColor: 'rgb(139, 92, 246)',
           backgroundColor: 'rgba(139, 92, 246, 0.1)',
@@ -141,7 +145,7 @@ export default function EnergyCharts({
       return {
         labels: [],
         datasets: [{
-          label: 'Total Consumption (W)',
+          label: `${t.totalConsumption} (W)`,
           data: [],
           backgroundColor: 'rgba(59, 130, 246, 0.8)',
           borderColor: 'rgba(59, 130, 246, 1)',
@@ -177,7 +181,7 @@ export default function EnergyCharts({
         labels,
         datasets: [
           {
-            label: 'Average Daily Power (W)',
+            label: t.averageDailyPowerW,
             data,
             backgroundColor: 'rgba(59, 130, 246, 0.8)',
             borderColor: 'rgba(59, 130, 246, 1)',
@@ -260,7 +264,7 @@ export default function EnergyCharts({
       labels,
       datasets: [
         {
-          label: 'Peak Power (W)',
+          label: t.peakPowerW,
           data: sortedDays.map(day => dailyStats[day].max),
           backgroundColor: 'rgba(239, 68, 68, 0.6)',
           borderColor: 'rgba(239, 68, 68, 1)',
@@ -268,7 +272,7 @@ export default function EnergyCharts({
           borderRadius: 4,
         },
         {
-          label: 'Average Power (W)',
+          label: t.averagePowerW,
           data: sortedDays.map(day => dailyStats[day].avg),
           backgroundColor: 'rgba(34, 197, 94, 0.6)',
           borderColor: 'rgba(34, 197, 94, 1)',
@@ -345,7 +349,7 @@ export default function EnergyCharts({
         },
         title: {
           display: true,
-          text: 'Time',
+          text: t.time,
           font: {
             size: 12,
             weight: 'bold' as const
@@ -365,7 +369,7 @@ export default function EnergyCharts({
         beginAtZero: true,
         title: {
           display: true,
-          text: 'Power (W)',
+          text: t.powerW,
           font: {
             size: 12,
             weight: 'bold' as const
@@ -433,7 +437,7 @@ export default function EnergyCharts({
       x: {
         title: {
           display: true,
-          text: isMultiDay ? 'Date' : 'Hour of Day',
+          text: isMultiDay ? t.date : t.hourOfDay,
           font: {
             size: 12,
             weight: 'bold' as const
@@ -452,7 +456,7 @@ export default function EnergyCharts({
         beginAtZero: true,
         title: {
           display: true,
-          text: 'Average Power (W)',
+          text: t.averagePowerW,
           font: {
             size: 12,
             weight: 'bold' as const
@@ -476,8 +480,8 @@ export default function EnergyCharts({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No chart data available</h3>
-        <p className="text-gray-600 dark:text-gray-400">No data available for charts. Try selecting a different date or device.</p>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{t.noDataAvailable}</h3>
+        <p className="text-gray-600 dark:text-gray-400">{t.noDataAvailableForCharts}</p>
       </div>
     );
   }
@@ -487,13 +491,13 @@ export default function EnergyCharts({
       {/* Power Consumption Line Chart */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-600">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Power Consumption Over Time</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t.powerConsumptionOverTime}</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {selectedDevice 
-              ? `Line-by-line power analysis for ${selectedDevice}` 
+              ? `${t.lineByLinePowerAnalysis} ${selectedDevice}` 
               : isMultiDay 
-                ? 'Multi-day power consumption trends across all phases'
-                : 'Real-time power consumption trends'}
+                ? t.multiDayPowerConsumptionTrends
+                : t.realTimePowerConsumptionTrends}
           </p>
         </div>
         <div className="p-6">
@@ -507,9 +511,9 @@ export default function EnergyCharts({
       {isMultiDay && dailyComparisonData && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-600">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Daily Power Comparison</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t.dailyPowerComparison}</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Peak, average, and minimum power consumption per day
+              {t.peakAverageMinimumPowerConsumption}
             </p>
           </div>
           <div className="p-6">
@@ -524,12 +528,12 @@ export default function EnergyCharts({
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-600">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            {isMultiDay ? 'Daily Energy Consumption' : 'Hourly Energy Consumption'}
+            {isMultiDay ? t.dailyEnergyConsumption : t.hourlyEnergyConsumption}
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {selectedDevice 
-              ? `Aggregated ${isMultiDay ? 'daily' : 'hourly'} consumption for ${selectedDevice}` 
-              : `Total ${isMultiDay ? 'daily' : 'hourly'} energy usage patterns`}
+              ? `${t.aggregated} ${isMultiDay ? t.daily : t.hourly} ${t.consumptionFor} ${selectedDevice}` 
+              : `${t.total} ${isMultiDay ? t.daily : t.hourly} ${t.energyUsagePatterns}`}
           </p>
         </div>
         <div className="p-6">

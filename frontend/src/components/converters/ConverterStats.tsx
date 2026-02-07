@@ -1,5 +1,8 @@
+'use client';
+
 import React from 'react';
 import { ConverterData } from '@/services/ConverterDataService';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface ConverterStatsProps {
   data: ConverterData[];
@@ -40,6 +43,8 @@ interface ConverterStatsProps {
  *   - battery: Output to system
  */
 export default function ConverterStats({ data }: ConverterStatsProps) {
+  const t = useTranslation();
+  
   // 1. GRID POWER: From N05 (ConverterACDC) - Connection to ACTUAL utility grid
   //    grid.P = Power from utility grid (positive = importing, negative = exporting)
   const converterACDC = data.find(c => c.node === 'N05');
@@ -79,20 +84,20 @@ export default function ConverterStats({ data }: ConverterStatsProps) {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
         <div className="flex-1">
-          <h2 className="text-2xl font-bold tracking-tight">System Overview</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{t.systemOverview}</h2>
           <p className="text-sm text-slate-300 mt-2">
-            Aggregate power metrics calculated from real-time data across all 5 converters
+            {t.aggregatePowerMetrics}
           </p>
         </div>
         <div className="text-left md:text-right">
-          <div className="text-sm text-slate-400 mb-1">Health Status</div>
+          <div className="text-sm text-slate-400 mb-1">{t.healthStatus}</div>
           <div className="flex items-center gap-2">
             <div className={`px-4 py-2 rounded-full text-sm font-semibold ${
               healthyConverters === data.length 
                 ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
                 : 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
             }`}>
-              {healthyConverters}/{data.length} Healthy
+              {healthyConverters}/{data.length} {t.healthy}
             </div>
           </div>
         </div>
@@ -115,7 +120,7 @@ export default function ConverterStats({ data }: ConverterStatsProps) {
         */}
         <div className="bg-white/5 backdrop-blur-sm rounded-lg p-5 border border-white/10 hover:bg-white/10 transition-all hover:scale-105">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-slate-300 font-semibold uppercase tracking-wider">Grid Power</p>
+            <p className="text-xs text-slate-300 font-semibold uppercase tracking-wider">{t.gridPower}</p>
             <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
               <svg className="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -128,7 +133,7 @@ export default function ConverterStats({ data }: ConverterStatsProps) {
             {gridPower.toFixed(1)}
           </p>
           <p className="text-xs text-slate-400">
-            {gridPower > 0.1 ? 'kW importing' : gridPower < -0.1 ? 'kW exporting' : 'kW balanced'}
+            {gridPower > 0.1 ? `${t.kW} ${t.importing}` : gridPower < -0.1 ? `${t.kW} ${t.exporting}` : `${t.kW} ${t.balanced}`}
           </p>
         </div>
 
@@ -143,7 +148,7 @@ export default function ConverterStats({ data }: ConverterStatsProps) {
         */}
         <div className="bg-white/5 backdrop-blur-sm rounded-lg p-5 border border-white/10 hover:bg-white/10 transition-all hover:scale-105">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-slate-300 font-semibold uppercase tracking-wider">Battery</p>
+            <p className="text-xs text-slate-300 font-semibold uppercase tracking-wider">{t.battery}</p>
             <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
               <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -156,7 +161,7 @@ export default function ConverterStats({ data }: ConverterStatsProps) {
             {batteryPower.toFixed(1)}
           </p>
           <p className="text-xs text-slate-400">
-            {batteryPower > 0.1 ? 'kW discharging' : batteryPower < -0.1 ? 'kW charging' : 'kW idle'}
+            {batteryPower > 0.1 ? `${t.kW} ${t.discharging}` : batteryPower < -0.1 ? `${t.kW} ${t.charging}` : `${t.kW} ${t.idle}`}
           </p>
         </div>
 
@@ -169,7 +174,7 @@ export default function ConverterStats({ data }: ConverterStatsProps) {
         */}
         <div className="bg-white/5 backdrop-blur-sm rounded-lg p-5 border border-white/10 hover:bg-white/10 transition-all hover:scale-105">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-slate-300 font-semibold uppercase tracking-wider">Solar Output</p>
+            <p className="text-xs text-slate-300 font-semibold uppercase tracking-wider">{t.solarOutput}</p>
             <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
               <svg className="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -179,7 +184,7 @@ export default function ConverterStats({ data }: ConverterStatsProps) {
           <p className="text-4xl font-bold mb-1 text-yellow-400">
             {Math.abs(solarPower).toFixed(1)}
           </p>
-          <p className="text-xs text-slate-400">kW to system</p>
+          <p className="text-xs text-slate-400">{t.kW} {t.toSystem}</p>
         </div>
 
         {/* 
@@ -191,7 +196,7 @@ export default function ConverterStats({ data }: ConverterStatsProps) {
         */}
         <div className="bg-white/5 backdrop-blur-sm rounded-lg p-5 border border-white/10 hover:bg-white/10 transition-all hover:scale-105">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-slate-300 font-semibold uppercase tracking-wider">EV Charging</p>
+            <p className="text-xs text-slate-300 font-semibold uppercase tracking-wider">{t.evCharging}</p>
             <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
               <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -201,7 +206,7 @@ export default function ConverterStats({ data }: ConverterStatsProps) {
           <p className="text-4xl font-bold mb-1 text-blue-400">
             {Math.abs(evPower).toFixed(1)}
           </p>
-          <p className="text-xs text-slate-400">kW to vehicles</p>
+          <p className="text-xs text-slate-400">{t.kW} {t.toVehicles}</p>
         </div>
 
         {/* 
@@ -211,7 +216,7 @@ export default function ConverterStats({ data }: ConverterStatsProps) {
         */}
         <div className="bg-white/5 backdrop-blur-sm rounded-lg p-5 border border-white/10 hover:bg-white/10 transition-all hover:scale-105">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-slate-300 font-semibold uppercase tracking-wider">Capacity</p>
+            <p className="text-xs text-slate-300 font-semibold uppercase tracking-wider">{t.capacity}</p>
             <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
               <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -221,7 +226,7 @@ export default function ConverterStats({ data }: ConverterStatsProps) {
           <p className="text-4xl font-bold mb-1 text-emerald-400">
             {totalCapacity.toFixed(1)}
           </p>
-          <p className="text-xs text-slate-400">kW available</p>
+          <p className="text-xs text-slate-400">{t.kW} {t.available}</p>
         </div>
       </div>
     </div>

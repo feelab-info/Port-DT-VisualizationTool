@@ -6,8 +6,10 @@ import VesselInput from '@/components/VesselInput';
 import Link from 'next/link';
 import vesselSimulationService, { SimulationDetail, DetailedSimulationsResponse } from '@/services/VesselSimulationService';
 import { authService } from '@/services/AuthService';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function PredictionPage() {
+  const t = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [simulationsData, setSimulationsData] = useState<DetailedSimulationsResponse | null>(null);
@@ -118,7 +120,7 @@ export default function PredictionPage() {
     <DashboardLayout showHealthNotification={false}>
       <div className="container mx-auto space-y-8 mt-3">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Ship Energy Prediction</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t.shipEnergyPredictionTitle}</h1>
         </div>
         
         {/* Vessel Input Section */}
@@ -128,7 +130,7 @@ export default function PredictionPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
             <div className="text-center py-4">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
-              <p className="mt-2 text-gray-600 dark:text-gray-400">Processing simulation...</p>
+              <p className="mt-2 text-gray-600 dark:text-gray-400">{t.processingSimulation}</p>
             </div>
           </div>
         )}
@@ -146,14 +148,14 @@ export default function PredictionPage() {
         {/* Date Selection Section */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Historical Detailed Simulations</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Select a date to view historical vessel energy data</p>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t.historicalDetailedSimulations}</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t.selectDateToView}</p>
           </div>
           <div className="p-6">
             <form onSubmit={handleDateSubmit} className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1">
                 <label htmlFor="simulation-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Date
+                  {t.date}
                 </label>
                 <input
                   type="date"
@@ -167,7 +169,7 @@ export default function PredictionPage() {
                 type="submit"
                 className="px-6 py-3 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 font-medium transition-colors"
               >
-                Update
+                {t.update}
               </button>
             </form>
           </div>
@@ -177,8 +179,8 @@ export default function PredictionPage() {
         {detailedSimulationError ? (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Vessel Energy Profiles</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Historical vessel energy consumption data</p>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t.vesselEnergyProfiles}</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t.historicalVesselEnergyData}</p>
             </div>
             <div className="p-6">
               <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-400 dark:border-yellow-700 text-yellow-800 dark:text-yellow-300 rounded-lg">
@@ -189,9 +191,9 @@ export default function PredictionPage() {
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium">No vessel data available</h3>
+                    <h3 className="text-sm font-medium">{t.noVesselDataAvailable}</h3>
                     <p className="text-sm mt-1">{detailedSimulationError}</p>
-                    <p className="text-sm mt-2">The server may not have any vessel data available yet or is experiencing technical difficulties.</p>
+                    <p className="text-sm mt-2">{t.serverMayNotHaveData}</p>
                   </div>
                 </div>
               </div>
@@ -201,9 +203,9 @@ export default function PredictionPage() {
           simulationsData && simulationsData.success && (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Vessel Energy Profiles</h2>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t.vesselEnergyProfiles}</h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {simulationsData.simulations.length} vessel{simulationsData.simulations.length !== 1 ? 's' : ''} found for {new Date(selectedDate).toLocaleDateString('pt-PT')}
+                  {simulationsData.simulations.length} {simulationsData.simulations.length !== 1 ? t.vesselsFound : t.vesselFound} {new Date(selectedDate).toLocaleDateString('pt-PT')}
                 </p>
               </div>
               <div className="p-6">
@@ -222,26 +224,26 @@ export default function PredictionPage() {
                             <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-300 group-hover:text-blue-900 dark:group-hover:text-blue-200 transition-colors">
                               {simulation.data.vessel}
                             </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Based on {simulation.closest_ship} model</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{t.basedOnModel} {simulation.closest_ship} {t.model}</p>
                           </div>
                           
                           <div className="p-5">
                             <div className="grid grid-cols-2 gap-4 mb-4">
                               <div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Arrival</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t.arrival}</p>
                                 <p className="font-medium text-gray-900 dark:text-gray-100">{simulation.data.arrival_time}</p>
                               </div>
                               <div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Departure</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t.departure}</p>
                                 <p className="font-medium text-gray-900 dark:text-gray-100">{simulation.data.departure_time}</p>
                               </div>
                               <div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Duration</p>
-                                <p className="font-medium text-gray-900 dark:text-gray-100">{stayDuration.toFixed(1)} hours</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t.duration}</p>
+                                <p className="font-medium text-gray-900 dark:text-gray-100">{stayDuration.toFixed(1)} {t.hours}</p>
                               </div>
                               <div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Est. Energy</p>
-                                <p className="font-medium text-gray-900 dark:text-gray-100">{totalEnergy.toFixed(2)} kWh</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t.estEnergy}</p>
+                                <p className="font-medium text-gray-900 dark:text-gray-100">{totalEnergy.toFixed(2)} {t.kWh}</p>
                               </div>
                             </div>
                             
@@ -249,7 +251,7 @@ export default function PredictionPage() {
                               href={`/vessel/${vesselId}?date=${simulation.data.energy_profile_data[0]?.Timestamp?.split(' ')[0] || ''}`} 
                               className="block w-full py-3 px-4 text-center bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-medium group-hover:bg-blue-700 dark:group-hover:bg-blue-700"
                             >
-                              View Detailed Profile
+                              {t.viewDetailedProfile}
                             </Link>
                           </div>
                         </div>
@@ -263,8 +265,8 @@ export default function PredictionPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     </div>
-                    <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No vessel energy profiles available</h3>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Try selecting a different date to view historical data.</p>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{t.noVesselEnergyProfiles}</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t.tryDifferentDate}</p>
                   </div>
                 )}
               </div>

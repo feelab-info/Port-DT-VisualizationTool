@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { EnergyData } from '@/services/EnergyDataService';
 import { Activity, Zap, ChevronLeft, ChevronRight, Waves, GripVertical } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export interface MapSensorPanelProps {
   energyData: EnergyData[];
@@ -11,6 +12,7 @@ export interface MapSensorPanelProps {
 }
 
 export default function MapSensorPanel({ energyData, isVisible = true, selectedTime }: MapSensorPanelProps) {
+  const t = useTranslation();
   const [selectedDeviceIndex, setSelectedDeviceIndex] = useState(0);
   // Use fixed initial position - will be properly set in useEffect
   const [position, setPosition] = useState<{ x: number; y: number }>({ x: 60, y: window.innerHeight - 400 });
@@ -136,7 +138,7 @@ export default function MapSensorPanel({ energyData, isVisible = true, selectedT
       >
         <div className="flex items-center justify-center text-gray-500 dark:text-gray-400">
           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
-          <span className="text-xs">Waiting for sensor data...</span>
+          <span className="text-xs">{t.waitingForSensorData}</span>
         </div>
       </div>
     );
@@ -174,7 +176,7 @@ export default function MapSensorPanel({ energyData, isVisible = true, selectedT
           <h3 className="text-white font-semibold text-xs flex items-center">
             <GripVertical className="h-3 w-3 mr-1 opacity-60" />
             <Activity className="h-3 w-3 mr-1" />
-            Sensors
+            {t.sensors}
           </h3>
           <div className="text-xs text-blue-100">
             {currentIndex + 1}/{devices.length}
@@ -186,7 +188,7 @@ export default function MapSensorPanel({ energyData, isVisible = true, selectedT
           <button
             onClick={handlePrevDevice}
             className="p-0.5 hover:bg-white/20 rounded transition-colors"
-            title="Previous device"
+            title={t.previousDevice}
           >
             <ChevronLeft className="h-3 w-3 text-white" />
           </button>
@@ -200,7 +202,7 @@ export default function MapSensorPanel({ energyData, isVisible = true, selectedT
           <button
             onClick={handleNextDevice}
             className="p-0.5 hover:bg-white/20 rounded transition-colors"
-            title="Next device"
+            title={t.nextDevice}
           >
             <ChevronRight className="h-3 w-3 text-white" />
           </button>
@@ -214,7 +216,7 @@ export default function MapSensorPanel({ energyData, isVisible = true, selectedT
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <Zap className="h-3 w-3 text-yellow-600 dark:text-yellow-400 mr-1.5" />
-              <span className="text-xs text-gray-600 dark:text-gray-400">Power</span>
+              <span className="text-xs text-gray-600 dark:text-gray-400">{t.power}</span>
             </div>
             <span className="text-xs font-bold text-gray-900 dark:text-gray-100">
               {Math.round(totalPower).toLocaleString()} W
@@ -227,7 +229,7 @@ export default function MapSensorPanel({ energyData, isVisible = true, selectedT
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center">
               <Waves className="h-2.5 w-2.5 mr-1" />
-              3-Phase
+              {t.threePhase}
             </span>
           </div>
           <div className="space-y-1">

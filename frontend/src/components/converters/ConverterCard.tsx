@@ -1,14 +1,17 @@
+'use client';
+
 import React from 'react';
 import { ConverterData } from '@/services/ConverterDataService';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface ConverterCardProps {
   data: ConverterData;
 }
 
 export default function ConverterCard({ data }: ConverterCardProps) {
+  const t = useTranslation();
   // Calculate totals
   const totalActivePower = ((data.L1?.P || 0) + (data.L2?.P || 0) + (data.L3?.P || 0)) / 1000; // kW
-  const totalReactivePower = ((data.L1?.Q || 0) + (data.L2?.Q || 0) + (data.L3?.Q || 0)) / 1000; // kVAR
   const batteryPower = (data.battery?.P || 0) / 1000; // kW
   const gridPower = (data.grid?.P || 0) / 1000; // kW
   
@@ -36,12 +39,12 @@ export default function ConverterCard({ data }: ConverterCardProps) {
   // System state text
   const getSystemStateText = (state: number) => {
     const states: Record<number, string> = {
-      0: 'Off',
-      1: 'On',
-      2: 'Fault',
-      3: 'Standby'
+      0: t.off,
+      1: t.on,
+      2: t.fault,
+      3: t.standby
     };
-    return states[state] || 'Unknown';
+    return states[state] || t.unknown;
   };
 
   const systemState = getSystemStateText(data.status?.SystemState || 0);
@@ -64,7 +67,7 @@ export default function ConverterCard({ data }: ConverterCardProps) {
                 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
                 : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
             }`}>
-              {isHealthy ? '✓ Healthy' : '⚠ Fault'}
+              {isHealthy ? `✓ ${t.healthy}` : `⚠ ${t.fault}`}
             </span>
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${
               systemState === 'On' 
@@ -78,24 +81,18 @@ export default function ConverterCard({ data }: ConverterCardProps) {
       </div>
 
       {/* Power Summary */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="mb-4">
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Active Power</p>
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">{t.activePower}</p>
           <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">
-            {totalActivePower.toFixed(2)} <span className="text-sm">kW</span>
-          </p>
-        </div>
-        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3">
-          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Reactive Power</p>
-          <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">
-            {totalReactivePower.toFixed(2)} <span className="text-sm">kVAR</span>
+            {totalActivePower.toFixed(2)} <span className="text-sm">{t.kW}</span>
           </p>
         </div>
       </div>
 
       {/* Phase Details */}
       <div className="space-y-2 mb-4">
-        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Phase Details</h4>
+        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{t.phaseDetails}</h4>
         {['L1', 'L2', 'L3'].map((phase) => {
           const phaseData = data[phase as keyof Pick<ConverterData, 'L1' | 'L2' | 'L3'>];
           return (
@@ -118,41 +115,33 @@ export default function ConverterCard({ data }: ConverterCardProps) {
       {/* Battery & Grid */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded p-3">
-          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Battery</p>
+          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{t.battery}</p>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {data.battery?.V?.toFixed(2) || 0}V • {data.battery?.I?.toFixed(2) || 0}A
           </p>
           <p className="text-lg font-bold text-yellow-700 dark:text-yellow-400">
-            {batteryPower.toFixed(2)} kW
+            {batteryPower.toFixed(2)} {t.kW}
           </p>
         </div>
         <div className="bg-green-50 dark:bg-green-900/20 rounded p-3">
-          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Grid</p>
+          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{t.grid}</p>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {data.grid?.V?.toFixed(2) || 0}V • {data.grid?.I?.toFixed(2) || 0}A
           </p>
           <p className="text-lg font-bold text-green-700 dark:text-green-400">
-            {gridPower.toFixed(2)} kW
+            {gridPower.toFixed(2)} {t.kW}
           </p>
         </div>
       </div>
 
       {/* Available Power */}
       <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded p-3 mb-3">
-        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Available Power</p>
-        <div className="flex justify-between text-sm">
-          <div>
-            <span className="text-gray-600 dark:text-gray-400">Active:</span>
-            <span className="ml-2 font-bold text-indigo-700 dark:text-indigo-400">
-              {((data.available_power?.itfc_pos_active_available_power || 0) / 1000).toFixed(2)} kW
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-600 dark:text-gray-400">Reactive:</span>
-            <span className="ml-2 font-bold text-indigo-700 dark:text-indigo-400">
-              {((data.available_power?.itfc_pos_ractive_available_power || 0) / 1000).toFixed(2)} kVAR
-            </span>
-          </div>
+        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">{t.availablePower}</p>
+        <div className="text-sm">
+          <span className="text-gray-600 dark:text-gray-400">{t.active}:</span>
+          <span className="ml-2 font-bold text-indigo-700 dark:text-indigo-400">
+            {((data.available_power?.itfc_pos_active_available_power || 0) / 1000).toFixed(2)} {t.kW}
+          </span>
         </div>
       </div>
 
@@ -168,20 +157,20 @@ export default function ConverterCard({ data }: ConverterCardProps) {
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-red-700 dark:text-red-400 font-bold">
-                ⚠️ Data is more than 1 day old
+                ⚠️ {t.dataMoreThan1DayOld}
               </span>
               <span className="text-red-600 dark:text-red-500 font-bold">
                 {getAgeDisplay()}
               </span>
             </div>
             <div className="text-red-600 dark:text-red-400 text-xs">
-              Last updated: {timestamp}
+              {t.lastUpdated}: {timestamp}
             </div>
           </div>
         ) : (
           <div className={`flex items-center ${isDataOld ? 'justify-between' : 'justify-center'}`}>
             <span className={isDataOld ? 'text-yellow-700 dark:text-yellow-400 font-medium' : 'text-gray-500 dark:text-gray-400'}>
-              Last updated: {timestamp}
+              {t.lastUpdated}: {timestamp}
             </span>
             {isDataOld && (
               <span className="text-yellow-600 dark:text-yellow-500 text-xs">

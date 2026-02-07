@@ -1,7 +1,10 @@
+'use client';
+
 import React, { useState } from 'react';
 import { authService } from '@/services/AuthService';
 import { Mail, AlertCircle, Loader2, ArrowLeft, Lock, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface RegistrationFormProps {
   onSuccess: (email: string) => void;
@@ -10,6 +13,7 @@ interface RegistrationFormProps {
 }
 
 export default function RegistrationForm({ onSuccess, onBackToLogin, initialEmail = '' }: RegistrationFormProps) {
+  const t = useTranslation();
   const [formData, setFormData] = useState({
     email: initialEmail,
     password: '',
@@ -26,25 +30,25 @@ export default function RegistrationForm({ onSuccess, onBackToLogin, initialEmai
 
     // Email validation
     if (!formData.email) {
-      newErrors.email = 'Email is required';
+      newErrors.email = t.emailRequired;
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = t.pleaseEnterValidEmail;
     } else if (!authService.validatePortEmail(formData.email)) {
-      newErrors.email = 'Access restricted to Port of Funchal staff (@apram.pt emails) or authorized personnel';
+      newErrors.email = t.accessRestrictedToPortStaff;
     }
 
     // Password validation
     if (!formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = t.passwordRequired;
     } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters long';
+      newErrors.password = t.passwordMustBeAtLeast8Characters;
     }
 
     // Confirm password validation
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
+      newErrors.confirmPassword = t.pleaseConfirmYourPassword;
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = t.passwordsDoNotMatch;
     }
 
     setErrors(newErrors);
@@ -67,10 +71,10 @@ export default function RegistrationForm({ onSuccess, onBackToLogin, initialEmai
       if (result.success) {
         onSuccess(formData.email.trim());
       } else {
-        setGeneralError(result.error || 'Registration failed. Please try again.');
+        setGeneralError(result.error || t.registrationFailedPleaseTryAgain);
       }
     } catch {
-      setGeneralError('An unexpected error occurred. Please try again.');
+      setGeneralError(t.unexpectedErrorOccurred);
     } finally {
       setIsLoading(false);
     }
@@ -114,10 +118,10 @@ export default function RegistrationForm({ onSuccess, onBackToLogin, initialEmai
         </div>
         
         <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          Register Your Account
+          {t.registerYourAccount}
         </h2>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          We&apos;ll send a verification code to your email
+          {t.weWillSendVerificationCode}
         </p>
       </div>
 
@@ -140,7 +144,7 @@ export default function RegistrationForm({ onSuccess, onBackToLogin, initialEmai
         {/* Email Field */}
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Email Address
+            {t.emailAddress}
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -170,7 +174,7 @@ export default function RegistrationForm({ onSuccess, onBackToLogin, initialEmai
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Password
+              {t.password}
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -187,7 +191,7 @@ export default function RegistrationForm({ onSuccess, onBackToLogin, initialEmai
                     ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
                     : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700'
                 } text-gray-900 dark:text-gray-100`}
-                placeholder="Enter your password"
+                placeholder={t.enterYourPassword}
                 disabled={isLoading}
               />
               <button
@@ -209,7 +213,7 @@ export default function RegistrationForm({ onSuccess, onBackToLogin, initialEmai
           </div>
           <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Confirm Password
+              {t.confirmPassword}
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -226,7 +230,7 @@ export default function RegistrationForm({ onSuccess, onBackToLogin, initialEmai
                     ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
                     : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700'
                 } text-gray-900 dark:text-gray-100`}
-                placeholder="Confirm your password"
+                placeholder={t.confirmYourPassword}
                 disabled={isLoading}
               />
               <button
@@ -257,10 +261,10 @@ export default function RegistrationForm({ onSuccess, onBackToLogin, initialEmai
           {isLoading ? (
             <>
               <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5" />
-              Sending verification code...
+              {t.sendingVerificationCode}
             </>
           ) : (
-            'Send Verification Code'
+            t.sendVerificationCode
           )}
         </button>
       </form>
@@ -273,7 +277,7 @@ export default function RegistrationForm({ onSuccess, onBackToLogin, initialEmai
           disabled={isLoading}
         >
           <ArrowLeft className="h-4 w-4 mr-1" />
-          Back to Login
+          {t.backToLogin}
         </button>
       </div>
     </div>

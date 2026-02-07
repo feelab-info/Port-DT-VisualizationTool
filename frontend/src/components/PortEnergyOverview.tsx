@@ -4,6 +4,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useEnergyData } from '@/hooks/useEnergyData';
 import { Activity, Zap, Database, Wifi, WifiOff, TrendingUp, PieChart, DollarSign, Clock } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -36,6 +37,7 @@ ChartJS.register(
 type TimePeriod = '15min' | '30min' | '1hour' | '3hours' | '6hours';
 
 export default function PortEnergyOverview() {
+  const t = useTranslation();
   const { 
     isConnected, 
     isLoading,
@@ -127,12 +129,12 @@ export default function PortEnergyOverview() {
   // Helper function to get display label for time period
   const getTimePeriodLabel = (period: TimePeriod): string => {
     switch (period) {
-      case '15min': return 'Last 15 Minutes';
-      case '30min': return 'Last 30 Minutes';
-      case '1hour': return 'Last 1 Hour';
-      case '3hours': return 'Last 3 Hours';
-      case '6hours': return 'Last 6 Hours';
-      default: return 'Last 15 Minutes';
+      case '15min': return t.last15Minutes;
+      case '30min': return t.last30Minutes;
+      case '1hour': return t.lastHour;
+      case '3hours': return t.last3Hours;
+      case '6hours': return t.last6Hours;
+      default: return t.last15Minutes;
     }
   };
 
@@ -624,7 +626,7 @@ export default function PortEnergyOverview() {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const activeDevices = tooltipItems.filter((item: any) => item.parsed.y > 0.1).length;
             if (activeDevices > 10) {
-              return [`📊 ${activeDevices} active devices - Top 10 shown`];
+              return [`📊 ${activeDevices} ${t.activeDevicesTop10Shown}`];
             }
             return [];
           },
@@ -658,7 +660,7 @@ export default function PortEnergyOverview() {
             if (label) {
               label += ': ';
             }
-            label += context.parsed.y.toFixed(2) + ' kW';
+            label += context.parsed.y.toFixed(2) + ' ' + t.kW;
             return label;
           },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -677,7 +679,7 @@ export default function PortEnergyOverview() {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .reduce((sum: number, item: any) => sum + item.parsed.y, 0);
               
-              return [`\n+ ${othersCount} other device${othersCount > 1 ? 's' : ''}: ${othersPower.toFixed(2)} kW`];
+              return [`\n+ ${othersCount} ${othersCount > 1 ? t.otherDevicesPlural : t.otherDevices}: ${othersPower.toFixed(2)} ${t.kW}`];
             }
             return [];
           },
@@ -687,7 +689,7 @@ export default function PortEnergyOverview() {
             tooltipItems.forEach(function(tooltipItem) {
               sum += tooltipItem.parsed.y;
             });
-            return '━━━━━━━━━━━━━\nTotal: ' + sum.toFixed(2) + ' kW';
+            return '━━━━━━━━━━━━━\n' + t.total + ': ' + sum.toFixed(2) + ' ' + t.kW;
           }
         }
       },
@@ -768,10 +770,10 @@ export default function PortEnergyOverview() {
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Port Energy Overview</h2>
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">{t.portEnergyOverview}</h2>
         <div className="h-64 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          <span className="ml-2 text-gray-500 dark:text-gray-400">Loading energy data...</span>
+          <span className="ml-2 text-gray-500 dark:text-gray-400">{t.loadingData}</span>
         </div>
       </div>
     );
@@ -780,17 +782,17 @@ export default function PortEnergyOverview() {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Port Energy Overview</h2>
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">{t.portEnergyOverview}</h2>
         <div className="flex items-center space-x-2">
           {isConnected ? (
             <div className="flex items-center text-green-600 dark:text-green-400">
               <Wifi className="h-4 w-4 mr-1" />
-              <span className="text-sm">Live</span>
+              <span className="text-sm">{t.active}</span>
             </div>
           ) : (
             <div className="flex items-center text-red-600 dark:text-red-400">
               <WifiOff className="h-4 w-4 mr-1" />
-              <span className="text-sm">Offline</span>
+              <span className="text-sm">{t.disconnected}</span>
             </div>
           )}
         </div>
@@ -802,7 +804,7 @@ export default function PortEnergyOverview() {
           <div className="flex items-center">
             <Database className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Devices</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t.totalDevicesLabel}</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{summaryStats.totalDevices}</p>
             </div>
           </div>
@@ -812,7 +814,7 @@ export default function PortEnergyOverview() {
           <div className="flex items-center">
             <Activity className="h-8 w-8 text-green-600 dark:text-green-400" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Active Devices</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t.activeDevicesLabel}</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{summaryStats.activeDevices}</p>
             </div>
           </div>
@@ -822,9 +824,9 @@ export default function PortEnergyOverview() {
           <div className="flex items-center">
             <Zap className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Current Power</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t.currentTotalPowerLabel}</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{summaryStats.currentTotalPower.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">kW (Entrada de Energia)</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t.kW} (Entrada de Energia)</p>
             </div>
           </div>
         </div>
@@ -833,7 +835,7 @@ export default function PortEnergyOverview() {
           <div className="flex items-center">
             <Activity className="h-8 w-8 text-purple-600 dark:text-purple-400" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Avg Power Factor</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t.averagePowerFactorLabel}</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{summaryStats.averagePowerFactor}</p>
             </div>
           </div>
@@ -845,12 +847,12 @@ export default function PortEnergyOverview() {
         <div className="flex items-center justify-between mb-3">
           <label className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300">
             <Clock className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
-            View Time Period
+            {t.timePeriod}
           </label>
           {isFetchingAdditionalData && (
             <div className="flex items-center text-xs text-blue-600 dark:text-blue-400">
               <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-2"></div>
-              Loading additional data...
+              {t.loadingData}
             </div>
           )}
         </div>
@@ -864,7 +866,7 @@ export default function PortEnergyOverview() {
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-600 hover:shadow-sm'
             } ${isFetchingAdditionalData ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <div className="text-sm">15 Minutes</div>
+            <div className="text-sm">{t.last15Minutes}</div>
           </button>
           <button
             onClick={() => setTimePeriod('30min')}
@@ -875,7 +877,7 @@ export default function PortEnergyOverview() {
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-600 hover:shadow-sm'
             } ${isFetchingAdditionalData ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <div className="text-sm">30 Minutes</div>
+            <div className="text-sm">{t.last30Minutes}</div>
           </button>
           <button
             onClick={() => setTimePeriod('1hour')}
@@ -886,7 +888,7 @@ export default function PortEnergyOverview() {
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-600 hover:shadow-sm'
             } ${isFetchingAdditionalData ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <div className="text-sm">1 Hour</div>
+            <div className="text-sm">{t.lastHour}</div>
           </button>
           <button
             onClick={() => setTimePeriod('3hours')}
@@ -897,7 +899,7 @@ export default function PortEnergyOverview() {
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-600 hover:shadow-sm'
             } ${isFetchingAdditionalData ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <div className="text-sm">3 Hours</div>
+            <div className="text-sm">{t.last3Hours}</div>
           </button>
           <button
             onClick={() => setTimePeriod('6hours')}
@@ -908,7 +910,7 @@ export default function PortEnergyOverview() {
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-blue-600 hover:shadow-sm'
             } ${isFetchingAdditionalData ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <div className="text-sm">6 Hours</div>
+            <div className="text-sm">{t.last6Hours}</div>
           </button>
         </div>
       </div>
@@ -917,14 +919,14 @@ export default function PortEnergyOverview() {
       <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-lg">
         <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 flex items-center">
           <Activity className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
-          Device Power Distribution - {getTimePeriodLabel(timePeriod)}
+          {t.devicePowerDistribution} - {getTimePeriodLabel(timePeriod)}
         </h3>
         <div className="h-96">
           {stackedChartData.datasets.length > 0 ? (
             <Line data={stackedChartData} options={chartOptions} />
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
-              {isConnected ? "Waiting for device data..." : "Connect to view real-time data"}
+              {isConnected ? t.waitingForDeviceData : t.connectToViewRealTimeData}
             </div>
           )}
         </div>
@@ -936,9 +938,9 @@ export default function PortEnergyOverview() {
           <div className="flex items-center">
             <Zap className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Monthly Energy</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t.monthlyEnergyLabel}</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{analyticsStats.monthlyEnergy.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">kWh (Last 30 days)</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t.kWh} ({t.last30Days})</p>
             </div>
           </div>
         </div>
@@ -947,9 +949,9 @@ export default function PortEnergyOverview() {
           <div className="flex items-center">
             <TrendingUp className="h-8 w-8 text-rose-600 dark:text-rose-400" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Peak Power</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t.maxPowerLabel}</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{analyticsStats.maxPower.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">kW (Maximum)</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t.kW} ({t.maximum})</p>
             </div>
           </div>
         </div>
@@ -958,7 +960,7 @@ export default function PortEnergyOverview() {
           <div className="flex items-center">
             <PieChart className="h-8 w-8 text-amber-600 dark:text-amber-400" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Top Consumer</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t.topConsumerLabel}</p>
               <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{analyticsStats.topConsumer.name}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">{analyticsStats.topConsumer.percentage}% ({getTimePeriodLabel(timePeriod)})</p>
             </div>
@@ -972,13 +974,13 @@ export default function PortEnergyOverview() {
           <div className="flex items-center">
             <DollarSign className="h-8 w-8 text-purple-600 dark:text-purple-400" />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Estimated Monthly Cost</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t.estimatedMonthlyCost}</p>
               <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">€{analyticsStats.estimatedCost.toLocaleString()}</p>
             </div>
           </div>
           <div className="text-right text-xs text-gray-500 dark:text-gray-400">
-            <p>Based on 0.15 €/kWh</p>
-            <p>{analyticsStats.monthlyEnergy.toLocaleString()} kWh consumed</p>
+            <p>{t.basedOn015EuroPerKwh}</p>
+            <p>{analyticsStats.monthlyEnergy.toLocaleString()} {t.kWh} {t.consumed}</p>
           </div>
         </div>
       </div>
@@ -986,7 +988,7 @@ export default function PortEnergyOverview() {
       {/* Quick Status */}
       <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
         <p>
-          Last updated: {allData.length > 0 ? new Date(allData[allData.length - 1]?.timestamp).toLocaleTimeString() : 'N/A'}
+          {t.lastUpdated}: {allData.length > 0 ? new Date(allData[allData.length - 1]?.timestamp).toLocaleTimeString() : t.na}
         </p>
       </div>
     </div>

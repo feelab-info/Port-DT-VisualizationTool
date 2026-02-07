@@ -1,6 +1,9 @@
+'use client';
+
 import React, { useEffect, useState } from 'react';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { EnergyData } from '@/services/EnergyDataService';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface DeviceSelectionProps {
   deviceList: {id: string, name: string}[];
@@ -31,6 +34,7 @@ export default function DeviceSelection({
   endDate,
   onEndDateChange
 }: DeviceSelectionProps) {
+  const t = useTranslation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
   // Use all devices from the system, not just those with active data
@@ -68,10 +72,10 @@ export default function DeviceSelection({
 
   // Get selected device display name
   const getSelectedDeviceName = () => {
-    if (!selectedDevice) return 'Select a device';
+    if (!selectedDevice) return t.selectADevice;
     
     const device = availableDevices.find(d => d.id === selectedDevice);
-    if (!device) return 'Select a device';
+    if (!device) return t.selectADevice;
     
     return getDeviceDisplayName(device);
   };
@@ -92,7 +96,7 @@ export default function DeviceSelection({
                 <svg className="w-4 h-4 mr-2 text-[#3b82f6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
                 </svg>
-                Select Device
+                {t.selectDevice}
               </label>
               <div className="relative">
                 <button
@@ -125,7 +129,7 @@ export default function DeviceSelection({
                       <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                       </svg>
-                      All Devices
+                      {t.allDevices}
                     </div>
                   </button>
                   
@@ -140,7 +144,7 @@ export default function DeviceSelection({
                       className={`w-full px-4 py-2.5 text-left hover:bg-[#3b82f6]/10 dark:hover:bg-[#3b82f6]/20 transition-colors flex items-center justify-between ${
                         selectedDevice === device.id ? 'bg-[#3b82f6]/20 dark:bg-[#3b82f6]/30 text-[#3b82f6] dark:text-[#3b82f6] font-semibold' : 'text-gray-900 dark:text-gray-100'
                       }`}
-                      title={`Device ID: ${device.id}${device.hasData ? ' (has active data)' : ' (no current data)'}`}
+                      title={`${t.deviceID}: ${device.id}${device.hasData ? ` (${t.hasActiveData})` : ` (${t.noCurrentData})`}`}
                     >
                       <div className="flex items-center">
                         <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -151,7 +155,7 @@ export default function DeviceSelection({
                       {device.hasData && (
                         <span className="flex items-center text-xs text-green-600 dark:text-green-400">
                           <span className="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>
-                          Active
+                          {t.active}
                         </span>
                       )}
                     </button>
@@ -162,7 +166,7 @@ export default function DeviceSelection({
             
             {!hasDevicesAvailable && (
               <p className="mt-2 text-sm text-yellow-600 dark:text-yellow-400">
-                Loading devices... Please wait.
+                {t.loadingDevices}
               </p>
             )}
           </div>
@@ -173,7 +177,7 @@ export default function DeviceSelection({
                 <svg className="w-4 h-4 mr-2 text-[#3b82f6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                {dateRangeType === 'custom' ? 'Start Date' : dateRangeType === 'single' ? 'Select Date' : 'End Date'}
+                {dateRangeType === 'custom' ? t.startDate : dateRangeType === 'single' ? t.selectDate : t.endDate}
               </label>
               <input
                 type="date"
@@ -191,7 +195,7 @@ export default function DeviceSelection({
                   <svg className="w-4 h-4 mr-2 text-[#3b82f6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  End Date
+                  {t.endDate}
                 </label>
                 <input
                   type="date"
@@ -206,7 +210,7 @@ export default function DeviceSelection({
 
             {/* Search Button */}
             <div>
-              <label className="block text-sm font-semibold text-transparent mb-2">Search</label>
+              <label className="block text-sm font-semibold text-transparent mb-2">{t.search}</label>
               <button
                 onClick={fetchHistoricalData}
                 disabled={isSearching}
@@ -218,14 +222,14 @@ export default function DeviceSelection({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span className="text-sm">Searching...</span>
+                  <span className="text-sm">{t.searching}</span>
                   </>
                 ) : (
                   <>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
-                  <span className="text-sm">Search</span>
+                  <span className="text-sm">{t.search}</span>
                   </>
                 )}
               </button>
@@ -239,7 +243,7 @@ export default function DeviceSelection({
             <svg className="w-4 h-4 mr-2 text-[#3b82f6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            Query Time Range
+            {t.queryTimeRange}
           </label>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <button
@@ -254,7 +258,7 @@ export default function DeviceSelection({
                 <svg className={`w-5 h-5 mb-1 ${dateRangeType === 'single' ? 'text-white' : 'text-[#3b82f6]'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <span className="text-sm">Single Day</span>
+                <span className="text-sm">{t.singleDay}</span>
               </div>
             </button>
             <button
@@ -269,7 +273,7 @@ export default function DeviceSelection({
                 <svg className={`w-5 h-5 mb-1 ${dateRangeType === '3days' ? 'text-white' : 'text-green-600 dark:text-green-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                <span className="text-sm">Last 3 Days</span>
+                <span className="text-sm">{t.last3Days}</span>
               </div>
             </button>
             <button
@@ -284,7 +288,7 @@ export default function DeviceSelection({
                 <svg className={`w-5 h-5 mb-1 ${dateRangeType === 'week' ? 'text-white' : 'text-purple-600 dark:text-purple-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
-                <span className="text-sm">Last 7 Days</span>
+                <span className="text-sm">{t.last7Days}</span>
               </div>
             </button>
             <button
@@ -299,7 +303,7 @@ export default function DeviceSelection({
                 <svg className={`w-5 h-5 mb-1 ${dateRangeType === 'custom' ? 'text-white' : 'text-orange-600 dark:text-orange-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                 </svg>
-                <span className="text-sm">Custom Range</span>
+                <span className="text-sm">{t.customRange}</span>
               </div>
             </button>
           </div>
@@ -313,6 +317,7 @@ export default function DeviceSelection({
 }
 
 function SearchProgressBar({ active }: { active: boolean }) {
+  const t = useTranslation();
   const [progress, setProgress] = useState<number>(0);
   const [visible, setVisible] = useState<boolean>(false);
 
@@ -354,7 +359,7 @@ function SearchProgressBar({ active }: { active: boolean }) {
         />
       </div>
       <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        Fetching historical data...
+        {t.fetchingHistoricalData}
       </div>
     </div>
   );

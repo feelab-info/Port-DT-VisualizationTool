@@ -1,34 +1,39 @@
+'use client';
+
 import DashboardLayout from '@/components/DashboardLayout';
 import PortEnergyOverview from '@/components/PortEnergyOverview';
 import Link from 'next/link';
 import { Map, Activity, Database, BarChart2 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function Home() {
+  const t = useTranslation();
+
   const cards = [
     {
-      title: 'Port Map',
-      description: 'Interactive 3D visualization of the port with real-time energy data',
+      title: t.portMap,
+      description: t.portMapDescription,
       icon: Map,
       href: '/map',
       color: 'bg-blue-500 dark:bg-blue-600',
     },
     {
-      title: 'Power Flow Simulation',
-      description: 'Simulate and analyze power flow scenarios in the port',
+      title: t.powerFlowSimulation,
+      description: t.powerFlowSimulationDescription,
       icon: Activity,
       href: '/simulation',
       color: 'bg-green-500 dark:bg-green-600',
     },
     {
-      title: 'Real-time Data',
-      description: 'Monitor real-time energy consumption and production data',
+      title: t.realTimeData,
+      description: t.realTimeDataDescription,
       icon: Database,
       href: '/real-time',
       color: 'bg-purple-500 dark:bg-purple-600',
     },
     {
-      title: 'Ship Energy Prediction',
-      description: 'Predict energy usage for incoming and outgoing vessels',
+      title: t.shipEnergyPrediction,
+      description: t.shipEnergyPredictionDescription,
       icon: BarChart2,
       href: '/prediction',
       color: 'bg-orange-500 dark:bg-orange-600',
@@ -38,8 +43,8 @@ export default function Home() {
   return (
     <DashboardLayout>
       <div className="mb-6 mt-3">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">Welcome to the Port Digital Twin platform</p>
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">{t.dashboard}</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">{t.welcomeMessage}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

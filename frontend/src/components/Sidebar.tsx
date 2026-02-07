@@ -2,23 +2,28 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Home, Map, Activity, Database, Anchor, BarChart2, Sun, Moon, LogOut, Zap, Power } from 'lucide-react';
+import { Home, Map, Activity, Database, Anchor, BarChart2, Sun, Moon, LogOut, Zap, Power, Languages } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { translations } from '@/translations/translations';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
+  const { language, toggleLanguage } = useLanguage();
   const { user, logout } = useAuth();
 
+  const t = translations[language];
+
   const navItems = [
-    { name: 'Dashboard', href: '/', icon: Home },
-    { name: 'Port Map', href: '/map', icon: Map },
-    { name: 'Simulation', href: '/simulation', icon: Activity },
-    { name: 'Historical Port Data', href: '/real-time', icon: Database },
-    { name: 'Converters', href: '/converters', icon: Power },
-    { name: 'Ship Energy Prediction', href: '/prediction', icon: BarChart2 },
-    { name: 'PV Solar Model', href: '/pv-model', icon: Zap },
+    { name: t.dashboard, href: '/', icon: Home },
+    { name: t.portMap, href: '/map', icon: Map },
+    { name: t.simulation, href: '/simulation', icon: Activity },
+    { name: t.historicalPortData, href: '/real-time', icon: Database },
+    { name: t.converters, href: '/converters', icon: Power },
+    { name: t.shipEnergyPrediction, href: '/prediction', icon: BarChart2 },
+    { name: t.pvSolarModel, href: '/pv-model', icon: Zap },
   ];
 
   const handleLogout = () => {
@@ -47,9 +52,9 @@ export default function Sidebar() {
 
   // Get role based on email domain
   const getUserRole = (email: string): string => {
-    if (email === 'diogo.paulino10@gmail.com') return 'System Administrator';
-    if (email.endsWith('@apram.pt')) return 'Port Authority Staff';
-    return 'Authorized User';
+    if (email === 'diogo.paulino10@gmail.com') return t.systemAdministrator;
+    if (email.endsWith('@apram.pt')) return t.portAuthorityStaff;
+    return t.authorizedUser;
   };
 
   return (
@@ -75,9 +80,9 @@ export default function Sidebar() {
             <div className="flex-1 min-w-0">
               <p 
                 className="font-semibold text-sidebar-text truncate text-sm leading-tight mb-1" 
-                title="Port Authority"
+                title={t.portAuthority}
               >
-                Port Authority
+                {t.portAuthority}
               </p>
               <p 
                 className="text-xs text-gray-400 dark:text-gray-300 truncate leading-tight mb-1" 
@@ -145,38 +150,50 @@ export default function Sidebar() {
         </Link>
       </div>
       
-      {/* Bottom controls with logout and theme toggle */}
+      {/* Bottom controls with logout, theme toggle, and language toggle */}
       <div className="mt-auto pt-4 border-t border-gray-700 dark:border-gray-600">
-        <div className="flex gap-2">
+        {/* Language and Theme toggles */}
+        <div className="flex gap-2 mb-2">
+          <button 
+            onClick={toggleLanguage}
+            className="flex-1 p-2 rounded-md hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors flex items-center justify-center gap-2"
+            aria-label={`Switch to ${language === 'en' ? 'Portuguese' : 'English'}`}
+            title={language === 'en' ? t.portuguese : t.english}
+          >
+            <Languages className="h-4 w-4" />
+            <span className="text-sm font-semibold">{language === 'en' ? 'PT' : 'EN'}</span>
+          </button>
+          
           <button 
             onClick={toggleTheme}
             className="flex-1 p-2 rounded-md hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors flex items-center justify-center gap-2"
-            aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+            aria-label={theme === 'light' ? t.switchToDark : t.switchToLight}
           >
             {theme === 'light' ? (
               <>
                 <Moon className="h-4 w-4" />
-                <span className="text-sm">Dark</span>
+                <span className="text-sm">{t.dark}</span>
               </>
             ) : (
               <>
                 <Sun className="h-4 w-4" />
-                <span className="text-sm">Light</span>
+                <span className="text-sm">{t.light}</span>
               </>
             )}
           </button>
-          
-          {user && (
-            <button
-              onClick={handleLogout}
-              className="flex-1 p-2 rounded-md hover:bg-red-600 dark:hover:bg-red-500 transition-colors flex items-center justify-center gap-2 text-gray-300 hover:text-white"
-              title="Sign out"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="text-sm">Sign Out</span>
-            </button>
-          )}
         </div>
+        
+        {/* Logout button */}
+        {user && (
+          <button
+            onClick={handleLogout}
+            className="w-full p-2 rounded-md hover:bg-red-600 dark:hover:bg-red-500 transition-colors flex items-center justify-center gap-2 text-gray-300 hover:text-white"
+            title={t.signOutTooltip}
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="text-sm">{t.signOut}</span>
+          </button>
+        )}
       </div>
     </div>
   );

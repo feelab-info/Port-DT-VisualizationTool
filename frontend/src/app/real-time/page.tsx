@@ -6,8 +6,10 @@ import DeviceSelection from '@/components/real-time/DeviceSelection';
 import DataDisplay from '@/components/real-time/DataDisplay';
 import HistoricalControls from '@/components/real-time/HistoricalControls';
 import { useDeviceDataHealth } from '@/hooks/useDeviceDataHealth';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function RealTimeDataPage() {
+  const t = useTranslation();
   const {
     filteredData,
     deviceList,
@@ -42,7 +44,7 @@ export default function RealTimeDataPage() {
         {/* Simplified Header Section */}
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {isHistoricalView ? 'Historical' : 'Real-Time'} Port Energy Data
+            {isHistoricalView ? t.historicalPortEnergyData : t.realTimePortEnergyData}
           </h1>
           
           <HistoricalControls 

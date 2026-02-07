@@ -35,6 +35,7 @@ import pvModelService, {
   PowerSeriesRequest,
   PowerSeriesResponse,
 } from '@/services/PVModelService';
+import { useTranslation } from '@/hooks/useTranslation';
 
 // Register Chart.js components
 ChartJS.register(
@@ -49,6 +50,7 @@ ChartJS.register(
 );
 
 export default function PVModelMonitor() {
+  const t = useTranslation();
   const [systemStatus, setSystemStatus] = useState<PVSystemStatus | null>(null);
   const [powerData, setPowerData] = useState<PowerSeriesResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -77,7 +79,7 @@ export default function PVModelMonitor() {
       setConfig(status);
     } catch (err) {
       console.error('Failed to load system status:', err);
-      setError('Failed to load system status');
+      setError(t.failedToLoadSystemStatus);
     }
   };
 
@@ -89,10 +91,10 @@ export default function PVModelMonitor() {
 
     try {
       await pvModelService.configurePVSystem(config);
-      setSuccessMessage('PV system configured successfully');
+      setSuccessMessage(t.pvSystemConfiguredSuccessfully);
       await loadSystemStatus();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Configuration failed');
+      setError(err instanceof Error ? err.message : t.configurationFailed);
     } finally {
       setConfiguring(false);
     }
@@ -113,9 +115,9 @@ export default function PVModelMonitor() {
 
       const data = await pvModelService.calculatePowerSeries(request);
       setPowerData(data);
-      setSuccessMessage('Power series calculated successfully');
+      setSuccessMessage(t.powerSeriesCalculatedSuccessfully);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to calculate power series');
+      setError(err instanceof Error ? err.message : t.failedToCalculatePowerSeries);
     } finally {
       setLoading(false);
     }
@@ -146,7 +148,7 @@ export default function PVModelMonitor() {
         }),
         datasets: [
           {
-            label: 'PV Power Output (kW)',
+            label: t.pvPowerOutput,
             data: powerData.power_kw,
             borderColor: 'rgb(251, 191, 36)',
             backgroundColor: 'rgba(251, 191, 36, 0.2)',
@@ -264,7 +266,7 @@ export default function PVModelMonitor() {
           <div className="flex items-center">
             <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mr-3" />
             <div>
-              <strong className="font-bold text-red-800 dark:text-red-200">Error: </strong>
+              <strong className="font-bold text-red-800 dark:text-red-200">{t.error}: </strong>
               <span className="text-red-700 dark:text-red-300">{error}</span>
             </div>
           </div>
@@ -276,7 +278,7 @@ export default function PVModelMonitor() {
           <div className="flex items-center">
             <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 mr-3" />
             <div>
-              <strong className="font-bold text-green-800 dark:text-green-200">Success: </strong>
+              <strong className="font-bold text-green-800 dark:text-green-200">{t.success}: </strong>
               <span className="text-green-700 dark:text-green-300">{successMessage}</span>
             </div>
           </div>
@@ -288,7 +290,7 @@ export default function PVModelMonitor() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold mb-6 text-gray-800 dark:text-gray-200 flex items-center">
             <Sun className="h-6 w-6 mr-2 text-amber-600 dark:text-amber-400" />
-            Current PV System Configuration
+            {t.currentPVSystemConfiguration}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Location Card */}
@@ -296,7 +298,7 @@ export default function PVModelMonitor() {
               <div className="flex items-center">
                 <MapPin className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Location</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t.location}</p>
                   <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
                     {systemStatus.latitude.toFixed(4)}°
                   </p>
@@ -312,7 +314,7 @@ export default function PVModelMonitor() {
               <div className="flex items-center">
                 <Clock className="h-8 w-8 text-purple-600 dark:text-purple-400" />
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Timezone</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t.timezone}</p>
                   <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{systemStatus.timezone}</p>
                 </div>
               </div>
@@ -323,8 +325,8 @@ export default function PVModelMonitor() {
               <div className="flex items-center">
                 <Zap className="h-8 w-8 text-amber-600 dark:text-amber-400" />
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Module Power</p>
-                  <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{systemStatus.module_power_kw} kW</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t.modulePower}</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{systemStatus.module_power_kw} {t.kW}</p>
                 </div>
               </div>
             </div>
@@ -334,7 +336,7 @@ export default function PVModelMonitor() {
               <div className="flex items-center">
                 <Gauge className="h-8 w-8 text-green-600 dark:text-green-400" />
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Surface Tilt</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t.surfaceTilt}</p>
                   <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{systemStatus.surface_tilt}°</p>
                 </div>
               </div>
@@ -345,7 +347,7 @@ export default function PVModelMonitor() {
               <div className="flex items-center">
                 <Compass className="h-8 w-8 text-rose-600 dark:text-rose-400" />
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Surface Azimuth</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t.surfaceAzimuth}</p>
                   <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{systemStatus.surface_azimuth}°</p>
                 </div>
               </div>
@@ -356,9 +358,9 @@ export default function PVModelMonitor() {
               <div className="flex items-center">
                 <TrendingUp className="h-8 w-8 text-cyan-600 dark:text-cyan-400" />
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">System Status</p>
-                  <p className="text-xl font-bold text-green-600 dark:text-green-400">Active</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Ready to calculate</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t.systemStatus}</p>
+                  <p className="text-xl font-bold text-green-600 dark:text-green-400">{t.active}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{t.readyToCalculate}</p>
                 </div>
               </div>
             </div>
@@ -371,13 +373,13 @@ export default function PVModelMonitor() {
         <div className="xl:col-span-1 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold mb-6 text-gray-800 dark:text-gray-200 flex items-center">
             <Settings className="h-6 w-6 mr-2 text-blue-600 dark:text-blue-400" />
-            Configure PV System
+            {t.configurePVSystem}
           </h2>
           <form onSubmit={handleConfigureSystem} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Latitude
+                  {t.latitude}
                 </label>
                 <input
                   type="number"
@@ -390,7 +392,7 @@ export default function PVModelMonitor() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Longitude
+                  {t.longitude}
                 </label>
                 <input
                   type="number"
@@ -405,7 +407,7 @@ export default function PVModelMonitor() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Timezone
+                {t.timezone}
               </label>
               <input
                 type="text"
@@ -420,7 +422,7 @@ export default function PVModelMonitor() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Surface Tilt (°)
+                  {t.surfaceTiltDegrees}
                 </label>
                 <input
                   type="number"
@@ -433,7 +435,7 @@ export default function PVModelMonitor() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Surface Azimuth (°)
+                  {t.surfaceAzimuthDegrees}
                 </label>
                 <input
                   type="number"
@@ -449,9 +451,9 @@ export default function PVModelMonitor() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Module Power (kW)
-              </label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  {t.modulePowerKw}
+                </label>
               <input
                 type="number"
                 step="0.1"
@@ -470,13 +472,13 @@ export default function PVModelMonitor() {
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center text-sm"
               >
                 <Settings className="h-4 w-4 mr-2" />
-                {configuring ? 'Configuring...' : 'Configure System'}
+                {configuring ? t.processing : t.configureSystem}
               </button>
               <button
                 type="button"
                 onClick={resetToDefault}
                 className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center"
-                title="Reset to default"
+                title={t.resetToDefaultLabel}
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
@@ -488,13 +490,13 @@ export default function PVModelMonitor() {
         <div className="xl:col-span-1 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold mb-6 text-gray-800 dark:text-gray-200 flex items-center">
             <BarChart3 className="h-6 w-6 mr-2 text-amber-600 dark:text-amber-400" />
-            Calculate Power Series
+            {t.calculatePowerSeriesTitle}
           </h2>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center">
                 <Calendar className="h-4 w-4 mr-1 text-gray-500" />
-                Date
+                {t.date}
               </label>
               <input
                 type="date"
@@ -506,7 +508,7 @@ export default function PVModelMonitor() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Interval: <span className="text-amber-600 dark:text-amber-400 font-bold">{intervalHours} hours</span>
+                {t.intervalHoursLabel}: <span className="text-amber-600 dark:text-amber-400 font-bold">{intervalHours} {t.hours}</span>
               </label>
               <input
                 type="range"
@@ -525,18 +527,18 @@ export default function PVModelMonitor() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Sampling Interval
+                {t.samplingMinutesLabel}
               </label>
               <select
                 value={samplingMinutes}
                 onChange={(e) => setSamplingMinutes(parseInt(e.target.value))}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
               >
-                <option value={1}>1 minute</option>
-                <option value={5}>5 minutes</option>
-                <option value={15}>15 minutes</option>
-                <option value={30}>30 minutes</option>
-                <option value={60}>60 minutes</option>
+                <option value={1}>1 {t.minutes}</option>
+                <option value={5}>5 {t.minutes}</option>
+                <option value={15}>15 {t.minutes}</option>
+                <option value={30}>30 {t.minutes}</option>
+                <option value={60}>60 {t.minutes}</option>
               </select>
             </div>
 
@@ -552,7 +554,7 @@ export default function PVModelMonitor() {
                 htmlFor="startAtMidnight"
                 className="ml-3 block text-sm text-gray-700 dark:text-gray-300 font-medium"
               >
-                Start at midnight (00:00)
+                {t.startAtMidnight}
               </label>
             </div>
 
@@ -564,12 +566,12 @@ export default function PVModelMonitor() {
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Calculating...
+                  {t.calculating}
                 </>
               ) : (
                 <>
                   <TrendingUp className="h-4 w-4 mr-2" />
-                  Calculate Power Series
+                  {t.calculatePowerSeriesTitle}
                 </>
               )}
             </button>
@@ -580,30 +582,30 @@ export default function PVModelMonitor() {
         <div className="xl:col-span-1 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold mb-6 text-gray-800 dark:text-gray-200 flex items-center">
             <BarChart3 className="h-6 w-6 mr-2 text-amber-600 dark:text-amber-400" />
-            Summary Statistics
+            {t.summaryStatisticsTitle}
           </h2>
           {summaryStats ? (
             <div className="space-y-4">
               <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Data Points</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{t.dataPointsLabel}</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{summaryStats.dataPoints}</p>
               </div>
               <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 p-4 rounded-lg border border-amber-200 dark:border-amber-700">
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Peak Power</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{t.peakPowerLabel}</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {summaryStats.peakPower.toFixed(2)} <span className="text-lg">kW</span>
+                  {summaryStats.peakPower.toFixed(2)} <span className="text-lg">{t.kW}</span>
                 </p>
               </div>
               <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-4 rounded-lg border border-green-200 dark:border-green-700">
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Average Power</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{t.averagePowerLabel}</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {summaryStats.averagePower.toFixed(2)} <span className="text-lg">kW</span>
+                  {summaryStats.averagePower.toFixed(2)} <span className="text-lg">{t.kW}</span>
                 </p>
               </div>
               <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-4 rounded-lg border border-purple-200 dark:border-purple-700">
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Energy</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{t.totalEnergyLabel}</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {summaryStats.totalEnergy.toFixed(2)} <span className="text-lg">kWh</span>
+                  {summaryStats.totalEnergy.toFixed(2)} <span className="text-lg">{t.kWh}</span>
                 </p>
               </div>
             </div>
@@ -613,8 +615,8 @@ export default function PVModelMonitor() {
                 <BarChart3 className="h-12 w-12 text-gray-400 dark:text-gray-500" />
               </div>
               <p className="text-gray-500 dark:text-gray-400 text-center text-sm">
-                No data available yet.<br />
-                Calculate power series to see statistics.
+                {t.noDataAvailable}<br />
+                {t.configureAndCalculatePowerSeries}
               </p>
             </div>
           )}
@@ -626,7 +628,7 @@ export default function PVModelMonitor() {
         <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-lg">
           <h2 className="text-xl font-semibold mb-6 text-gray-800 dark:text-gray-200 flex items-center">
             <Sun className="h-6 w-6 mr-2 text-amber-600 dark:text-amber-400" />
-            PV Power Generation Profile
+            {t.pvPowerOutput}
           </h2>
           <div style={{ height: '450px' }}>
             <Line data={chartData} options={chartOptions} />

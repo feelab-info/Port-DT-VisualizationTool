@@ -2,18 +2,21 @@
 
 import DashboardLayout from '@/components/DashboardLayout';
 import PVModelMonitor from '@/components/PVModelMonitor';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function PVModelPage() {
+  const t = useTranslation();
+
   return (
     <DashboardLayout showHealthNotification={false}>
       <div className="container mx-auto space-y-8 mt-3">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              PV Solar Model
+              {t.pvSolarModelTitle}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Configure and simulate photovoltaic system power generation
+              {t.pvSolarModelDescription}
             </p>
           </div>
           <div className="flex items-center space-x-2 text-amber-600 dark:text-amber-400">

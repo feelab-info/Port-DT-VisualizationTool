@@ -5,8 +5,10 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { useConverterData } from '@/hooks/useConverterData';
 import ConverterCard from '@/components/converters/ConverterCard';
 import ConverterStats from '@/components/converters/ConverterStats';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function ConvertersPage() {
+  const t = useTranslation();
   const {
     latestData,
     selectedNode,
@@ -23,10 +25,10 @@ export default function ConvertersPage() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-              Converter Monitoring System
+              {t.converterMonitoringSystem}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Real-time monitoring of 5 power converters • Updates every 30 seconds
+              {t.realTimeMonitoring}
             </p>
           </div>
           
@@ -35,14 +37,14 @@ export default function ConvertersPage() {
             <div className="flex items-center space-x-2">
               <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></div>
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                {isConnected ? 'Connected' : 'Disconnected'}
+                {isConnected ? t.connected : t.disconnected}
               </span>
             </div>
             {isDataStale && (
               <div className="flex items-center space-x-2 bg-yellow-100 dark:bg-yellow-900/30 px-3 py-1 rounded-full">
                 <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
                 <span className="text-xs text-yellow-700 dark:text-yellow-400 font-medium">
-                  Showing last available data
+                  {t.showingLastAvailableData}
                 </span>
               </div>
             )}
@@ -67,8 +69,7 @@ export default function ConvertersPage() {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm text-red-700 dark:text-red-300">
-                      <strong>Critical: Data is more than 1 day old.</strong> The converter data has not been updated recently. 
-                      Please check if the converters are online and sending data to the database. The system is displaying the last known values.
+                      <strong>{t.criticalDataOld}</strong> {t.criticalDataOldMessage}
                     </p>
                   </div>
                 </div>
@@ -86,8 +87,7 @@ export default function ConvertersPage() {
                 </div>
                 <div className="ml-3">
                   <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                    <strong>No recent updates detected.</strong> Displaying the last known values from the database. 
-                    The system automatically fetches the latest data every 30 seconds.
+                    <strong>{t.noRecentUpdates}</strong> {t.noRecentUpdatesMessage}
                   </p>
                 </div>
               </div>
@@ -98,7 +98,7 @@ export default function ConvertersPage() {
         {/* Node Filter */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
           <label htmlFor="node-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Filter by Converter
+            {t.filterByConverter}
           </label>
           <select
             id="node-select"
@@ -106,12 +106,12 @@ export default function ConvertersPage() {
             onChange={(e) => setSelectedNode(e.target.value)}
             className="block w-full md:w-80 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           >
-            <option value="all">All Converters</option>
-            <option value="N01">N01 - ConverterBAT (Battery)</option>
-            <option value="N02">N02 - ConverterPV (Solar)</option>
-            <option value="N03">N03 - ConverterEV1 (EV Charger 1)</option>
-            <option value="N04">N04 - ConverterEV2 (EV Charger 2)</option>
-            <option value="N05">N05 - ConverterACDC (AC/DC)</option>
+            <option value="all">{t.allConverters}</option>
+            <option value="N01">N01 - {t.converterBattery}</option>
+            <option value="N02">N02 - {t.converterPV}</option>
+            <option value="N03">N03 - {t.converterEV1}</option>
+            <option value="N04">N04 - {t.converterEV2}</option>
+            <option value="N05">N05 - {t.converterACDC}</option>
           </select>
         </div>
 
@@ -119,7 +119,7 @@ export default function ConvertersPage() {
         {isLoading && (
           <div className="flex justify-center items-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <span className="ml-3 text-gray-600 dark:text-gray-400">Loading converter data...</span>
+            <span className="ml-3 text-gray-600 dark:text-gray-400">{t.loadingConverterData}</span>
           </div>
         )}
 
@@ -127,10 +127,10 @@ export default function ConvertersPage() {
         {!isLoading && latestData.length === 0 && (
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 text-center">
             <p className="text-yellow-800 dark:text-yellow-200 font-medium">
-              No converter data available yet.
+              {t.noConverterData}
             </p>
             <p className="text-yellow-700 dark:text-yellow-300 text-sm mt-2">
-              {isConnected ? 'Waiting for data updates...' : 'Please check your connection.'}
+              {isConnected ? t.waitingForData : t.checkConnection}
             </p>
           </div>
         )}
@@ -179,7 +179,7 @@ export default function ConvertersPage() {
          latestData.filter(data => data.node === selectedNode).length === 0 && (
           <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 text-center">
             <p className="text-gray-600 dark:text-gray-400">
-              No data available for converter <strong>{selectedNode}</strong>
+              {t.noDataForConverter} <strong>{selectedNode}</strong>
             </p>
           </div>
         )}

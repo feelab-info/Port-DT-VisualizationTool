@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
+import { useTranslation } from '@/hooks/useTranslation';
 
 // Interface for timesteps data
 interface TimestepData {
@@ -39,8 +40,9 @@ interface KpiData {
 }
 
 export default function SimulationMonitor() {
+  const t = useTranslation();
   const [timestepsData, setTimestepsData] = useState<TimestepData[] | null>(null);
-  const [lastUpdate, setLastUpdate] = useState<string>('Waiting for simulation...');
+  const [lastUpdate, setLastUpdate] = useState<string>(t.waitingForSimulation);
   const [simulationTime, setSimulationTime] = useState<string>('--');
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +68,7 @@ export default function SimulationMonitor() {
     socketConnection.on('connect_error', (err) => {
       console.error('Connection error:', err);
       setConnectionStatus('disconnected');
-      setError(`Connection error: ${err.message}`);
+      setError(`${t.connectionError}: ${err.message}`);
     });
     
     // Listen for simulation timestep updates (runs every minute)
@@ -104,17 +106,17 @@ export default function SimulationMonitor() {
                   connectionStatus === 'connected' ? 'text-green-700 dark:text-green-400' : 
                   connectionStatus === 'connecting' ? 'text-yellow-700 dark:text-yellow-400' : 'text-red-700 dark:text-red-400'
                 }`}>
-                  {connectionStatus === 'connected' ? 'Connected' : 
-                   connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
+                  {connectionStatus === 'connected' ? t.connected : 
+                   connectionStatus === 'connecting' ? t.connecting : t.disconnected}
                 </span>
               </div>
               <div className="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
                 <div className="flex items-center">
-                  <span className="font-medium mr-2">Last Update:</span>
+                  <span className="font-medium mr-2">{t.lastUpdated}:</span>
                   <span className="font-mono text-blue-600 dark:text-blue-400">{lastUpdate}</span>
                 </div>
                 <div className="flex items-center">
-                  <span className="font-medium mr-2">Simulation Time:</span>
+                  <span className="font-medium mr-2">{t.simulationTime}:</span>
                   <span className="font-mono text-green-600 dark:text-green-400">{simulationTime}</span>
                 </div>
               </div>
@@ -123,7 +125,7 @@ export default function SimulationMonitor() {
               {isRunning && (
                 <span className="px-4 py-2 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 text-sm rounded-lg border border-green-200 dark:border-green-700 font-medium flex items-center">
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                  Running (every 1 min)
+                  {t.runningEvery1Min}
                 </span>
               )}
             </div>
@@ -143,7 +145,7 @@ export default function SimulationMonitor() {
                 </div>
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-red-800 dark:text-red-300 mb-2">Connection Error</h3>
+                <h3 className="text-lg font-semibold text-red-800 dark:text-red-300 mb-2">{t.connectionError}</h3>
                 <p className="text-red-700 dark:text-red-400">{error}</p>
               </div>
             </div>
@@ -159,13 +161,13 @@ export default function SimulationMonitor() {
               className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'timesteps' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
               onClick={() => setActiveTab('timesteps')}
             >
-              Timesteps Results
+              {t.timestepsResults}
             </button>
             <button
               className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'kpi' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
               onClick={() => setActiveTab('kpi')}
             >
-              KPI Results
+              {t.kpiResults}
             </button>
           </div>
         </div>
@@ -175,13 +177,13 @@ export default function SimulationMonitor() {
             timestepsData ? (
               <div className="space-y-8">
                 <div className="text-sm text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
-                  <p>Real-time DC power flow simulation results. Data automatically updates every minute with the latest grid state for all buses.</p>
+                  <p>{t.realTimeDCPowerFlowSimulationResults}</p>
                 </div>
                 
                 {/* Visualization controls */}
                 <div className="flex flex-wrap items-center gap-6">
                   <div className="flex items-center gap-3">
-                    <h3 className="text-md font-medium text-gray-900 dark:text-gray-100">View:</h3>
+                    <h3 className="text-md font-medium text-gray-900 dark:text-gray-100">{t.view}:</h3>
                     <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
                       <button 
                         onClick={() => setVisualizationType('barChart')}
@@ -191,7 +193,7 @@ export default function SimulationMonitor() {
                             : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                         }`}
                       >
-                        Bar Chart
+                        {t.barChart}
                       </button>
                       <button 
                         onClick={() => setVisualizationType('table')}
@@ -201,14 +203,14 @@ export default function SimulationMonitor() {
                             : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                         }`}
                       >
-                        Table
+                        {t.table}
                       </button>
                     </div>
                   </div>
                   
                   {visualizationType === 'barChart' && (
                     <div className="flex items-center gap-3">
-                      <h3 className="text-md font-medium text-gray-900 dark:text-gray-100">Metric:</h3>
+                      <h3 className="text-md font-medium text-gray-900 dark:text-gray-100">{t.metric}:</h3>
                       <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
                         <button 
                           onClick={() => setChartMetric('voltage')}
@@ -218,7 +220,7 @@ export default function SimulationMonitor() {
                               : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                           }`}
                         >
-                          Voltage (pu)
+                          {t.voltagePu}
                         </button>
                         <button 
                           onClick={() => setChartMetric('load')}
@@ -228,7 +230,7 @@ export default function SimulationMonitor() {
                               : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                           }`}
                         >
-                          Load (kW)
+                          {t.loadKw}
                         </button>
                       </div>
                     </div>
@@ -242,8 +244,8 @@ export default function SimulationMonitor() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
-                <h3 className="mt-4 text-sm font-medium text-gray-900 dark:text-gray-100">Waiting for simulation data...</h3>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">The simulation runs automatically every minute. Data will appear here shortly.</p>
+                <h3 className="mt-4 text-sm font-medium text-gray-900 dark:text-gray-100">{t.waitingForSimulationData}</h3>
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{t.simulationRunsAutomatically}</p>
               </div>
             )
           )}
@@ -257,10 +259,10 @@ export default function SimulationMonitor() {
                   </svg>
                 </div>
                 <div className="mt-6 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700">
-                  <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-300 mb-3">KPI Results - Coming Soon</h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    The Key Performance Indicators (KPI) view is under development. This tab will display efficiency, economic, and environmental metrics for your DC power flow simulations.
-                  </p>
+                <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-300 mb-3">{t.kpiResultsComingSoon}</h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  {t.kpiViewUnderDevelopment}
+                </p>
                   <div className="text-left bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-600">
                     <p className="text-gray-600 dark:text-gray-400 mb-3 font-medium">
                       Future metrics will include:
@@ -307,15 +309,15 @@ export default function SimulationMonitor() {
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        {chartMetric === 'voltage' ? 'Bus Voltage Distribution' : 'Bus Load Distribution'}
+                        {chartMetric === 'voltage' ? t.busVoltageDistribution : t.busLoadDistribution}
                       </h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {chartMetric === 'voltage' ? 'Voltage per unit (pu) across all buses' : 'Power load (kW) across all buses'}
+                        {chartMetric === 'voltage' ? t.voltagePerUnitAcrossAllBuses : t.powerLoadKwAcrossAllBuses}
                       </p>
                     </div>
                   </div>
                   <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    Simulation Time: <span className={`font-mono ${chartMetric === 'voltage' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{simulationTime}</span>
+                    {t.simulationTime}: <span className={`font-mono ${chartMetric === 'voltage' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{simulationTime}</span>
                   </div>
                 </div>
               </div>
@@ -342,7 +344,7 @@ export default function SimulationMonitor() {
                     <YAxis 
                       tick={{ fill: '#6b7280', fontSize: 12 }}
                       label={{ 
-                        value: chartMetric === 'voltage' ? 'Voltage (pu)' : 'Load (kW)', 
+                        value: chartMetric === 'voltage' ? t.voltagePuLabel : t.loadKwLabel, 
                         angle: -90, 
                         position: 'insideLeft',
                         style: { fill: '#6b7280', fontSize: 14 }
@@ -359,8 +361,8 @@ export default function SimulationMonitor() {
                       formatter={(value: number) => [
                         chartMetric === 'voltage' 
                           ? `${value.toFixed(4)} pu` 
-                          : `${value.toFixed(3)} kW`,
-                        chartMetric === 'voltage' ? 'Voltage' : 'Load'
+                          : `${value.toFixed(3)} ${t.kW}`,
+                        chartMetric === 'voltage' ? t.voltage : t.load
                       ]}
                       labelStyle={{ fontWeight: 600, color: '#374151' }}
                     />
@@ -387,34 +389,34 @@ export default function SimulationMonitor() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className={`p-4 rounded-lg ${chartMetric === 'voltage' ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700' : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700'}`}>
                     <div className={`text-sm font-medium ${chartMetric === 'voltage' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                      {chartMetric === 'voltage' ? 'Average Voltage' : 'Total Load'}
+                      {chartMetric === 'voltage' ? t.averageVoltage : t.totalLoad}
                     </div>
                     <div className={`text-2xl font-bold ${chartMetric === 'voltage' ? 'text-emerald-900 dark:text-emerald-100' : 'text-amber-900 dark:text-amber-100'}`}>
                       {chartMetric === 'voltage' 
                         ? `${(timestepsData.reduce((sum, d) => sum + (d.voltage || 0), 0) / timestepsData.length).toFixed(4)} pu`
-                        : `${(timestepsData.reduce((sum, d) => sum + (Number(d.load) || 0) * 1000, 0)).toFixed(2)} kW`
+                        : `${(timestepsData.reduce((sum, d) => sum + (Number(d.load) || 0) * 1000, 0)).toFixed(2)} ${t.kW}`
                       }
                     </div>
                   </div>
                   <div className={`p-4 rounded-lg ${chartMetric === 'voltage' ? 'bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-700' : 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700'}`}>
                     <div className={`text-sm font-medium ${chartMetric === 'voltage' ? 'text-teal-600 dark:text-teal-400' : 'text-orange-600 dark:text-orange-400'}`}>
-                      {chartMetric === 'voltage' ? 'Min Voltage' : 'Min Load'}
+                      {chartMetric === 'voltage' ? t.minVoltage : t.minLoad}
                     </div>
                     <div className={`text-2xl font-bold ${chartMetric === 'voltage' ? 'text-teal-900 dark:text-teal-100' : 'text-orange-900 dark:text-orange-100'}`}>
                       {chartMetric === 'voltage' 
                         ? `${Math.min(...timestepsData.map(d => d.voltage || 0)).toFixed(4)} pu`
-                        : `${(Math.min(...timestepsData.map(d => (Number(d.load) || 0) * 1000))).toFixed(2)} kW`
+                        : `${(Math.min(...timestepsData.map(d => (Number(d.load) || 0) * 1000))).toFixed(2)} ${t.kW}`
                       }
                     </div>
                   </div>
                   <div className={`p-4 rounded-lg ${chartMetric === 'voltage' ? 'bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-700' : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700'}`}>
                     <div className={`text-sm font-medium ${chartMetric === 'voltage' ? 'text-cyan-600 dark:text-cyan-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
-                      {chartMetric === 'voltage' ? 'Max Voltage' : 'Max Load'}
+                      {chartMetric === 'voltage' ? t.maxVoltage : t.maxLoad}
                     </div>
                     <div className={`text-2xl font-bold ${chartMetric === 'voltage' ? 'text-cyan-900 dark:text-cyan-100' : 'text-yellow-900 dark:text-yellow-100'}`}>
                       {chartMetric === 'voltage' 
                         ? `${Math.max(...timestepsData.map(d => d.voltage || 0)).toFixed(4)} pu`
-                        : `${(Math.max(...timestepsData.map(d => (Number(d.load) || 0) * 1000))).toFixed(2)} kW`
+                        : `${(Math.max(...timestepsData.map(d => (Number(d.load) || 0) * 1000))).toFixed(2)} ${t.kW}`
                       }
                     </div>
                   </div>
@@ -446,7 +448,7 @@ export default function SimulationMonitor() {
                     </div>
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {timestepsData.length} records
+                    {timestepsData.length} {t.records}
                   </div>
                 </div>
               </div>
@@ -455,9 +457,9 @@ export default function SimulationMonitor() {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Bus ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Voltage (pu)</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Load (KW)</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.busId}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.voltagePuLabel}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{t.loadKwLabel}</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
@@ -476,7 +478,7 @@ export default function SimulationMonitor() {
               
               <div className="bg-white dark:bg-gray-800 px-6 py-3 border-t border-gray-200 dark:border-gray-600">
                 <div className="text-sm text-gray-700 dark:text-gray-300">
-                  Showing {timestepsData.length} {timestepsData.length === 1 ? 'bus' : 'buses'} from latest simulation
+                  {t.showing} {timestepsData.length} {timestepsData.length === 1 ? t.bus : t.buses} {t.fromLatestSimulation}
                 </div>
               </div>
             </div>

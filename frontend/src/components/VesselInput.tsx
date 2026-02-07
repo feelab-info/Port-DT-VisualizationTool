@@ -1,13 +1,17 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import vesselSimulationService, { SimulationDetail } from '@/services/VesselSimulationService';
 import VesselEnergyProfile from './VesselEnergyProfile';
 import { Ship, Clock, Users, Ruler, Zap, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface VesselInputProps {
   onSubmit: (data: SimulationDetail) => void;
 }
 
 export default function VesselInput({ onSubmit }: VesselInputProps) {
+  const t = useTranslation();
   const [mode, setMode] = useState<'registered' | 'custom'>('registered');
   const [availableVessels, setAvailableVessels] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,7 +39,7 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
       const vessels = await vesselSimulationService.getAvailableVessels();
       setAvailableVessels(vessels);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to load vessels');
+      setError(error instanceof Error ? error.message : t.failedToLoadVessels);
     } finally {
       setIsLoadingVessels(false);
     }
@@ -83,7 +87,7 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
       onSubmit(result);
     } catch (error) {
       console.error('🚢 Error submitting vessel:', error);
-      setError(error instanceof Error ? error.message : 'Failed to submit vessel data');
+      setError(error instanceof Error ? error.message : t.failedToSubmitVesselData);
     } finally {
       setLoading(false);
     }
@@ -113,10 +117,10 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
           </div>
         </div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-          Vessel Energy Profile Generator
+          {t.vesselEnergyProfileGenerator}
         </h1>
         <p className="text-gray-600 dark:text-gray-400 max-w-xl mx-auto text-sm">
-          Generate detailed energy consumption profiles for vessels based on historical data or custom specifications
+          {t.generateDetailedEnergyProfiles}
         </p>
       </div>
 
@@ -125,7 +129,7 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
         {/* Mode Selection Header */}
         <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
-            Select Vessel Type
+            {t.selectVesselType}
           </h2>
           <div className="flex flex-col sm:flex-row gap-4">
             <label className="flex items-center cursor-pointer group">
@@ -141,8 +145,8 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
                   <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <span className="text-gray-900 dark:text-gray-100 font-medium">Registered Vessel</span>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Use existing vessel from our database</p>
+                  <span className="text-gray-900 dark:text-gray-100 font-medium">{t.registeredVessel}</span>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t.useExistingVessel}</p>
                 </div>
               </div>
             </label>
@@ -160,8 +164,8 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
                   <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <span className="text-gray-900 dark:text-gray-100 font-medium">Custom Vessel</span>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Enter custom vessel specifications</p>
+                  <span className="text-gray-900 dark:text-gray-100 font-medium">{t.customVessel}</span>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t.enterCustomVesselSpecs}</p>
                 </div>
               </div>
             </label>
@@ -174,18 +178,18 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center">
               <Ship className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
-              Vessel Information
+              {t.vesselInformation}
             </h3>
             
             {mode === 'registered' ? (
               <div>
                 <label htmlFor="vessel-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Select Vessel
+                  {t.selectVessel}
                 </label>
                 {isLoadingVessels ? (
                   <div className="flex items-center justify-center py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
-                    <span className="ml-2 text-gray-600 dark:text-gray-300">Loading vessels...</span>
+                    <span className="ml-2 text-gray-600 dark:text-gray-300">{t.loadingVessels}</span>
                   </div>
                 ) : (
                   <select
@@ -195,7 +199,7 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     required
                   >
-                    <option value="" className="text-gray-500 dark:text-gray-400">Choose a vessel from database</option>
+                    <option value="" className="text-gray-500 dark:text-gray-400">{t.chooseVesselFromDatabase}</option>
                     {availableVessels.map(vessel => (
                       <option key={vessel} value={vessel} className="text-gray-900 dark:text-gray-100">{vessel}</option>
                     ))}
@@ -206,7 +210,7 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label htmlFor="vessel-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Vessel Name
+                    {t.vesselName}
                   </label>
                   <input
                     type="text"
@@ -214,7 +218,7 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    placeholder="Enter vessel name"
+                    placeholder={t.enterVesselName}
                     required
                   />
                 </div>
@@ -222,7 +226,7 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
                 <div>
                   <label htmlFor="gross-tonnage" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
                     <Users className="h-4 w-4 mr-1" />
-                    Gross Tonnage
+                    {t.grossTonnage}
                   </label>
                   <input
                     type="number"
@@ -239,7 +243,7 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
                 <div>
                   <label htmlFor="length" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
                     <Ruler className="h-4 w-4 mr-1" />
-                    Length (meters)
+                    {t.lengthMeters}
                   </label>
                   <input
                     type="number"
@@ -256,7 +260,7 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
                 <div className="md:col-span-2">
                   <label htmlFor="hotel-energy" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
                     <Zap className="h-4 w-4 mr-1" />
-                    Hotel Energy (kW)
+                    {t.hotelEnergy}
                   </label>
                   <input
                     type="number"
@@ -277,14 +281,14 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center">
               <Clock className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
-              Schedule Information
+              {t.scheduleInformation}
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="arrival-time" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
                   <Calendar className="h-4 w-4 mr-1" />
-                  Arrival Time
+                  {t.arrivalTime}
                 </label>
                 <input
                   type="time"
@@ -300,7 +304,7 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
               <div>
                 <label htmlFor="departure-time" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
                   <Calendar className="h-4 w-4 mr-1" />
-                  Departure Time
+                  {t.departureTime}
                 </label>
                 <input
                   type="time"
@@ -321,7 +325,7 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
               <div className="flex items-start">
                 <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 mr-3 flex-shrink-0" />
                 <div>
-                  <h3 className="text-sm font-medium text-red-800 dark:text-red-200">Error</h3>
+                  <h3 className="text-sm font-medium text-red-800 dark:text-red-200">{t.error}</h3>
                   <p className="text-sm text-red-700 dark:text-red-300 mt-1">{error}</p>
                 </div>
               </div>
@@ -342,12 +346,12 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Processing...
+                  {t.processing}
                 </>
               ) : (
                 <>
                   <Zap className="h-5 w-5 mr-2" />
-                  Generate Energy Profile
+                  {t.generateEnergyProfile}
                 </>
               )}
             </button>
@@ -358,7 +362,7 @@ export default function VesselInput({ onSubmit }: VesselInputProps) {
                 onClick={resetForm}
                 className="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium transition-colors"
               >
-                Reset Form
+                {t.resetForm}
               </button>
             )}
           </div>

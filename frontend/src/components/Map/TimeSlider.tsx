@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, History, Radio, GripVertical } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface TimeSliderProps {
   startTime: Date;
@@ -22,6 +23,7 @@ export default function TimeSlider({
   onPlayPause,
   onReset
 }: TimeSliderProps) {
+  const t = useTranslation();
   const [isDraggingSlider, setIsDraggingSlider] = useState(false);
   const [isDraggingPanel, setIsDraggingPanel] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -130,12 +132,12 @@ export default function TimeSlider({
     const diffMs = endTime.getTime() - currentTime.getTime();
     const diffMins = Math.round(diffMs / 60000);
     
-    if (diffMins < 1) return 'Live data';
-    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffMins < 1) return t.liveData;
+    if (diffMins < 60) return `${diffMins} ${t.minAgo}`;
     
     const diffHours = Math.floor(diffMins / 60);
     const remainingMins = diffMins % 60;
-    return `${diffHours}h ${remainingMins}m ago`;
+    return `${diffHours}${t.hoursAgo} ${remainingMins}${t.minutesAgo}`;
   };
 
   return (
@@ -165,7 +167,7 @@ export default function TimeSlider({
                 </div>
                 <div>
                   <span className="text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-wide">
-                    LIVE
+                    {t.live}
                   </span>
                 </div>
               </>
@@ -174,7 +176,7 @@ export default function TimeSlider({
                 <History className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                 <div>
                   <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide">
-                    HISTORICAL
+                    {t.historical}
                   </span>
                 </div>
               </>
@@ -197,10 +199,10 @@ export default function TimeSlider({
                 ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
                 : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50'
             }`}
-            title="Return to live data"
+            title={t.returnToLiveData}
           >
             <RotateCcw className="h-3 w-3" />
-            <span>Back</span>
+            <span>{t.back}</span>
           </button>
         </div>
 
@@ -251,17 +253,17 @@ export default function TimeSlider({
                   ? 'bg-amber-500 hover:bg-amber-600 text-white'
                   : 'bg-blue-500 hover:bg-blue-600 text-white'
             }`}
-            title={isPlaying ? 'Pause playback' : 'Auto-play through history'}
+            title={isPlaying ? t.pausePlayback : t.autoPlayThroughHistory}
           >
             {isPlaying ? (
               <>
                 <Pause className="h-3 w-3" />
-                <span>Pause</span>
+                <span>{t.pause}</span>
               </>
             ) : (
               <>
                 <Play className="h-3 w-3 ml-0.5" />
-                <span>Play</span>
+                <span>{t.play}</span>
               </>
             )}
           </button>
