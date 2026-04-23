@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Port Digital Twin - Frontend
 
-## Getting Started
+Next.js frontend for the Port Digital Twin visualization application. Provides real-time maps, power flow diagrams, vessel energy analysis, and PV modelling interfaces.
 
-First, run the development server:
+## Tech Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Framework**: Next.js (App Router)
+- **UI**: React, Tailwind CSS
+- **Maps**: react-map-gl, deck.gl
+- **Charts**: Recharts
+- **Real-time**: Socket.IO client
+- **State**: React Context (Auth, Theme, Language)
+
+## Project Structure
+
+```
+frontend/src/
+├── app/                    # App Router pages
+│   ├── page.tsx            # Home
+│   ├── map/                # Port map with vessels
+│   ├── simulation/         # Power flow simulation
+│   ├── converters/         # Converter monitoring
+│   ├── vessel/[id]/       # Vessel detail
+│   ├── pv-model/          # PV system config
+│   ├── real-time/         # Real-time device data
+│   └── shift2dc/          # DC shift analysis
+├── components/             # Reusable components
+│   ├── Map/               # Map, vessels, sensors
+│   ├── auth/              # Login, registration
+│   ├── converters/        # Power flow diagram
+│   └── UI/                # Shared UI components
+├── services/               # API and Socket.IO services
+│   ├── AuthService.ts
+│   ├── SimulationService.tsx
+│   ├── ConverterDataService.tsx
+│   └── PVModelService.ts
+├── contexts/               # React contexts
+└── translations/           # i18n strings
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_BACKEND_URL` | Backend API URL (e.g. http://localhost:5001). Required at build time. |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Running Locally
 
-## Learn More
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open http://localhost:3000
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Note**: Backend must be running for API calls and Socket.IO. See root [README](../README.md) for full stack setup.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Key Integrations
 
-## Deploy on Vercel
+- **Backend API**: All requests go through `NEXT_PUBLIC_BACKEND_URL`
+- **Socket.IO**: Real-time device data, converter data, energy charts - connects to backend
+- **Auth**: JWT stored in memory/localStorage; protected routes require valid token
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Build for Production
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+npm start
+```
+
+Ensure `NEXT_PUBLIC_BACKEND_URL` is set to production backend URL before building.

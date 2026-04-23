@@ -1,69 +1,72 @@
-# dc_design_tool
+# DC Power Flow Service
 
+Python/Flask service for power flow simulations and load flow calculations. Part of the Port Digital Twin system.
 
-## Prerequisites
+## Overview
 
-- Python 3.10.0  
-  Make sure you have Python 3.10.0 installed. Download it [here](https://www.python.org/downloads/release/python-3100/).
+- **Port**: 5002
+- **Framework**: Flask
+- **Python**: 3.10
+- **Purpose**: DC power flow simulations, load flow, worst-case sizing, KPIs
+
+## Integration
+
+The backend proxies simulation requests to this service and stores results in PostgreSQL. The simulation scheduler runs every minute to capture power flow data.
 
 ## Installation
 
-1. **Clone the repository**    
+```bash
+cd dc_power_flow
+python3.10 -m venv venv
+source venv/bin/activate   # Linux/macOS
+# .\venv\Scripts\activate   # Windows
+pip install -r requirements.txt
+```
 
-git clone [REPO_URL]  
-cd [PROJECT_FOLDER]  
+## Usage
 
+### API server (for integration with backend)
 
-2. **Create a virtual environment**  
+```bash
+source venv/bin/activate
+python api_server.py
+```
 
-Make sure you have Python 3.10.0 installed!
+Runs the Flask API on port 5002.
 
-Linux/macOS:  
-bash  
-python3.10 -m venv venv  
+### Standalone simulation
 
-Windows:  
-cmd  
-py -3.10 -m venv venv  
+```bash
+source venv/bin/activate
+python main.py
+```
 
+### Background simulation (with run script)
 
-3. **Activate the virtual environment**  
+```bash
+./run_simulation.sh
+```
 
-Linux/macOS:  
-bash  
-source venv/bin/activate  
+## Directory Structure
 
-Windows:  
-cmd  
-.\venv\Scripts\activate  
+```
+dc_power_flow/
+├── api_server.py       # Flask API
+├── main.py             # Main simulation entry
+├── run_simulation.sh   # Simulation runner
+├── utilities_*.py      # Load flow, sizing, KPIs
+├── data/               # Input data files
+├── output/             # Simulation outputs (JSON, Excel)
+└── logs/               # Application logs
+```
 
+## Environment
 
-4. **Install dependencies**  
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FLASK_ENV` | production | Flask environment |
+| `PORT` | 5002 | Service port |
 
-pip install -r requirements.txt  
+## Root Project Setup
 
-5. **Usage**  
-Run the main.py  
-
-With the virtual environment activated:  
-
-python main.py  
-
-
-6. **Virtual Environment (Reminders)**  
-To exit the virtual environment:  
-
-deactivate  
-
-
-7. **To delete the virtual environment:**  
-
-Simply remove the venv folder from your project directory.
-
-
-8. **Contribution**  
-Ensure you use Python 3.10.0 and the virtual environment.  
-
-Install dependencies from requirements.txt.  
-
-Verify your Python version with python --version before contributing.  
+From project root: `npm run setup-dc-venv` creates the venv and installs dependencies.

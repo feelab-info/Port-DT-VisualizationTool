@@ -5,6 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { setupRoutes } from './routes';
 import { initSocketHandlers } from './services/socketService';
+import { setupSwagger } from './swagger';
 
 // Load environment variables
 dotenv.config();
@@ -24,6 +25,9 @@ const io = new Server(httpServer, {
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Swagger API documentation (before routes so /api-docs is available)
+setupSwagger(app);
 
 // Initialize socket handlers
 initSocketHandlers(io);
