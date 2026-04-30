@@ -34,6 +34,9 @@ ChartJS.register(
   Filler
 );
 
+/** Latest sample must be at least this fresh to count for live device totals (buffer keeps hours of history). */
+const DEVICE_LIVE_STATS_MAX_AGE_MS = 3 * 60 * 1000;
+
 type TimePeriod = '15min' | '30min' | '1hour' | '3hours' | '6hours';
 
 export default function PortEnergyOverview() {
@@ -184,9 +187,15 @@ export default function PortEnergyOverview() {
     });
 
     const latestDataPoints = Array.from(deviceLatestData.values());
-    const totalDevices = latestDataPoints.length; // Count of devices excluding Entrada de Energia
+    const nowMs = Date.now();
+    const recentLatestPoints = latestDataPoints.filter(item => {
+      const ageMs = nowMs - new Date(item.timestamp).getTime();
+      return ageMs <= DEVICE_LIVE_STATS_MAX_AGE_MS;
+    });
 
-    const powerFactors = latestDataPoints.flatMap(item => [
+    const totalDevices = recentLatestPoints.length;
+
+    const powerFactors = recentLatestPoints.flatMap(item => [
       item.L1?.PF || 0,
       item.L2?.PF || 0,
       item.L3?.PF || 0
@@ -196,9 +205,8 @@ export default function PortEnergyOverview() {
       ? powerFactors.reduce((sum, pf) => sum + pf, 0) / powerFactors.length 
       : 0;
 
-    const activeDevices = latestDataPoints.filter(item => {
+    const activeDevices = recentLatestPoints.filter(item => {
       const power = (item.L1?.P || 0) + (item.L2?.P || 0) + (item.L3?.P || 0);
-      // Only count devices with positive power
       return power > 0;
     }).length;
 
